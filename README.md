@@ -53,11 +53,14 @@ python stock.py "WTI BRENT" 20 1D
 python stock.py BTC,ETH,BNB 20 1H
 ```
 
-### Quét cổ phiếu sàn HOSE (Tiêu chuẩn kỹ thuật)
-```bash
-python stock.py SCREEN_HOSE
-```
-Chức năng này sẽ quét toàn bộ sàn HOSE và lọc ra các mã đạt tiêu chuẩn về thanh khoản, xu hướng (Price > SMA20/50) và điểm nổ (Breakout). Kết quả lưu tại `result.txt`.
+60: Chức năng này sẽ quét toàn bộ sàn HOSE và lọc ra các mã đạt tiêu chuẩn về thanh khoản, xu hướng (Price > SMA20/50) và điểm nổ (Breakout). Kết quả lưu tại `result.txt`.
+61: 
+62: ### Lấy tất cả mã của một sàn (HOSE, HNX, UPCOM)
+63: ```bash
+64: python stock.py HOSE -all-code
+65: ```
+66: Lệnh này sẽ liệt kê toàn bộ các mã chứng khoán đang niêm yết trên sàn tương ứng.
+67: 
 
 ## 5. Danh sách mã đặc biệt hỗ trợ
 | Mã | Mô tả | Nguồn |
