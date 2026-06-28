@@ -5,8 +5,9 @@
 #    Trong đó TP/SL là mức giá cụ thể, không phải số điểm. Ví dụ BUY có TP cao hơn giá mở, SL thấp hơn giá mở; SELL có TP thấp hơn giá mở, SL cao hơn giá mở.
 # 4. Xem giá hiện tại của symbol bằng câu lệnh: python mt5.py --action price --symbol BTCUSDm
 # 5. Đóng lệnh bằng câu lệnh: python mt5.py --action close --ticket 123456
-# 6. Xem trạng thái tài khoản và lệnh đang mở bằng câu lệnh: python mt5.py --action status
-# 7. Mỗi lần thực thi lệnh sẽ tự động ghi lịch sử vào file history_mt5.txt ở đầu file, theo thứ tự thời gian giảm dần.
+# 6. Đóng toàn bộ lệnh đang mở bằng câu lệnh: python mt5.py --action close-all
+# 7. Xem trạng thái tài khoản và lệnh đang mở bằng câu lệnh: python mt5.py --action status
+# 8. Mỗi lần thực thi lệnh sẽ tự động ghi lịch sử vào file history_mt5.txt ở đầu file, theo thứ tự thời gian giảm dần.
 
 # REAL
 # 201967146
@@ -247,30 +248,14 @@ def open_trade(symbol, side, lot, tp_price=None, sl_price=None, comment="Python 
     return result
 
 
-def close_trade(ticket):
-    position = mt5.position_get(ticket=ticket)
-    if position is None:
-        raise RuntimeError(f"Không tìm thấy vị thế có ticket {ticket}")
-
-    pnl_value, current_price, _ = calculate_position_pnl(position)
-    print(f"Lệnh hiện tại: ticket={position.ticket} | symbol={position.symbol}")
-    print(f"Loại: {'BUY' if position.type == mt5.ORDER_TYPE_BUY else 'SELL'}")
-    print(f"Giá vào: {position.price_open} | Giá hiện tại: {current_price}")
-    print(f"Lãi/lỗ hiện tại: {pnl_value:.6f} ({position.profit} theo MT5)")
-
-    if not confirm_action(f"Bạn có muốn đóng lệnh {ticket} này không?"):
-        print("Đã hủy đóng lệnh.")
-        return None
-
+def build_close_request(position):
     symbol = position.symbol
     tick = get_current_price(symbol)
     close_type = mt5.ORDER_TYPE_SELL if position.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
     close_price = tick.bid if close_type == mt5.ORDER_TYPE_SELL else tick.ask
-
-    # Lấy filling mode động tương tự khi mở lệnh
     filling_policy = get_filling_mode(symbol)
 
-    request = {
+    return {
         "action": mt5.TRADE_ACTION_DEAL,
         "symbol": symbol,
         "volume": position.volume,
@@ -284,6 +269,19 @@ def close_trade(ticket):
         "type_filling": filling_policy,
     }
 
+
+def close_position(position, confirm=True):
+    pnl_value, current_price, _ = calculate_position_pnl(position)
+    print(f"Lệnh hiện tại: ticket={position.ticket} | symbol={position.symbol}")
+    print(f"Loại: {'BUY' if position.type == mt5.ORDER_TYPE_BUY else 'SELL'}")
+    print(f"Giá vào: {position.price_open} | Giá hiện tại: {current_price}")
+    print(f"Lãi/lỗ hiện tại: {pnl_value:.6f} ({position.profit} theo MT5)")
+
+    if confirm and not confirm_action(f"Bạn có muốn đóng lệnh {position.ticket} này không?"):
+        print("Đã hủy đóng lệnh.")
+        return None
+
+    request = build_close_request(position)
     result = mt5.order_send(request)
     if result is None:
         print("Đóng lệnh thất bại! Không nhận được phản hồi.")
@@ -291,12 +289,40 @@ def close_trade(ticket):
 
     if result.retcode != mt5.TRADE_RETCODE_DONE:
         print(f"Đóng lệnh thất bại! Mã lỗi: {result.retcode} ({result.comment})")
-        save_trade_history(symbol, position.volume, result, request, "CLOSE_FAILED", f"ticket={position.ticket} | {result.comment}")
+        save_trade_history(position.symbol, position.volume, result, request, "CLOSE_FAILED", f"ticket={position.ticket} | {result.comment}")
         return None
 
     print(f"Đóng lệnh thành công! Ticket ID: {result.order}")
-    save_trade_history(symbol, position.volume, result, request, "CLOSE_SUCCESS", f"ticket={position.ticket}")
+    save_trade_history(position.symbol, position.volume, result, request, "CLOSE_SUCCESS", f"ticket={position.ticket}")
     return result
+
+
+def close_trade(ticket):
+    position = mt5.position_get(ticket=ticket)
+    if position is None:
+        raise RuntimeError(f"Không tìm thấy vị thế có ticket {ticket}")
+    return close_position(position, confirm=True)
+
+
+def close_all_positions():
+    positions = mt5.positions_get()
+    if not positions:
+        print("Không có lệnh nào đang mở.")
+        return []
+
+    print(f"Tìm thấy {len(positions)} lệnh đang mở. Đang chuẩn bị đóng toàn bộ...")
+    for position in positions:
+        print(f"- Ticket: {position.ticket} | Symbol: {position.symbol} | Type: {'BUY' if position.type == mt5.ORDER_TYPE_BUY else 'SELL'}")
+
+    if not confirm_action("Bạn có muốn đóng toàn bộ các lệnh này không?"):
+        print("Đã hủy đóng toàn bộ lệnh.")
+        return []
+
+    results = []
+    for position in positions:
+        result = close_position(position, confirm=False)
+        results.append(result)
+    return results
 
 
 def print_account_info():
@@ -334,11 +360,18 @@ def print_open_positions():
         print(f"- Ticket: {position.ticket} | Symbol: {position.symbol}")
         print(f"  Type: {'BUY' if position.type == mt5.ORDER_TYPE_BUY else 'SELL'}")
         print(f"  Volume: {position.volume}")
-        print(f"  Open Price: {position.price_open}")
-        print(f"  Current Price: {current_price}")
+        print(f"  Giá mở cửa: {position.price_open}")
+        print(f"  Giá hiện tại: {current_price}")
+        print(f"  Stop Loss: {getattr(position, 'sl', 'chưa đặt')}")
+        print(f"  Take Profit: {getattr(position, 'tp', 'chưa đặt')}")
+        if pnl_formula > 0:
+            pnl_status = f"ĐANG LÃI {pnl_formula:.6f}"
+        elif pnl_formula < 0:
+            pnl_status = f"ĐANG LỖ {abs(pnl_formula):.6f}"
+        else:
+            pnl_status = "HÒA"
+        print(f"  Trạng thái: {pnl_status}")
         print(f"  P/L hiện tại: {position.profit} (công thức: {pnl_formula:.6f})")
-        if getattr(position, "tp", None) is not None or getattr(position, "sl", None) is not None:
-            print(f"  TP: {getattr(position, 'tp', 'chưa đặt')} | SL: {getattr(position, 'sl', 'chưa đặt')}")
         if estimated:
             if "tp" in estimated:
                 print(f"  Ước tính lời TP: {estimated['tp']:.8f}")
@@ -368,7 +401,7 @@ def print_current_price(symbol):
 
 def main():
     parser = argparse.ArgumentParser(description="MT5 trader demo")
-    parser.add_argument("--action", choices=["open", "close", "status", "price"], default="status")
+    parser.add_argument("--action", choices=["open", "close", "close-all", "status", "price"], default="status")
     parser.add_argument("--symbol", default="BTCUSD")
     parser.add_argument("--side", choices=["buy", "sell"], default="buy")
     parser.add_argument("--lot", type=float, default=0.01)
@@ -388,6 +421,8 @@ def main():
             close_trade(args.ticket)
         elif args.action == "price":
             print_current_price(args.symbol)
+        elif args.action == "close-all":
+            close_all_positions()
         else:
             print_account_info()
             print_open_positions()
