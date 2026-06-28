@@ -1,0 +1,2 @@
+2026-06-28 19:36:09 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=2144951082 | retcode=10009 | comment=Python trader test
+2026-06-28 19:35:25 | symbol=BTCUSDm | lot=0.01 | status=FAILED | ticket=0 | retcode=10027 | comment=Python trader test | detail=retcode=10027 | AutoTrading disabled by client

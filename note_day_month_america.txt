@@ -1,0 +1,66 @@
+============================================================
+📊 PHÂN TÍCH XU HƯỚNG THỊ TRƯỜNG MỸ (2022 - 2026)
+============================================================
+
+1️⃣ ĐẶC TÍNH XU HƯỚNG THEO TỪNG THÁNG
+------------------------------------------------------------
+
+📈 Tháng 1 (TĂNG ỔN ĐỊNH):
+   - Trong cả 4 năm (2023, 2024, 2025, 2026), tháng 1 đều đóng cửa cao hơn mức mở cửa.
+   - Đây là tháng có xác suất tăng điểm cao nhất để khởi đầu năm mới.
+
+📉 Tháng 2 (GIẢM / ĐIỀU CHỈNH):
+   - Ngoại trừ năm 2024 có nhịp tăng nhẹ, các năm 2023, 2025 và 2026 đều cho thấy áp lực bán mạnh.
+   - Đây thường là tháng thị trường "trả điểm" sau khi tăng vào tháng 1.
+
+⚠️ Tháng 3 (BIẾN ĐỘNG CỰC LỚN - TẠO ĐÁY):
+   - Dữ liệu cho thấy sự phân hóa: Năm 2023 tăng mạnh từ giữa tháng, nhưng 2025 và 2026 lại sụt giảm sâu.
+   - Đặc điểm chung: Thường tạo một ĐÁY TRUNG HẠN quan trọng (như đáy ~11.840 năm 2023 hay đáy ~23.139 năm 2026).
+
+🔄 Tháng 4 (ĐẢO CHIỀU NGOẠN MỤC):
+   - Thường bắt đầu bằng sự hoảng loạn nhưng kết thúc trong hưng phấn. 
+   - Năm 2025 sập về 16.460 rồi hồi phục; năm 2026 bứt phá từ 24.194 lên đỉnh 27.435.
+
+🚀 Tháng 5 & Tháng 6 (MÙA TĂNG TRƯỞNG - BULL MARKET):
+   - Trừ năm 2022 (thị trường gấu), các năm 2023, 2024 và 2025 đều ghi nhận đà tăng bền vững trong hai tháng này.
+
+📉 Tháng 8 & Tháng 9 (RỦI RO SỤT GIẢM BẤT NGỜ):
+   - Giai đoạn rất yếu vào năm 2022-2023 (giá liên tục giảm).
+   - Tuy nhiên, 2024-2025 lại tăng mạnh. Giai đoạn này phụ thuộc nhiều vào chu kỳ kinh tế riêng từng năm.
+
+💹 Tháng 11 (TĂNG TRƯỞNG MẠNH):
+   - Trong các năm 2022, 2023, 2024, tháng 11 luôn tăng điểm rất tốt với các cây nến xanh dài.
+   - Riêng năm 2025 điều chỉnh nhẹ sau khi đã đạt đỉnh quá cao vào tháng 10.
+
+
+2️⃣ TỔNG KẾT BIAS CHO DAY TRADER (Dựa trên 4 năm dữ liệu)
+------------------------------------------------------------
+
++-------------------+-----------------+---------------------------------------------+
+|     GIAI ĐOẠN     |  BIAS CHỦ ĐẠO   |             ĐẶC TÍNH GIAO DỊCH              |
++-------------------+-----------------+---------------------------------------------+
+| Quý 1 (Tháng 1-3) | 🐻 SELL (Bán)   | T1 có thể mua, nhưng T2 & nửa đầu T3 giảm sâu|
++-------------------+-----------------+---------------------------------------------+
+| Quý 2 (Tháng 4-6) | 🐂 BUY (Mua)    | GIAI ĐOẠN KIẾM TIỀN TỐT NHẤT. Ưu tiên Long.  |
++-------------------+-----------------+---------------------------------------------+
+| Quý 3 (Tháng 7-9) | ⚖️ THẬN TRỌNG    | Thường có "Flash Crash" đầu tháng 8.         |
++-------------------+-----------------+---------------------------------------------+
+| Quý 4 (Tháng 10-12)| 🏹 BUY TÍCH LŨY | Tháng 11 tăng mạnh. Cuối T12 đi ngang/tăng.  |
++-------------------+-----------------+---------------------------------------------+
+
+
+3️⃣ QUY LUẬT VỀ NẾN ĐẢO CHIỀU (Day Trading)
+------------------------------------------------------------
+
+📌 QUY LUẬT THÉP: 
+   Các nhịp tăng dài thường kết thúc bằng một cây NẾN ĐỎ có biên độ giảm (Change) 
+   LỚN HƠN mức tăng của 1-2 ngày xanh trước đó.
+
+💡 Ví dụ tiêu biểu:
+   - Ngày 04/11/2025: Giảm -528 điểm (xóa sạch đà tăng trước đó).
+   - Ngày 18/12/2024: Giảm -812 điểm.
+
+📝 LỜI KHUYÊN: 
+   Hãy đặc biệt chú ý vào TUẦN CUỐI CÙNG THÁNG 3 và ĐẦU THÁNG 11. 
+   Đây là hai thời điểm thị trường thường có những bước ngoặt lớn về xu hướng.
+============================================================
