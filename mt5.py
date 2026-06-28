@@ -24,7 +24,15 @@ import MetaTrader5 as mt5
 
 HISTORY_FILE = Path(__file__).with_name("history_mt5.txt")
 
-ACCOUNT_TYPE = "FAKE"  # đổi thành REAL nếu bạn dùng tài khoản thật
+def detect_account_type(server_name: str) -> str:
+    server_lower = server_name.lower()
+    if "real" in server_lower:
+        return "REAL"
+    if "trial" in server_lower or "demo" in server_lower:
+        return "FAKE"
+    return "UNKNOWN"
+
+ACCOUNT_TYPE = detect_account_type("Exness-MT5Trial17")
 ACCOUNT = 463579382
 PASSWORD = "753159@Lmnnml."
 SERVER = "Exness-MT5Trial17"
