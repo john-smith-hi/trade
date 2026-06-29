@@ -29,7 +29,7 @@ TV_MAPPING = {
     'GOLD': ('XAUUSD', 'OANDA', 'Gold / USD (TradingView)'),
     'WTI': ('USOIL', 'TVC', 'WTI Crude Oil'),
     'BRENT': ('UKOIL', 'TVC', 'Brent Crude Oil'),
-    'NAS100': ('NAS100', 'TVC', 'Nasdaq 100 CFD (TradingView)')
+    'NAS100': ('BLACKBULL:NAS100', '', 'Nasdaq 100 CFD (BlackBull)')
 }
 
 YF_MAPPING = {
@@ -174,7 +174,7 @@ def analyze_tv(sym, tv_config, interval, limit, value, unit, us_only=False):
         fetch_limit = limit * 5 if us_only else limit + 5
         df = None
         for _ in range(3):
-            df = tv.get_hist(symbol=tv_sym, exchange=tv_exc, interval=tv_interval, n_bars=fetch_limit)
+            df = tv.get_hist(symbol=tv_sym, exchange=tv_exc if tv_exc else None, interval=tv_interval, n_bars=fetch_limit)
             if df is not None and not df.empty: break
             time.sleep(1)
             
@@ -299,13 +299,13 @@ def analyze_stock(v, sym, limit, minimal_mode, interval='1D', us_only=False):
     try:
         value, unit = parse_interval(interval)
         
-        if sym in YF_MAPPING:
-            analyze_yf(sym, YF_MAPPING[sym], interval, limit, value, unit, us_only=us_only)
-        elif sym in TV_MAPPING:
+        if sym in TV_MAPPING:
             success = analyze_tv(sym, TV_MAPPING[sym], interval, limit, value, unit, us_only=us_only)
             if not success:
                 print(f"--- [!] FALLBACK: Chuyển sang nguồn dữ liệu thay thế cho {sym} ---")
-                analyze_yf(sym, None, interval, limit, value, unit, us_only=us_only)
+                analyze_yf(sym, YF_MAPPING.get(sym), interval, limit, value, unit, us_only=us_only)
+        elif sym in YF_MAPPING:
+            analyze_yf(sym, YF_MAPPING[sym], interval, limit, value, unit, us_only=us_only)
         elif len(sym) >= 4 or sym in ['AMD', 'IBM', 'INTC', 'KO', 'DIS', 'NKE']: # Global stocks fallback
             analyze_yf(sym, None, interval, limit, value, unit, us_only=us_only)
         else:
