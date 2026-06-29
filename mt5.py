@@ -33,10 +33,10 @@ def detect_account_type(server_name: str) -> str:
         return "FAKE"
     return "UNKNOWN"
 
-ACCOUNT_TYPE = detect_account_type("Exness-MT5Trial17")
 ACCOUNT = 463579382
 PASSWORD = "753159@Lmnnml."
 SERVER = "Exness-MT5Trial17"
+ACCOUNT_TYPE = detect_account_type(SERVER)
 DEFAULT_MAGIC = 234567
 DEFAULT_DEVIATION = 20
 DEFAULT_SYMBOLS = ["BTCUSD", "BTCUSDm", "XAUUSDm", "XAUUSD"]
