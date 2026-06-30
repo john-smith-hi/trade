@@ -6,9 +6,14 @@
 #    Trong đó TP/SL là mức giá cụ thể, không phải số điểm. Ví dụ BUY có TP cao hơn giá mở, SL thấp hơn giá mở; SELL có TP thấp hơn giá mở, SL cao hơn giá mở.
 # 4. Xem giá hiện tại của symbol bằng câu lệnh: python mt5.py --action price --symbol BTCUSDm --fake
 # 5. Đóng lệnh bằng câu lệnh: python mt5.py --action close --ticket 123456 --fake
-# 6. Đóng toàn bộ lệnh đang mở bằng câu lệnh: python mt5.py --action close-all --fake
-# 7. Xem trạng thái tài khoản và lệnh đang mở bằng câu lệnh: python mt5.py --action status --fake
-# 8. Mỗi lần thực thi lệnh sẽ tự động ghi lịch sử vào file history_mt5.txt ở đầu file, theo thứ tự thời gian giảm dần.
+# 6. Thay đổi TP/SL của lệnh cũ bằng câu lệnh: python mt5.py --action modify --ticket 123456 --tp-price 60000 --sl-price 58000 --fake
+#    Có thể chỉ thay đổi TP: python mt5.py --action modify --ticket 123456 --tp-price 60000 --fake
+#    Hoặc chỉ thay đổi SL: python mt5.py --action modify --ticket 123456 --sl-price 58000 --fake
+# 7. Thay đổi TP/SL của tất cả các lệnh đang mở: python mt5.py --action modify-all --tp-price 60000 --sl-price 58000 --fake
+#    Cũng có thể chỉ thay đổi TP hoặc SL cho tất cả lệnh.
+# 8. Đóng toàn bộ lệnh đang mở bằng câu lệnh: python mt5.py --action close-all --fake
+# 9. Xem trạng thái tài khoản và lệnh đang mở bằng câu lệnh: python mt5.py --action status --fake
+# 10. Mỗi lần thực thi lệnh sẽ tự động ghi lịch sử vào file history_mt5.txt ở đầu file, theo thứ tự thời gian giảm dần.
 
 # REAL
 # 201967146
@@ -306,9 +311,10 @@ def close_position(position, confirm=True):
 
 
 def close_trade(ticket):
-    position = mt5.position_get(ticket=ticket)
-    if position is None:
+    positions = mt5.positions_get(ticket=ticket)
+    if not positions:
         raise RuntimeError(f"Không tìm thấy vị thế có ticket {ticket}")
+    position = positions[0]
     return close_position(position, confirm=True)
 
 
@@ -398,6 +404,121 @@ def print_pending_orders():
         print(f"- Ticket: {order.ticket} | Symbol: {order.symbol} | Type: {order.type} | Price: {order.price}")
 
 
+def modify_position_tp_sl(ticket, tp_price=None, sl_price=None):
+    """Thay đổi take profit và stop loss của lệnh đang mở"""
+    positions = mt5.positions_get(ticket=ticket)
+    if not positions:
+        raise RuntimeError(f"Không tìm thấy vị thế có ticket {ticket}")
+    position = positions[0]
+    
+    side = "buy" if position.type == mt5.ORDER_TYPE_BUY else "sell"
+    print(f"Lệnh hiện tại: ticket={ticket} | symbol={position.symbol} | type={side.upper()}")
+    print(f"Giá vào: {position.price_open}")
+    print(f"TP cũ: {position.tp if position.tp > 0 else 'chưa đặt'} → TP mới: {tp_price if tp_price is not None else position.tp if position.tp > 0 else 'chưa đặt'}")
+    print(f"SL cũ: {position.sl if position.sl > 0 else 'chưa đặt'} → SL mới: {sl_price if sl_price is not None else position.sl if position.sl > 0 else 'chưa đặt'}")
+    
+    # Validate TP/SL
+    if tp_price is not None:
+        validate_tp_sl(side, position.price_open, tp_price, None)
+    if sl_price is not None:
+        validate_tp_sl(side, position.price_open, None, sl_price)
+    
+    if not confirm_action("Bạn có muốn thực hiện thay đổi này không?"):
+        print("Đã hủy thay đổi TP/SL.")
+        return None
+    
+    # Sử dụng giá trị cũ nếu không có giá trị mới
+    new_tp = tp_price if tp_price is not None else position.tp
+    new_sl = sl_price if sl_price is not None else position.sl
+    
+    request = {
+        "action": mt5.TRADE_ACTION_SLTP,
+        "symbol": position.symbol,
+        "position": ticket,
+        "tp": new_tp if new_tp > 0 else 0,
+        "sl": new_sl if new_sl > 0 else 0,
+        "magic": DEFAULT_MAGIC,
+        "comment": "Modified TP/SL",
+    }
+    
+    result = mt5.order_send(request)
+    if result is None:
+        print("Thay đổi TP/SL thất bại! Không nhận được phản hồi.")
+        return None
+    
+    if result.retcode != mt5.TRADE_RETCODE_DONE:
+        print(f"Thay đổi TP/SL thất bại! Mã lỗi: {result.retcode} ({result.comment})")
+        save_trade_history(position.symbol, position.volume, result, request, "MODIFY_FAILED", f"ticket={ticket} | {result.comment}")
+        return None
+    
+    print(f"Thay đổi TP/SL thành công!")
+    save_trade_history(position.symbol, position.volume, result, request, "MODIFY_SUCCESS", f"ticket={ticket}")
+    return result
+
+
+def modify_all_positions_tp_sl(tp_price=None, sl_price=None):
+    """Thay đổi take profit và stop loss của tất cả các lệnh đang mở"""
+    positions = mt5.positions_get()
+    if not positions:
+        print("Không có lệnh nào đang mở để thay đổi.")
+        return []
+    
+    print(f"Tìm thấy {len(positions)} lệnh đang mở. Đang chuẩn bị thay đổi TP/SL cho tất cả...")
+    for position in positions:
+        side = "buy" if position.type == mt5.ORDER_TYPE_BUY else "sell"
+        print(f"- Ticket: {position.ticket} | Symbol: {position.symbol} | Type: {side.upper()}")
+        print(f"  Giá vào: {position.price_open} | TP cũ: {position.tp if position.tp > 0 else 'chưa đặt'} | SL cũ: {position.sl if position.sl > 0 else 'chưa đặt'}")
+        if tp_price is not None:
+            print(f"  → TP mới: {tp_price}")
+        if sl_price is not None:
+            print(f"  → SL mới: {sl_price}")
+    
+    if not confirm_action("Bạn có muốn thay đổi TP/SL cho tất cả các lệnh này không?"):
+        print("Đã hủy thay đổi TP/SL cho tất cả lệnh.")
+        return []
+    
+    results = []
+    for position in positions:
+        side = "buy" if position.type == mt5.ORDER_TYPE_BUY else "sell"
+        
+        # Validate TP/SL
+        if tp_price is not None:
+            validate_tp_sl(side, position.price_open, tp_price, None)
+        if sl_price is not None:
+            validate_tp_sl(side, position.price_open, None, sl_price)
+        
+        # Sử dụng giá trị cũ nếu không có giá trị mới
+        new_tp = tp_price if tp_price is not None else position.tp
+        new_sl = sl_price if sl_price is not None else position.sl
+        
+        request = {
+            "action": mt5.TRADE_ACTION_SLTP,
+            "symbol": position.symbol,
+            "position": position.ticket,
+            "tp": new_tp if new_tp > 0 else 0,
+            "sl": new_sl if new_sl > 0 else 0,
+            "magic": DEFAULT_MAGIC,
+            "comment": "Modified TP/SL",
+        }
+        
+        result = mt5.order_send(request)
+        if result is None:
+            print(f"Thay đổi TP/SL cho ticket {position.ticket} thất bại! Không nhận được phản hồi.")
+            results.append(None)
+            continue
+        
+        if result.retcode != mt5.TRADE_RETCODE_DONE:
+            print(f"Thay đổi TP/SL cho ticket {position.ticket} thất bại! Mã lỗi: {result.retcode} ({result.comment})")
+            save_trade_history(position.symbol, position.volume, result, request, "MODIFY_FAILED", f"ticket={position.ticket} | {result.comment}")
+        else:
+            print(f"Thay đổi TP/SL cho ticket {position.ticket} thành công!")
+            save_trade_history(position.symbol, position.volume, result, request, "MODIFY_SUCCESS", f"ticket={position.ticket}")
+        
+        results.append(result)
+    
+    return results
+
+
 def print_current_price(symbol):
     symbol = select_symbol(symbol)
     tick = get_current_price(symbol)
@@ -411,7 +532,7 @@ def main():
     global ACCOUNT, SERVER, ACCOUNT_TYPE, NO_ASK
 
     parser = argparse.ArgumentParser(description="MT5 trader demo")
-    parser.add_argument("--action", choices=["open", "close", "close-all", "status", "price"], default="status")
+    parser.add_argument("--action", choices=["open", "close", "close-all", "modify", "modify-all", "status", "price"], default="status")
     parser.add_argument("--symbol", default="BTCUSD")
     parser.add_argument("--side", choices=["buy", "sell"], default="buy")
     parser.add_argument("--lot", type=float, default=0.01)
@@ -446,6 +567,16 @@ def main():
             if args.ticket is None:
                 raise RuntimeError("Cần cung cấp --ticket để đóng lệnh")
             close_trade(args.ticket)
+        elif args.action == "modify":
+            if args.ticket is None:
+                raise RuntimeError("Cần cung cấp --ticket để thay đổi TP/SL")
+            if args.tp_price is None and args.sl_price is None:
+                raise RuntimeError("Cần cung cấp ít nhất --tp-price hoặc --sl-price để thay đổi")
+            modify_position_tp_sl(args.ticket, args.tp_price, args.sl_price)
+        elif args.action == "modify-all":
+            if args.tp_price is None and args.sl_price is None:
+                raise RuntimeError("Cần cung cấp ít nhất --tp-price hoặc --sl-price để thay đổi")
+            modify_all_positions_tp_sl(args.tp_price, args.sl_price)
         elif args.action == "price":
             print_current_price(args.symbol)
         elif args.action == "close-all":
