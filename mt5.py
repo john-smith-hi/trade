@@ -1,12 +1,13 @@
 # HƯỚNG DẪN SỬ DỤNG
 # 1. Cài đặt thư viện cần thiết bằng câu lệnh: python -m pip install MetaTrader5 pandas
-# 2. Điền đúng số tài khoản, mật khẩu và server MT5 của bạn vào các biến ACCOUNT, PASSWORD, SERVER.
-# 3. Mở lệnh thử nghiệm BTC bằng câu lệnh: python mt5.py --action open --symbol BTCUSDm --side buy --lot 0.01 --tp-price 60000 --sl-price 58000
+# 2. Điền đúng số tài khoản, mật khẩu và server MT5 của bạn vào các biến ACCOUNT_REAL, ACCOUNT_FAKE, PASSWORD, SERVER_REAL, SERVER_FAKE.
+#    Mặc định hệ thống sử dụng tài khoản FAKE. Sử dụng tham số --real để chạy trên tài khoản REAL, hoặc --fake cho tài khoản FAKE.
+# 3. Mở lệnh thử nghiệm BTC bằng câu lệnh: python mt5.py --action open --symbol BTCUSDm --side buy --lot 0.01 --tp-price 60000 --sl-price 58000 --fake
 #    Trong đó TP/SL là mức giá cụ thể, không phải số điểm. Ví dụ BUY có TP cao hơn giá mở, SL thấp hơn giá mở; SELL có TP thấp hơn giá mở, SL cao hơn giá mở.
-# 4. Xem giá hiện tại của symbol bằng câu lệnh: python mt5.py --action price --symbol BTCUSDm
-# 5. Đóng lệnh bằng câu lệnh: python mt5.py --action close --ticket 123456
-# 6. Đóng toàn bộ lệnh đang mở bằng câu lệnh: python mt5.py --action close-all
-# 7. Xem trạng thái tài khoản và lệnh đang mở bằng câu lệnh: python mt5.py --action status
+# 4. Xem giá hiện tại của symbol bằng câu lệnh: python mt5.py --action price --symbol BTCUSDm --fake
+# 5. Đóng lệnh bằng câu lệnh: python mt5.py --action close --ticket 123456 --fake
+# 6. Đóng toàn bộ lệnh đang mở bằng câu lệnh: python mt5.py --action close-all --fake
+# 7. Xem trạng thái tài khoản và lệnh đang mở bằng câu lệnh: python mt5.py --action status --fake
 # 8. Mỗi lần thực thi lệnh sẽ tự động ghi lịch sử vào file history_mt5.txt ở đầu file, theo thứ tự thời gian giảm dần.
 
 # REAL
@@ -33,10 +34,14 @@ def detect_account_type(server_name: str) -> str:
         return "FAKE"
     return "UNKNOWN"
 
-ACCOUNT = 463579382
+ACCOUNT_REAL = 201967146
+ACCOUNT_FAKE = 463579382
 PASSWORD = "753159@Lmnnml."
-SERVER = "Exness-MT5Trial17"
-ACCOUNT_TYPE = detect_account_type(SERVER)
+SERVER_REAL = "Exness-MT5Real18"
+SERVER_FAKE = "Exness-MT5Trial17"
+ACCOUNT = ACCOUNT_FAKE
+SERVER = SERVER_FAKE
+ACCOUNT_TYPE = "FAKE"
 DEFAULT_MAGIC = 234567
 DEFAULT_DEVIATION = 20
 DEFAULT_SYMBOLS = ["BTCUSD", "BTCUSDm", "XAUUSDm", "XAUUSD"]
@@ -400,6 +405,8 @@ def print_current_price(symbol):
 
 
 def main():
+    global ACCOUNT, SERVER, ACCOUNT_TYPE
+
     parser = argparse.ArgumentParser(description="MT5 trader demo")
     parser.add_argument("--action", choices=["open", "close", "close-all", "status", "price"], default="status")
     parser.add_argument("--symbol", default="BTCUSD")
@@ -409,7 +416,21 @@ def main():
     parser.add_argument("--sl-price", type=float, default=None)
     parser.add_argument("--ticket", type=int, default=None)
     parser.add_argument("--comment", default="Python trader test")
+    
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--fake", action="store_true", help="Sử dụng tài khoản FAKE")
+    group.add_argument("--real", action="store_true", help="Sử dụng tài khoản REAL")
+    
     args = parser.parse_args()
+
+    if args.real:
+        ACCOUNT = ACCOUNT_REAL
+        SERVER = SERVER_REAL
+        ACCOUNT_TYPE = "REAL"
+    else:
+        ACCOUNT = ACCOUNT_FAKE
+        SERVER = SERVER_FAKE
+        ACCOUNT_TYPE = "FAKE"
 
     try:
         connect_mt5()
