@@ -42,6 +42,7 @@ SERVER_FAKE = "Exness-MT5Trial17"
 ACCOUNT = ACCOUNT_FAKE
 SERVER = SERVER_FAKE
 ACCOUNT_TYPE = "FAKE"
+NO_ASK = False
 DEFAULT_MAGIC = 234567
 DEFAULT_DEVIATION = 20
 DEFAULT_SYMBOLS = ["BTCUSD", "BTCUSDm", "XAUUSDm", "XAUUSD"]
@@ -74,6 +75,8 @@ def save_trade_history(symbol, lot, result, request, status, detail=""):
 
 
 def confirm_action(message):
+    if NO_ASK:
+        return True
     answer = input(f"{message} (y/n): ").strip().lower()
     return answer in {"y", "yes"}
 
@@ -405,7 +408,7 @@ def print_current_price(symbol):
 
 
 def main():
-    global ACCOUNT, SERVER, ACCOUNT_TYPE
+    global ACCOUNT, SERVER, ACCOUNT_TYPE, NO_ASK
 
     parser = argparse.ArgumentParser(description="MT5 trader demo")
     parser.add_argument("--action", choices=["open", "close", "close-all", "status", "price"], default="status")
@@ -416,12 +419,15 @@ def main():
     parser.add_argument("--sl-price", type=float, default=None)
     parser.add_argument("--ticket", type=int, default=None)
     parser.add_argument("--comment", default="Python trader test")
+    parser.add_argument("--no-ask", action="store_true", help="Bỏ qua xác nhận y/n")
     
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--fake", action="store_true", help="Sử dụng tài khoản FAKE")
     group.add_argument("--real", action="store_true", help="Sử dụng tài khoản REAL")
     
     args = parser.parse_args()
+
+    NO_ASK = args.no_ask
 
     if args.real:
         ACCOUNT = ACCOUNT_REAL
