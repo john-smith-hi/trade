@@ -140,7 +140,7 @@ def get_filling_mode(symbol):
         return 2  # Giá trị số của mt5.ORDER_FILL_RETURN
 
 
-def validate_tp_sl(side, entry_price, tp_price, sl_price):
+def validate_tp_sl(side, entry_price, tp_price, sl_price, is_modification=False):
     if tp_price is not None and tp_price <= 0:
         raise RuntimeError("TP phải lớn hơn 0")
     if sl_price is not None and sl_price <= 0:
@@ -149,12 +149,12 @@ def validate_tp_sl(side, entry_price, tp_price, sl_price):
     if side == "buy":
         if tp_price is not None and tp_price <= entry_price:
             raise RuntimeError(f"TP mua không hợp lệ: {tp_price} phải lớn hơn giá mở {entry_price}")
-        if sl_price is not None and sl_price >= entry_price:
+        if not is_modification and sl_price is not None and sl_price >= entry_price:
             raise RuntimeError(f"SL mua không hợp lệ: {sl_price} phải nhỏ hơn giá mở {entry_price}")
     else:
         if tp_price is not None and tp_price >= entry_price:
             raise RuntimeError(f"TP bán không hợp lệ: {tp_price} phải nhỏ hơn giá mở {entry_price}")
-        if sl_price is not None and sl_price <= entry_price:
+        if not is_modification and sl_price is not None and sl_price <= entry_price:
             raise RuntimeError(f"SL bán không hợp lệ: {sl_price} phải lớn hơn giá mở {entry_price}")
 
 
@@ -419,9 +419,9 @@ def modify_position_tp_sl(ticket, tp_price=None, sl_price=None):
     
     # Validate TP/SL
     if tp_price is not None:
-        validate_tp_sl(side, position.price_open, tp_price, None)
+        validate_tp_sl(side, position.price_open, tp_price, None, is_modification=True)
     if sl_price is not None:
-        validate_tp_sl(side, position.price_open, None, sl_price)
+        validate_tp_sl(side, position.price_open, None, sl_price, is_modification=True)
     
     if not confirm_action("Bạn có muốn thực hiện thay đổi này không?"):
         print("Đã hủy thay đổi TP/SL.")
@@ -483,9 +483,9 @@ def modify_all_positions_tp_sl(tp_price=None, sl_price=None):
         
         # Validate TP/SL
         if tp_price is not None:
-            validate_tp_sl(side, position.price_open, tp_price, None)
+            validate_tp_sl(side, position.price_open, tp_price, None, is_modification=True)
         if sl_price is not None:
-            validate_tp_sl(side, position.price_open, None, sl_price)
+            validate_tp_sl(side, position.price_open, None, sl_price, is_modification=True)
         
         # Sử dụng giá trị cũ nếu không có giá trị mới
         new_tp = tp_price if tp_price is not None else position.tp
