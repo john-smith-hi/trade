@@ -14,6 +14,9 @@
 #   - suffix : hậu tố symbol theo broker — Exness = "m", FTMO = "".
 #              Ví dụ --symbol XAUUSD → XAUUSDm (Exness) hoặc XAUUSD (FTMO).
 #   - multi  : hệ số nhân lot khi copy lệnh sang tài khoản đó.
+#   - auto_copy_enabled/auto_copy_targets : bật thì account đó sẽ TỰ ĐỘNG copy
+#     lệnh sang các account trong auto_copy_targets mỗi khi chạy (không cần
+#     truyền --copy). Ví dụ: account "real" auto_copy_targets=prop_demo,prop_1.
 #   - xml/accounts.xml chứa mật khẩu thật nên đã nằm trong .gitignore, không bị commit.
 #   - Xem xml/accounts.example.xml để biết mẫu cấu trúc.
 #
@@ -25,6 +28,9 @@
 #   --symbol --side --lot --tp-price --sl-price --comment --copy --no-ask
 #   (Không có --no-ask → chỉ xem trước, KHÔNG gửi lệnh thật.)
 #   TP/SL là mức giá cụ thể (không phải số điểm).
+#   Không truyền --copy → tự dùng auto_copy_enabled/auto_copy_targets của account (nếu có).
+#   Truyền --copy "tên1,tên2" → copy đúng danh sách này (override auto-copy).
+#   Truyền --copy "" → tắt hẳn copy cho lần chạy đó (bỏ qua cả auto-copy).
 #
 # VÍ DỤ
 #   # Xem trạng thái tài khoản
@@ -42,8 +48,12 @@
 #   # Đóng toàn bộ lệnh
 #   python mt5.py --account fake --action close-all --no-ask
 #
-#   # Copy lệnh từ real sang prop (lot prop = lot gốc × multi)
+#   # Copy lệnh từ real sang prop (lot prop = lot gốc × multi), chỉ định thủ công
 #   python mt5.py --account real --action open --symbol XAUUSD --side buy --lot 0.01 --copy prop_demo --no-ask
+#
+#   # Account "real" đã cấu hình auto_copy_targets=prop_demo,prop_1 -> không cần --copy,
+#   # lệnh sẽ tự copy sang cả prop_demo và prop_1
+#   python mt5.py --account real --action open --symbol XAUUSD --side buy --lot 0.01 --no-ask
 #
 # LỊCH SỬ
 #   Mỗi lần gửi lệnh sẽ ghi vào history_mt5.txt (mới nhất ở đầu file).
@@ -83,6 +93,18 @@ def _xml_text(node, tag, default=""):
     if child is None or child.text is None:
         return default
     return child.text.strip()
+
+
+def _xml_bool(node, tag, default=False):
+    text = _xml_text(node, tag, "").lower()
+    if not text:
+        return default
+    return text in ("1", "true", "yes", "on")
+
+
+def _xml_list(node, tag):
+    text = _xml_text(node, tag, "")
+    return [item.strip() for item in text.split(",") if item.strip()]
 
 
 def load_accounts():
@@ -128,6 +150,8 @@ def load_accounts():
             "path": _xml_text(node, "path") or None,
             "suffix": _xml_text(node, "suffix"),
             "multi": multi,
+            "auto_copy_enabled": _xml_bool(node, "auto_copy_enabled", False),
+            "auto_copy_targets": _xml_list(node, "auto_copy_targets"),
         })
     return accounts
 
@@ -145,6 +169,8 @@ def save_accounts(accounts):
         ET.SubElement(node, "path").text = str(acc.get("path") or "")
         ET.SubElement(node, "suffix").text = str(acc.get("suffix", ""))
         ET.SubElement(node, "multi").text = str(acc.get("multi", 1.0))
+        ET.SubElement(node, "auto_copy_enabled").text = "true" if acc.get("auto_copy_enabled") else "false"
+        ET.SubElement(node, "auto_copy_targets").text = ",".join(acc.get("auto_copy_targets") or [])
 
     tree = ET.ElementTree(root)
     ET.indent(tree, space="    ")
@@ -170,6 +196,14 @@ def get_account(account_name):
 
 def get_account_multi(account):
     return account.get("multi", 1.0)
+
+
+def get_auto_copy_targets(account):
+    """Danh sách tài khoản tự động copy lệnh sang, cấu hình theo từng account
+    trong xml/accounts.xml (auto_copy_enabled + auto_copy_targets)."""
+    if not account.get("auto_copy_enabled"):
+        return []
+    return list(account.get("auto_copy_targets") or [])
 
 
 def save_trade_history(symbol, lot, result, request, status, detail=""):
@@ -626,12 +660,22 @@ def execute_request(account_name, action, symbol="BTCUSD", side="buy", lot=0.01,
                      no_ask=False, copy_names=None):
     """Thực thi 1 hành động (status/open/close-all/modify-all) cho account_name,
     kèm copy sang các account trong copy_names nếu action cho phép.
+
+    copy_names=None (không truyền gì) -> tự lấy theo cấu hình auto_copy_enabled/
+    auto_copy_targets của account trong xml/accounts.xml. Truyền list cụ thể
+    (kể cả []) sẽ override, không dùng cấu hình auto-copy.
     """
     global NO_ASK
     NO_ASK = no_ask
-    copy_names = copy_names or []
 
     primary_account = get_account(account_name)
+
+    auto_copy_used = False
+    if copy_names is None:
+        copy_names = get_auto_copy_targets(primary_account)
+        auto_copy_used = bool(copy_names)
+    else:
+        copy_names = list(copy_names)
 
     class _Args:
         pass
@@ -646,6 +690,9 @@ def execute_request(account_name, action, symbol="BTCUSD", side="buy", lot=0.01,
 
     try:
         run_action_on_account(primary_account, args, lot)
+
+        if auto_copy_used and action in COPYABLE_ACTIONS:
+            print(f"[AUTO-COPY] Tài khoản '{account_name}' được cấu hình tự động copy sang: {', '.join(copy_names)}")
 
         if copy_names and action not in COPYABLE_ACTIONS:
             print(f"Lưu ý: copy chỉ áp dụng cho action open/close-all/modify-all, bỏ qua sao chép cho action '{action}'.")
@@ -683,11 +730,18 @@ def main():
     parser.add_argument("--sl-price", type=float, default=None)
     parser.add_argument("--comment", default="Python trader test")
     parser.add_argument("--no-ask", action="store_true", help="Bắt buộc phải có để thực thi lệnh thật (open/close-all/modify-all). Nếu không truyền, chương trình chỉ in thông báo xem trước và không gửi lệnh nào, kể cả copy.")
-    parser.add_argument("--copy", default=None, help="Danh sách account name cần copy lệnh sang, phân tách bằng dấu phẩy, ví dụ: prop_demo,prop_1")
+    parser.add_argument(
+        "--copy", default=None,
+        help="Danh sách account name cần copy lệnh sang, phân tách bằng dấu phẩy, ví dụ: prop_demo,prop_1. "
+             "Không truyền --copy sẽ tự dùng cấu hình auto_copy_enabled/auto_copy_targets của account trong accounts.xml (nếu có). "
+             "Truyền --copy \"\" để tắt hẳn copy (bỏ qua cả auto-copy).",
+    )
 
     args = parser.parse_args()
 
-    copy_names = [t.strip() for t in args.copy.split(",") if t.strip()] if args.copy else []
+    copy_names = None
+    if args.copy is not None:
+        copy_names = [t.strip() for t in args.copy.split(",") if t.strip()]
 
     execute_request(
         args.account, args.action, args.symbol, args.side, args.lot,

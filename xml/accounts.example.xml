@@ -1,16 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
     MẪU file cấu hình tài khoản MT5 (không chứa dữ liệu thật, an toàn để commit lên git).
-    Copy file này thành "accounts.xml" (cùng thư mục với mt5.py) rồi điền thông tin thật vào.
-    Có thể chỉnh sửa trực tiếp bằng tay, hoặc dùng tab "Quản lý tài khoản" trong gui_mt5.py.
+    Copy file này thành "accounts.xml" (trong thư mục xml/) rồi điền thông tin thật vào.
+    Có thể chỉnh sửa trực tiếp bằng tay bằng Notepad/VS Code.
 
-    - name    : tên account dùng trong tham số account hoặc trên giao diện (không trùng nhau).
-    - login   : số tài khoản MT5.
-    - password: mật khẩu đăng nhập MT5.
-    - server  : tên server broker.
-    - path    : đường dẫn terminal64.exe tương ứng broker (để trống nếu dùng terminal mặc định).
-    - suffix  : hậu tố symbol riêng của broker (Exness = "m", FTMO = "").
-    - multi   : hệ số nhân lot khi copy lệnh sang tài khoản này (bỏ trống/1.0 nếu không cần).
+    - name              : tên account dùng trong tham số account (không trùng nhau).
+    - login             : số tài khoản MT5.
+    - password          : mật khẩu đăng nhập MT5.
+    - server            : tên server broker.
+    - path              : đường dẫn terminal64.exe tương ứng broker (để trống nếu dùng terminal mặc định).
+    - suffix            : hậu tố symbol riêng của broker (Exness = "m", FTMO = "").
+    - multi             : hệ số nhân lot khi copy lệnh sang tài khoản này (bỏ trống/1.0 nếu không cần).
+    - auto_copy_enabled : true/false, bật thì khi chạy account này (không truyền tham số copy),
+                          sẽ TỰ ĐỘNG copy lệnh sang các account trong auto_copy_targets.
+    - auto_copy_targets : danh sách tên account tự động copy sang, phân tách bằng dấu phẩy (vd: prop_demo,prop_1).
+                          Chỉ có tác dụng khi auto_copy_enabled = true.
 -->
 <accounts>
     <account>
@@ -21,5 +25,7 @@
         <path></path>
         <suffix></suffix>
         <multi>1.0</multi>
+        <auto_copy_enabled>false</auto_copy_enabled>
+        <auto_copy_targets></auto_copy_targets>
     </account>
 </accounts>
