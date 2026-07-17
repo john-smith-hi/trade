@@ -5,15 +5,20 @@
 # CÀI ĐẶT
 #   python -m pip install MetaTrader5 pandas
 #
-# CẤU HÌNH (mảng ACCOUNTS bên dưới)
-#   - Điền login / password / server cho từng tài khoản.
+# CẤU HÌNH TÀI KHOẢN (file xml/accounts.xml, KHÔNG còn để trong code)
+#   - File xml/accounts.xml chứa danh sách tài khoản. Nếu chưa có, script sẽ
+#     tự tạo từ xml/accounts.example.xml (dữ liệu mẫu) khi chạy lần đầu.
+#   - Sửa trực tiếp file này bằng tay (Notepad/VS Code...) để thêm/sửa/xóa tài khoản.
+#   - name   : tên account dùng trong --account.
 #   - path   : đường dẫn terminal64.exe (Exness và FTMO dùng terminal riêng).
 #   - suffix : hậu tố symbol theo broker — Exness = "m", FTMO = "".
 #              Ví dụ --symbol XAUUSD → XAUUSDm (Exness) hoặc XAUUSD (FTMO).
 #   - multi  : hệ số nhân lot khi copy lệnh sang tài khoản đó.
+#   - xml/accounts.xml chứa mật khẩu thật nên đã nằm trong .gitignore, không bị commit.
+#   - Xem xml/accounts.example.xml để biết mẫu cấu trúc.
 #
 # THAM SỐ BẮT BUỘC
-#   --account   fake | real | prop_demo | prop_1
+#   --account   tên account khai báo trong xml/accounts.xml (vd: fake, real, prop_demo)
 #   --action    status | open | close-all | modify-all
 #
 # THAM SỐ KHÁC
@@ -47,6 +52,7 @@
 
 import argparse
 import sys
+import xml.etree.ElementTree as ET
 from datetime import datetime
 from pathlib import Path
 
@@ -61,23 +67,98 @@ for _stream in (sys.stdout, sys.stderr):
         pass
 
 HISTORY_FILE = Path(__file__).with_name("history_mt5.txt")
+XML_DIR = Path(__file__).with_name("xml")
+ACCOUNTS_FILE = XML_DIR / "accounts.xml"
+ACCOUNTS_EXAMPLE_FILE = XML_DIR / "accounts.example.xml"
 
-EXNESS_TERMINAL_PATH = r"C:\Program Files\MetaTrader 5 EXNESS\terminal64.exe"
-FTMO_TERMINAL_PATH = r"C:\Program Files\FTMO Global Markets MT5 Terminal\terminal64.exe"
-
-# "suffix" là hậu tố symbol riêng của từng broker/terminal. Exness dùng "m" (VD: XAUUSDm),
-# FTMO không dùng hậu tố (VD: XAUUSD). Script tự thêm/bỏ hậu tố này khi resolve --symbol.
-ACCOUNTS = [
-    {"name": "fake", "login": 416025113, "password": "y.y4#R8W*cR7W9m", "server": "Exness-MT5Trial14", "path": EXNESS_TERMINAL_PATH, "suffix": "m"},
-    {"name": "real", "login": 201967146, "password": "753159@Lmnnml.", "server": "Exness-MT5Real18", "path": EXNESS_TERMINAL_PATH, "suffix": "m"},
-    {"name": "prop_demo", "login": 1514017511, "password": "9f1MY1r6U1$TH", "server": "FTMO-Demo", "multi": 5.0, "path": FTMO_TERMINAL_PATH, "suffix": ""},
-    {"name": "prop_1", "login": 0, "password": "CHANGE_ME", "server": "CHANGE_ME", "multi": 5.0, "path": FTMO_TERMINAL_PATH, "suffix": ""},
-]
 COPYABLE_ACTIONS = {"open", "close-all", "modify-all"}
 NO_ASK = False
 DEFAULT_MAGIC = 234567
 DEFAULT_DEVIATION = 20
 CURRENT_ACCOUNT_NAME = None
+
+
+def _xml_text(node, tag, default=""):
+    child = node.find(tag)
+    if child is None or child.text is None:
+        return default
+    return child.text.strip()
+
+
+def load_accounts():
+    """Đọc danh sách tài khoản từ accounts.xml.
+
+    Nếu accounts.xml chưa tồn tại, tự tạo từ accounts.example.xml (hoặc file rỗng
+    nếu không có mẫu) để lần đầu chạy không bị lỗi thiếu file.
+    """
+    XML_DIR.mkdir(parents=True, exist_ok=True)
+    if not ACCOUNTS_FILE.exists():
+        if ACCOUNTS_EXAMPLE_FILE.exists():
+            ACCOUNTS_FILE.write_text(ACCOUNTS_EXAMPLE_FILE.read_text(encoding="utf-8"), encoding="utf-8")
+        else:
+            save_accounts([])
+
+    try:
+        root = ET.parse(ACCOUNTS_FILE).getroot()
+    except ET.ParseError as exc:
+        raise RuntimeError(f"File accounts.xml bị lỗi định dạng: {exc}")
+
+    accounts = []
+    for node in root.findall("account"):
+        name = _xml_text(node, "name")
+        if not name:
+            continue
+
+        try:
+            login = int(_xml_text(node, "login", "0") or "0")
+        except ValueError:
+            login = 0
+
+        multi_text = _xml_text(node, "multi")
+        try:
+            multi = float(multi_text) if multi_text else 1.0
+        except ValueError:
+            multi = 1.0
+
+        accounts.append({
+            "name": name,
+            "login": login,
+            "password": _xml_text(node, "password"),
+            "server": _xml_text(node, "server"),
+            "path": _xml_text(node, "path") or None,
+            "suffix": _xml_text(node, "suffix"),
+            "multi": multi,
+        })
+    return accounts
+
+
+def save_accounts(accounts):
+    """Ghi danh sách tài khoản (list[dict]) ra xml/accounts.xml."""
+    XML_DIR.mkdir(parents=True, exist_ok=True)
+    root = ET.Element("accounts")
+    for acc in accounts:
+        node = ET.SubElement(root, "account")
+        ET.SubElement(node, "name").text = str(acc.get("name", ""))
+        ET.SubElement(node, "login").text = str(acc.get("login", 0))
+        ET.SubElement(node, "password").text = str(acc.get("password", ""))
+        ET.SubElement(node, "server").text = str(acc.get("server", ""))
+        ET.SubElement(node, "path").text = str(acc.get("path") or "")
+        ET.SubElement(node, "suffix").text = str(acc.get("suffix", ""))
+        ET.SubElement(node, "multi").text = str(acc.get("multi", 1.0))
+
+    tree = ET.ElementTree(root)
+    ET.indent(tree, space="    ")
+    tree.write(ACCOUNTS_FILE, encoding="UTF-8", xml_declaration=True)
+
+
+ACCOUNTS = load_accounts()
+
+
+def reload_accounts():
+    """Nạp lại ACCOUNTS từ accounts.xml (dùng sau khi sửa file hoặc lưu qua GUI)."""
+    global ACCOUNTS
+    ACCOUNTS = load_accounts()
+    return ACCOUNTS
 
 
 def get_account(account_name):
@@ -540,15 +621,59 @@ def run_action_on_account(account, args, lot):
         print_pending_orders()
 
 
-def main():
+def execute_request(account_name, action, symbol="BTCUSD", side="buy", lot=0.01,
+                     tp_price=None, sl_price=None, comment="Python trader test",
+                     no_ask=False, copy_names=None):
+    """Thực thi 1 hành động (status/open/close-all/modify-all) cho account_name,
+    kèm copy sang các account trong copy_names nếu action cho phép.
+    """
     global NO_ASK
+    NO_ASK = no_ask
+    copy_names = copy_names or []
 
+    primary_account = get_account(account_name)
+
+    class _Args:
+        pass
+
+    args = _Args()
+    args.action = action
+    args.symbol = symbol
+    args.side = side
+    args.tp_price = tp_price
+    args.sl_price = sl_price
+    args.comment = comment
+
+    try:
+        run_action_on_account(primary_account, args, lot)
+
+        if copy_names and action not in COPYABLE_ACTIONS:
+            print(f"Lưu ý: copy chỉ áp dụng cho action open/close-all/modify-all, bỏ qua sao chép cho action '{action}'.")
+        elif copy_names:
+            for copy_name in copy_names:
+                print(f"\n--- [COPY] Đang thực thi sang tài khoản {copy_name} ---")
+                try:
+                    copy_account = get_account(copy_name)
+                    mt5.shutdown()
+                    lot_for_copy = lot * get_account_multi(copy_account) if action == "open" else lot
+                    if action == "open" and lot_for_copy != lot:
+                        print(f"Lot gốc: {lot} → Lot copy ({copy_name}, MULTI={get_account_multi(copy_account)}): {lot_for_copy}")
+                    run_action_on_account(copy_account, args, lot_for_copy)
+                except Exception as copy_exc:
+                    print(f"[COPY LỖI - {copy_name}] {copy_exc}")
+    except Exception as exc:
+        print(exc)
+    finally:
+        mt5.shutdown()
+
+
+def main():
     parser = argparse.ArgumentParser(description="MT5 trader demo")
     parser.add_argument(
         "--account",
         choices=[acc["name"] for acc in ACCOUNTS],
         required=True,
-        help="Bắt buộc: chọn tài khoản chính theo name khai báo trong ACCOUNTS (vd: prop_demo, prop_1, real, fake)",
+        help="Bắt buộc: chọn tài khoản chính theo name khai báo trong accounts.xml (vd: prop_demo, prop_1, real, fake)",
     )
     parser.add_argument("--action", choices=["open", "close-all", "modify-all", "status"], required=True)
     parser.add_argument("--symbol", default="BTCUSD")
@@ -562,33 +687,12 @@ def main():
 
     args = parser.parse_args()
 
-    NO_ASK = args.no_ask
-
-    primary_account = get_account(args.account)
-
     copy_names = [t.strip() for t in args.copy.split(",") if t.strip()] if args.copy else []
 
-    try:
-        run_action_on_account(primary_account, args, args.lot)
-
-        if copy_names and args.action not in COPYABLE_ACTIONS:
-            print(f"Lưu ý: --copy chỉ áp dụng cho action open/close-all/modify-all, bỏ qua sao chép cho action '{args.action}'.")
-        elif copy_names:
-            for copy_name in copy_names:
-                print(f"\n--- [COPY] Đang thực thi sang tài khoản {copy_name} ---")
-                try:
-                    copy_account = get_account(copy_name)
-                    mt5.shutdown()
-                    lot_for_copy = args.lot * get_account_multi(copy_account) if args.action == "open" else args.lot
-                    if args.action == "open" and lot_for_copy != args.lot:
-                        print(f"Lot gốc: {args.lot} → Lot copy ({copy_name}, MULTI={get_account_multi(copy_account)}): {lot_for_copy}")
-                    run_action_on_account(copy_account, args, lot_for_copy)
-                except Exception as copy_exc:
-                    print(f"[COPY LỖI - {copy_name}] {copy_exc}")
-    except Exception as exc:
-        print(exc)
-    finally:
-        mt5.shutdown()
+    execute_request(
+        args.account, args.action, args.symbol, args.side, args.lot,
+        args.tp_price, args.sl_price, args.comment, args.no_ask, copy_names,
+    )
 
 
 if __name__ == "__main__":
