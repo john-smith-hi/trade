@@ -1,19 +1,22 @@
 # HƯỚNG DẪN SỬ DỤNG
 # 1. Cài đặt thư viện cần thiết bằng câu lệnh: python -m pip install MetaTrader5 pandas
-# 2. Điền đúng số tài khoản, mật khẩu và server MT5 của bạn vào mảng ACCOUNTS (type FAKE/REAL).
+# 2. Điền đúng số tài khoản, mật khẩu và server MT5 của bạn vào mảng ACCOUNTS (name FAKE/REAL/prop_demo/prop_1).
 #    Mặc định hệ thống sử dụng tài khoản FAKE. Sử dụng tham số --real để chạy trên tài khoản REAL, hoặc --fake cho tài khoản FAKE.
+#    Có thể dùng --account <name> để chọn trực tiếp bất kỳ tài khoản nào khai báo trong ACCOUNTS làm tài khoản chính,
+#    ví dụ xem status của prop_demo: python mt5.py --action status --account prop_demo
+#    Với các tài khoản dùng để copy trade (prop_demo, prop_1, ...), điền thêm "multi" là hệ số nhân lot so với tài khoản chính.
 # 3. Mở lệnh thử nghiệm BTC bằng câu lệnh: python mt5.py --action open --symbol BTCUSDm --side buy --lot 0.01 --tp-price 60000 --sl-price 58000 --fake
 #    Trong đó TP/SL là mức giá cụ thể, không phải số điểm. Ví dụ BUY có TP cao hơn giá mở, SL thấp hơn giá mở; SELL có TP thấp hơn giá mở, SL cao hơn giá mở.
-# 4. Xem giá hiện tại của symbol bằng câu lệnh: python mt5.py --action price --symbol BTCUSDm --fake
-# 5. Đóng lệnh bằng câu lệnh: python mt5.py --action close --ticket 123456 --fake
-# 6. Thay đổi TP/SL của lệnh cũ bằng câu lệnh: python mt5.py --action modify --ticket 123456 --tp-price 60000 --sl-price 58000 --fake
-#    Có thể chỉ thay đổi TP: python mt5.py --action modify --ticket 123456 --tp-price 60000 --fake
-#    Hoặc chỉ thay đổi SL: python mt5.py --action modify --ticket 123456 --sl-price 58000 --fake
-# 7. Thay đổi TP/SL của tất cả các lệnh đang mở: python mt5.py --action modify-all --tp-price 60000 --sl-price 58000 --fake
+# 4. Thay đổi TP/SL của tất cả các lệnh đang mở: python mt5.py --action modify-all --tp-price 60000 --sl-price 58000 --fake
 #    Cũng có thể chỉ thay đổi TP hoặc SL cho tất cả lệnh.
-# 8. Đóng toàn bộ lệnh đang mở bằng câu lệnh: python mt5.py --action close-all --fake
-# 9. Xem trạng thái tài khoản và lệnh đang mở bằng câu lệnh: python mt5.py --action status --fake
-# 10. Mỗi lần thực thi lệnh sẽ tự động ghi lịch sử vào file history_mt5.txt ở đầu file, theo thứ tự thời gian giảm dần.
+# 5. Đóng toàn bộ lệnh đang mở bằng câu lệnh: python mt5.py --action close-all --fake
+# 6. Xem trạng thái tài khoản và lệnh đang mở bằng câu lệnh: python mt5.py --action status --fake
+# 7. Mỗi lần thực thi lệnh sẽ tự động ghi lịch sử vào file history_mt5.txt ở đầu file, theo thứ tự thời gian giảm dần.
+# 8. Copy trade: dùng --copy để tự động lặp lại lệnh (open/close-all/modify-all) sang các tài khoản khác sau khi
+#    thực thi trên tài khoản chính, ví dụ:
+#    python mt5.py --action open --symbol BTCUSDm --side buy --lot 0.01 --real --copy prop_demo,prop_1
+#    Lệnh trên chạy trên tài khoản REAL trước, sau đó lặp lại trên prop_demo và prop_1 với lot đã nhân theo
+#    "multi" cấu hình trong ACCOUNTS (do các tài khoản copy thường có vốn lớn hơn REAL).
 
 import argparse
 from datetime import datetime
@@ -24,21 +27,29 @@ import MetaTrader5 as mt5
 HISTORY_FILE = Path(__file__).with_name("history_mt5.txt")
 
 ACCOUNTS = [
-    {"type": "FAKE", "login": 463579382, "password": "753159@Lmnnml.", "server": "Exness-MT5Trial17"},
-    {"type": "REAL", "login": 201967146, "password": "753159@Lmnnml.", "server": "Exness-MT5Real18"},
+    {"name": "FAKE", "login": 463579382, "password": "753159@Lmnnml.", "server": "Exness-MT5Trial17"},
+    {"name": "REAL", "login": 201967146, "password": "753159@Lmnnml.", "server": "Exness-MT5Real18"},
+    {"name": "prop_demo", "login": 0, "password": "CHANGE_ME", "server": "CHANGE_ME", "multi": 5.0},
+    {"name": "prop_1", "login": 0, "password": "CHANGE_ME", "server": "CHANGE_ME", "multi": 5.0},
 ]
-DEFAULT_ACCOUNT_TYPE = "FAKE"
+DEFAULT_ACCOUNT_NAME = "FAKE"
+COPYABLE_ACTIONS = {"open", "close-all", "modify-all"}
 NO_ASK = False
 DEFAULT_MAGIC = 234567
 DEFAULT_DEVIATION = 20
 DEFAULT_SYMBOLS = ["BTCUSD", "BTCUSDm", "XAUUSDm", "XAUUSD"]
+CURRENT_ACCOUNT_NAME = None
 
 
-def get_account(account_type):
+def get_account(account_name):
     for acc in ACCOUNTS:
-        if acc["type"] == account_type:
+        if acc["name"] == account_name:
             return acc
-    raise RuntimeError(f"Không tìm thấy cấu hình account loại: {account_type}")
+    raise RuntimeError(f"Không tìm thấy cấu hình account tên: {account_name}")
+
+
+def get_account_multi(account):
+    return account.get("multi", 1.0)
 
 
 def save_trade_history(symbol, lot, result, request, status, detail=""):
@@ -47,7 +58,7 @@ def save_trade_history(symbol, lot, result, request, status, detail=""):
     retcode = getattr(result, "retcode", None)
 
     entry = (
-        f"{timestamp} | symbol={symbol} | lot={lot} | status={status} | "
+        f"{timestamp} | account={CURRENT_ACCOUNT_NAME or '-'} | symbol={symbol} | lot={lot} | status={status} | "
         f"ticket={ticket if ticket is not None else '-'} | "
         f"retcode={retcode if retcode is not None else '-'} | "
         f"comment={request.get('comment', '')}"
@@ -70,11 +81,14 @@ def save_trade_history(symbol, lot, result, request, status, detail=""):
 def confirm_action(message):
     if NO_ASK:
         return True
-    answer = input(f"{message} (y/n): ").strip().lower()
-    return answer in {"y", "yes"}
+    print(f"[XEM TRƯỚC] {message}")
+    print("[XEM TRƯỚC] Chưa truyền --no-ask nên KHÔNG có lệnh nào được thực thi thật (kể cả copy).")
+    return False
 
 
 def connect_mt5(account):
+    global CURRENT_ACCOUNT_NAME
+
     if not mt5.initialize(login=account["login"], password=account["password"], server=account["server"], timeout=60000):
         raise RuntimeError(f"Không thể kết nối vào MT5, lỗi: {mt5.last_error()}")
 
@@ -87,7 +101,8 @@ def connect_mt5(account):
         mt5.shutdown()
         raise RuntimeError(f"Đăng nhập thất bại, mã lỗi: {mt5.last_error()}")
 
-    print(f"Đang sử dụng tài khoản {account['type']}: {account['login']} | server: {account['server']}")
+    CURRENT_ACCOUNT_NAME = account["name"]
+    print(f"Đang sử dụng tài khoản {account['name']}: {account['login']} | server: {account['server']}")
     print("Đăng nhập MT5 thành công!")
 
 
@@ -298,14 +313,6 @@ def close_position(position, confirm=True):
     return result
 
 
-def close_trade(ticket):
-    positions = mt5.positions_get(ticket=ticket)
-    if not positions:
-        raise RuntimeError(f"Không tìm thấy vị thế có ticket {ticket}")
-    position = positions[0]
-    return close_position(position, confirm=True)
-
-
 def close_all_positions():
     positions = mt5.positions_get()
     if not positions:
@@ -392,58 +399,6 @@ def print_pending_orders():
         print(f"- Ticket: {order.ticket} | Symbol: {order.symbol} | Type: {order.type} | Price: {order.price}")
 
 
-def modify_position_tp_sl(ticket, tp_price=None, sl_price=None):
-    """Thay đổi take profit và stop loss của lệnh đang mở"""
-    positions = mt5.positions_get(ticket=ticket)
-    if not positions:
-        raise RuntimeError(f"Không tìm thấy vị thế có ticket {ticket}")
-    position = positions[0]
-    
-    side = "buy" if position.type == mt5.ORDER_TYPE_BUY else "sell"
-    print(f"Lệnh hiện tại: ticket={ticket} | symbol={position.symbol} | type={side.upper()}")
-    print(f"Giá vào: {position.price_open}")
-    print(f"TP cũ: {position.tp if position.tp > 0 else 'chưa đặt'} → TP mới: {tp_price if tp_price is not None else position.tp if position.tp > 0 else 'chưa đặt'}")
-    print(f"SL cũ: {position.sl if position.sl > 0 else 'chưa đặt'} → SL mới: {sl_price if sl_price is not None else position.sl if position.sl > 0 else 'chưa đặt'}")
-    
-    # Validate TP/SL
-    if tp_price is not None:
-        validate_tp_sl(side, position.price_open, tp_price, None, is_modification=True)
-    if sl_price is not None:
-        validate_tp_sl(side, position.price_open, None, sl_price, is_modification=True)
-    
-    if not confirm_action("Bạn có muốn thực hiện thay đổi này không?"):
-        print("Đã hủy thay đổi TP/SL.")
-        return None
-    
-    # Sử dụng giá trị cũ nếu không có giá trị mới
-    new_tp = tp_price if tp_price is not None else position.tp
-    new_sl = sl_price if sl_price is not None else position.sl
-    
-    request = {
-        "action": mt5.TRADE_ACTION_SLTP,
-        "symbol": position.symbol,
-        "position": ticket,
-        "tp": new_tp if new_tp > 0 else 0,
-        "sl": new_sl if new_sl > 0 else 0,
-        "magic": DEFAULT_MAGIC,
-        "comment": "Modified TP/SL",
-    }
-    
-    result = mt5.order_send(request)
-    if result is None:
-        print("Thay đổi TP/SL thất bại! Không nhận được phản hồi.")
-        return None
-    
-    if result.retcode != mt5.TRADE_RETCODE_DONE:
-        print(f"Thay đổi TP/SL thất bại! Mã lỗi: {result.retcode} ({result.comment})")
-        save_trade_history(position.symbol, position.volume, result, request, "MODIFY_FAILED", f"ticket={ticket} | {result.comment}")
-        return None
-    
-    print(f"Thay đổi TP/SL thành công!")
-    save_trade_history(position.symbol, position.volume, result, request, "MODIFY_SUCCESS", f"ticket={ticket}")
-    return result
-
-
 def modify_all_positions_tp_sl(tp_price=None, sl_price=None):
     """Thay đổi take profit và stop loss của tất cả các lệnh đang mở"""
     positions = mt5.positions_get()
@@ -507,66 +462,75 @@ def modify_all_positions_tp_sl(tp_price=None, sl_price=None):
     return results
 
 
-def print_current_price(symbol):
-    symbol = select_symbol(symbol)
-    tick = get_current_price(symbol)
-    print(f"Giá hiện tại của {symbol}:")
-    print(f"- Bid: {tick.bid}")
-    print(f"- Ask: {tick.ask}")
-    print(f"- Last: {tick.last}")
+def run_action_on_account(account, args, lot):
+    connect_mt5(account)
+    if args.action == "open":
+        open_trade(args.symbol, args.side, lot, args.tp_price, args.sl_price, args.comment)
+    elif args.action == "close-all":
+        close_all_positions()
+    elif args.action == "modify-all":
+        if args.tp_price is None and args.sl_price is None:
+            raise RuntimeError("Cần cung cấp ít nhất --tp-price hoặc --sl-price để thay đổi")
+        modify_all_positions_tp_sl(args.tp_price, args.sl_price)
+    else:
+        print_account_info()
+        print_open_positions()
+        print_pending_orders()
 
 
 def main():
     global NO_ASK
 
     parser = argparse.ArgumentParser(description="MT5 trader demo")
-    parser.add_argument("--action", choices=["open", "close", "close-all", "modify", "modify-all", "status", "price"], default="status")
+    parser.add_argument("--action", choices=["open", "close-all", "modify-all", "status"], default="status")
     parser.add_argument("--symbol", default="BTCUSD")
     parser.add_argument("--side", choices=["buy", "sell"], default="buy")
     parser.add_argument("--lot", type=float, default=0.01)
     parser.add_argument("--tp-price", type=float, default=None)
     parser.add_argument("--sl-price", type=float, default=None)
-    parser.add_argument("--ticket", type=int, default=None)
     parser.add_argument("--comment", default="Python trader test")
-    parser.add_argument("--no-ask", action="store_true", help="Bỏ qua xác nhận y/n")
+    parser.add_argument("--no-ask", action="store_true", help="Bắt buộc phải có để thực thi lệnh thật (open/close-all/modify-all). Nếu không truyền, chương trình chỉ in thông báo xem trước và không gửi lệnh nào, kể cả copy.")
+    parser.add_argument("--copy", default=None, help="Danh sách account name cần copy lệnh sang, phân tách bằng dấu phẩy, ví dụ: prop_demo,prop_1")
     
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--fake", action="store_true", help="Sử dụng tài khoản FAKE")
     group.add_argument("--real", action="store_true", help="Sử dụng tài khoản REAL")
+    group.add_argument(
+        "--account",
+        choices=[acc["name"] for acc in ACCOUNTS],
+        default=None,
+        help="Chọn trực tiếp tài khoản chính theo name khai báo trong ACCOUNTS (vd: prop_demo, prop_1, REAL, FAKE)",
+    )
     
     args = parser.parse_args()
 
     NO_ASK = args.no_ask
 
-    account_type = "REAL" if args.real else DEFAULT_ACCOUNT_TYPE
-    account = get_account(account_type)
+    if args.account:
+        account_name = args.account
+    else:
+        account_name = "REAL" if args.real else DEFAULT_ACCOUNT_NAME
+    primary_account = get_account(account_name)
+
+    copy_names = [t.strip() for t in args.copy.split(",") if t.strip()] if args.copy else []
 
     try:
-        connect_mt5(account)
-        if args.action == "open":
-            open_trade(args.symbol, args.side, args.lot, args.tp_price, args.sl_price, args.comment)
-        elif args.action == "close":
-            if args.ticket is None:
-                raise RuntimeError("Cần cung cấp --ticket để đóng lệnh")
-            close_trade(args.ticket)
-        elif args.action == "modify":
-            if args.ticket is None:
-                raise RuntimeError("Cần cung cấp --ticket để thay đổi TP/SL")
-            if args.tp_price is None and args.sl_price is None:
-                raise RuntimeError("Cần cung cấp ít nhất --tp-price hoặc --sl-price để thay đổi")
-            modify_position_tp_sl(args.ticket, args.tp_price, args.sl_price)
-        elif args.action == "modify-all":
-            if args.tp_price is None and args.sl_price is None:
-                raise RuntimeError("Cần cung cấp ít nhất --tp-price hoặc --sl-price để thay đổi")
-            modify_all_positions_tp_sl(args.tp_price, args.sl_price)
-        elif args.action == "price":
-            print_current_price(args.symbol)
-        elif args.action == "close-all":
-            close_all_positions()
-        else:
-            print_account_info()
-            print_open_positions()
-            print_pending_orders()
+        run_action_on_account(primary_account, args, args.lot)
+
+        if copy_names and args.action not in COPYABLE_ACTIONS:
+            print(f"Lưu ý: --copy chỉ áp dụng cho action open/close-all/modify-all, bỏ qua sao chép cho action '{args.action}'.")
+        elif copy_names:
+            for copy_name in copy_names:
+                print(f"\n--- [COPY] Đang thực thi sang tài khoản {copy_name} ---")
+                try:
+                    copy_account = get_account(copy_name)
+                    mt5.shutdown()
+                    lot_for_copy = args.lot * get_account_multi(copy_account) if args.action == "open" else args.lot
+                    if args.action == "open" and lot_for_copy != args.lot:
+                        print(f"Lot gốc: {args.lot} → Lot copy ({copy_name}, MULTI={get_account_multi(copy_account)}): {lot_for_copy}")
+                    run_action_on_account(copy_account, args, lot_for_copy)
+                except Exception as copy_exc:
+                    print(f"[COPY LỖI - {copy_name}] {copy_exc}")
     except Exception as exc:
         print(exc)
     finally:
