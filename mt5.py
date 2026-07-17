@@ -1,43 +1,82 @@
+# =============================================================================
 # HƯỚNG DẪN SỬ DỤNG
-# 1. Cài đặt thư viện cần thiết bằng câu lệnh: python -m pip install MetaTrader5 pandas
-# 2. Điền đúng số tài khoản, mật khẩu và server MT5 của bạn vào mảng ACCOUNTS (name FAKE/REAL/prop_demo/prop_1).
-#    Mặc định hệ thống sử dụng tài khoản FAKE. Sử dụng tham số --real để chạy trên tài khoản REAL, hoặc --fake cho tài khoản FAKE.
-#    Có thể dùng --account <name> để chọn trực tiếp bất kỳ tài khoản nào khai báo trong ACCOUNTS làm tài khoản chính,
-#    ví dụ xem status của prop_demo: python mt5.py --action status --account prop_demo
-#    Với các tài khoản dùng để copy trade (prop_demo, prop_1, ...), điền thêm "multi" là hệ số nhân lot so với tài khoản chính.
-# 3. Mở lệnh thử nghiệm BTC bằng câu lệnh: python mt5.py --action open --symbol BTCUSDm --side buy --lot 0.01 --tp-price 60000 --sl-price 58000 --fake
-#    Trong đó TP/SL là mức giá cụ thể, không phải số điểm. Ví dụ BUY có TP cao hơn giá mở, SL thấp hơn giá mở; SELL có TP thấp hơn giá mở, SL cao hơn giá mở.
-# 4. Thay đổi TP/SL của tất cả các lệnh đang mở: python mt5.py --action modify-all --tp-price 60000 --sl-price 58000 --fake
-#    Cũng có thể chỉ thay đổi TP hoặc SL cho tất cả lệnh.
-# 5. Đóng toàn bộ lệnh đang mở bằng câu lệnh: python mt5.py --action close-all --fake
-# 6. Xem trạng thái tài khoản và lệnh đang mở bằng câu lệnh: python mt5.py --action status --fake
-# 7. Mỗi lần thực thi lệnh sẽ tự động ghi lịch sử vào file history_mt5.txt ở đầu file, theo thứ tự thời gian giảm dần.
-# 8. Copy trade: dùng --copy để tự động lặp lại lệnh (open/close-all/modify-all) sang các tài khoản khác sau khi
-#    thực thi trên tài khoản chính, ví dụ:
-#    python mt5.py --action open --symbol BTCUSDm --side buy --lot 0.01 --real --copy prop_demo,prop_1
-#    Lệnh trên chạy trên tài khoản REAL trước, sau đó lặp lại trên prop_demo và prop_1 với lot đã nhân theo
-#    "multi" cấu hình trong ACCOUNTS (do các tài khoản copy thường có vốn lớn hơn REAL).
+# =============================================================================
+#
+# CÀI ĐẶT
+#   python -m pip install MetaTrader5 pandas
+#
+# CẤU HÌNH (mảng ACCOUNTS bên dưới)
+#   - Điền login / password / server cho từng tài khoản.
+#   - path   : đường dẫn terminal64.exe (Exness và FTMO dùng terminal riêng).
+#   - suffix : hậu tố symbol theo broker — Exness = "m", FTMO = "".
+#              Ví dụ --symbol XAUUSD → XAUUSDm (Exness) hoặc XAUUSD (FTMO).
+#   - multi  : hệ số nhân lot khi copy lệnh sang tài khoản đó.
+#
+# THAM SỐ BẮT BUỘC
+#   --account   fake | real | prop_demo | prop_1
+#   --action    status | open | close-all | modify-all
+#
+# THAM SỐ KHÁC
+#   --symbol --side --lot --tp-price --sl-price --comment --copy --no-ask
+#   (Không có --no-ask → chỉ xem trước, KHÔNG gửi lệnh thật.)
+#   TP/SL là mức giá cụ thể (không phải số điểm).
+#
+# VÍ DỤ
+#   # Xem trạng thái tài khoản
+#   python mt5.py --account prop_demo --action status
+#
+#   # Mở lệnh (xem trước)
+#   python mt5.py --account fake --action open --symbol XAUUSD --side buy --lot 0.01 --tp-price 60000 --sl-price 58000
+#
+#   # Mở lệnh thật
+#   python mt5.py --account fake --action open --symbol XAUUSD --side buy --lot 0.01 --tp-price 60000 --sl-price 58000 --no-ask
+#
+#   # Sửa TP/SL tất cả lệnh đang mở
+#   python mt5.py --account fake --action modify-all --tp-price 60000 --sl-price 58000 --no-ask
+#
+#   # Đóng toàn bộ lệnh
+#   python mt5.py --account fake --action close-all --no-ask
+#
+#   # Copy lệnh từ real sang prop (lot prop = lot gốc × multi)
+#   python mt5.py --account real --action open --symbol XAUUSD --side buy --lot 0.01 --copy prop_demo --no-ask
+#
+# LỊCH SỬ
+#   Mỗi lần gửi lệnh sẽ ghi vào history_mt5.txt (mới nhất ở đầu file).
+#
+# =============================================================================
 
 import argparse
+import sys
 from datetime import datetime
 from pathlib import Path
 
 import MetaTrader5 as mt5
 
+# Console Windows (PowerShell/cmd) thường dùng codepage cp1252/cp850, không encode được
+# tiếng Việt có dấu -> ép stdout/stderr sang UTF-8 để tránh crash khi print() thông báo lỗi.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 HISTORY_FILE = Path(__file__).with_name("history_mt5.txt")
 
+EXNESS_TERMINAL_PATH = r"C:\Program Files\MetaTrader 5 EXNESS\terminal64.exe"
+FTMO_TERMINAL_PATH = r"C:\Program Files\FTMO Global Markets MT5 Terminal\terminal64.exe"
+
+# "suffix" là hậu tố symbol riêng của từng broker/terminal. Exness dùng "m" (VD: XAUUSDm),
+# FTMO không dùng hậu tố (VD: XAUUSD). Script tự thêm/bỏ hậu tố này khi resolve --symbol.
 ACCOUNTS = [
-    {"name": "FAKE", "login": 463579382, "password": "753159@Lmnnml.", "server": "Exness-MT5Trial17"},
-    {"name": "REAL", "login": 201967146, "password": "753159@Lmnnml.", "server": "Exness-MT5Real18"},
-    {"name": "prop_demo", "login": 0, "password": "CHANGE_ME", "server": "CHANGE_ME", "multi": 5.0},
-    {"name": "prop_1", "login": 0, "password": "CHANGE_ME", "server": "CHANGE_ME", "multi": 5.0},
+    {"name": "fake", "login": 416025113, "password": "y.y4#R8W*cR7W9m", "server": "Exness-MT5Trial14", "path": EXNESS_TERMINAL_PATH, "suffix": "m"},
+    {"name": "real", "login": 201967146, "password": "753159@Lmnnml.", "server": "Exness-MT5Real18", "path": EXNESS_TERMINAL_PATH, "suffix": "m"},
+    {"name": "prop_demo", "login": 1514017511, "password": "9f1MY1r6U1$TH", "server": "FTMO-Demo", "multi": 5.0, "path": FTMO_TERMINAL_PATH, "suffix": ""},
+    {"name": "prop_1", "login": 0, "password": "CHANGE_ME", "server": "CHANGE_ME", "multi": 5.0, "path": FTMO_TERMINAL_PATH, "suffix": ""},
 ]
-DEFAULT_ACCOUNT_NAME = "FAKE"
 COPYABLE_ACTIONS = {"open", "close-all", "modify-all"}
 NO_ASK = False
 DEFAULT_MAGIC = 234567
 DEFAULT_DEVIATION = 20
-DEFAULT_SYMBOLS = ["BTCUSD", "BTCUSDm", "XAUUSDm", "XAUUSD"]
 CURRENT_ACCOUNT_NAME = None
 
 
@@ -89,7 +128,25 @@ def confirm_action(message):
 def connect_mt5(account):
     global CURRENT_ACCOUNT_NAME
 
-    if not mt5.initialize(login=account["login"], password=account["password"], server=account["server"], timeout=60000):
+    terminal_path = account.get("path")
+    if terminal_path and "CHANGE_ME" in str(terminal_path):
+        raise RuntimeError(
+            f"Chưa cấu hình đường dẫn terminal MT5 cho account '{account['name']}'. "
+            f"Điền trường \"path\" trong ACCOUNTS trỏ tới terminal64.exe do broker cấp (VD: FTMO)."
+        )
+
+    # Với các broker/prop-firm khác (VD: FTMO), phải chỉ định "path" tới terminal MT5 riêng của họ,
+    # vì terminal MT5 mặc định (thường là bản Exness) không có server tương ứng nên sẽ bị IPC timeout.
+    init_kwargs = {
+        "login": account["login"],
+        "password": account["password"],
+        "server": account["server"],
+        "timeout": 60000,
+    }
+    if terminal_path:
+        init_kwargs["path"] = terminal_path
+
+    if not mt5.initialize(**init_kwargs):
         raise RuntimeError(f"Không thể kết nối vào MT5, lỗi: {mt5.last_error()}")
 
     if mt5.terminal_info() is None:
@@ -106,12 +163,17 @@ def connect_mt5(account):
     print("Đăng nhập MT5 thành công!")
 
 
-def select_symbol(symbol):
-    candidates = [symbol] if symbol else DEFAULT_SYMBOLS
-    for candidate in candidates:
-        if mt5.symbol_select(candidate, True):
-            return candidate
-    raise RuntimeError(f"Không tìm thấy symbol nào phù hợp: {candidates}")
+def resolve_symbol_for_account(symbol, account):
+    """Tự thêm/bỏ hậu tố symbol (VD: "m" của Exness) theo account đang chạy."""
+    base = symbol[:-1] if symbol.endswith("m") else symbol
+    return f"{base}{account.get('suffix', '')}"
+
+
+def select_symbol(symbol, account):
+    resolved = resolve_symbol_for_account(symbol, account)
+    if mt5.symbol_select(resolved, True):
+        return resolved
+    raise RuntimeError(f"Không tìm thấy symbol nào phù hợp: {resolved}")
 
 
 def get_current_price(symbol):
@@ -228,8 +290,8 @@ def estimate_tp_sl_pnl(side, entry_price, tp_price, sl_price, volume, contract_s
     return estimated
 
 
-def open_trade(symbol, side, lot, tp_price=None, sl_price=None, comment="Python trader test"):
-    symbol = select_symbol(symbol)
+def open_trade(account, symbol, side, lot, tp_price=None, sl_price=None, comment="Python trader test"):
+    symbol = select_symbol(symbol, account)
     print(f"Sẽ mở lệnh {side.upper()} trên {symbol} với khối lượng {lot} lot")
     print(f"TP: {tp_price if tp_price is not None else 'không đặt'} | SL: {sl_price if sl_price is not None else 'không đặt'}")
 
@@ -465,7 +527,7 @@ def modify_all_positions_tp_sl(tp_price=None, sl_price=None):
 def run_action_on_account(account, args, lot):
     connect_mt5(account)
     if args.action == "open":
-        open_trade(args.symbol, args.side, lot, args.tp_price, args.sl_price, args.comment)
+        open_trade(account, args.symbol, args.side, lot, args.tp_price, args.sl_price, args.comment)
     elif args.action == "close-all":
         close_all_positions()
     elif args.action == "modify-all":
@@ -482,7 +544,13 @@ def main():
     global NO_ASK
 
     parser = argparse.ArgumentParser(description="MT5 trader demo")
-    parser.add_argument("--action", choices=["open", "close-all", "modify-all", "status"], default="status")
+    parser.add_argument(
+        "--account",
+        choices=[acc["name"] for acc in ACCOUNTS],
+        required=True,
+        help="Bắt buộc: chọn tài khoản chính theo name khai báo trong ACCOUNTS (vd: prop_demo, prop_1, real, fake)",
+    )
+    parser.add_argument("--action", choices=["open", "close-all", "modify-all", "status"], required=True)
     parser.add_argument("--symbol", default="BTCUSD")
     parser.add_argument("--side", choices=["buy", "sell"], default="buy")
     parser.add_argument("--lot", type=float, default=0.01)
@@ -491,26 +559,12 @@ def main():
     parser.add_argument("--comment", default="Python trader test")
     parser.add_argument("--no-ask", action="store_true", help="Bắt buộc phải có để thực thi lệnh thật (open/close-all/modify-all). Nếu không truyền, chương trình chỉ in thông báo xem trước và không gửi lệnh nào, kể cả copy.")
     parser.add_argument("--copy", default=None, help="Danh sách account name cần copy lệnh sang, phân tách bằng dấu phẩy, ví dụ: prop_demo,prop_1")
-    
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument("--fake", action="store_true", help="Sử dụng tài khoản FAKE")
-    group.add_argument("--real", action="store_true", help="Sử dụng tài khoản REAL")
-    group.add_argument(
-        "--account",
-        choices=[acc["name"] for acc in ACCOUNTS],
-        default=None,
-        help="Chọn trực tiếp tài khoản chính theo name khai báo trong ACCOUNTS (vd: prop_demo, prop_1, REAL, FAKE)",
-    )
-    
+
     args = parser.parse_args()
 
     NO_ASK = args.no_ask
 
-    if args.account:
-        account_name = args.account
-    else:
-        account_name = "REAL" if args.real else DEFAULT_ACCOUNT_NAME
-    primary_account = get_account(account_name)
+    primary_account = get_account(args.account)
 
     copy_names = [t.strip() for t in args.copy.split(",") if t.strip()] if args.copy else []
 
