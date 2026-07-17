@@ -41,7 +41,7 @@ YF_MAPPING = {
 
 def parse_interval(interval_str):
     """Phân tích chuỗi interval thành (giá trị, đơn vị)."""
-    match = re.match(r"(\d+)([mHdwWDM])", interval_str)
+    match = re.match(r"(\d+)([mMhHdDwW])", interval_str)
     if match:
         value, unit = int(match.group(1)), match.group(2)
         # Chuẩn hóa
@@ -264,32 +264,12 @@ def analyze_vnstock(v, sym, limit, minimal_mode, interval, value, unit, us_only=
                 try:
                     s = v.stock(symbol=sym, source='KBS')
                     print(s.company.overview().head(1))
-                except: pass
+                except Exception:
+                    pass
         else:
             print(f"Không tìm thấy dữ liệu cho {sym}.")
     except Exception as e:
         print(f"Lỗi vnstock cho {sym}: {e}")
-            
-        if minimal_mode:
-            return
-
-        print(f"\n--- [ TỔNG QUAN DOANH NGHIỆP {sym} ] ---")
-        try:
-            print(stock.company.overview())
-        except: pass
-
-        print(f"\n--- [ BÁO CÁO TÀI CHÍNH (IS) {sym} ] ---")
-        try:
-            print(stock.finance.income_statement(period='quarter', year_count=1).head(2))
-        except: pass
-
-        print(f"\n--- [ CHỈ SỐ TÀI CHÍNH {sym} ] ---")
-        try:
-            print(stock.finance.ratio().head(2))
-        except: pass
-
-    except Exception as e:
-        print(f"Lỗi truy xuất Vnstock cho {sym}: {e}")
 
 def analyze_stock(v, sym, limit, minimal_mode, interval='1D', us_only=False):
     """
@@ -438,38 +418,40 @@ def main():
     
     # Redirect stdout sang file nếu có tham số -o
     original_stdout = sys.stdout
+    f_output = None
     if args.output:
         output_dir = os.path.dirname(args.output)
         if output_dir: os.makedirs(output_dir, exist_ok=True)
         f_output = open(args.output, 'w', encoding='utf-8')
         sys.stdout = f_output
-             
-    v = Vnstock()
-    print("="*50)
-    print(f"      VNSTOCK 4.x OPTIMIZED ANALYZER")
-    print(f"      Danh sách: {', '.join(symbols_list)}")
-    print(f"      Khung: {interval}, Số lượng: {limit}")
-    print("="*50)
 
-    for sym in symbols_list:
-        if not sym: continue
-        us_only = False
-        # Bug fix: Chỉ strip 'M' nếu base symbol thuộc Global Assets
-        if sym.endswith('M') and len(sym) > 1:
-            base = sym[:-1].upper()
-            if base in TV_MAPPING or base in YF_MAPPING:
-                sym, us_only = base, True
-        
-        analyze_stock(v, sym.upper(), limit, minimal_mode, interval, us_only=us_only)
+    try:
+        v = Vnstock()
+        print("="*50)
+        print(f"      VNSTOCK 4.x OPTIMIZED ANALYZER")
+        print(f"      Danh sách: {', '.join(symbols_list)}")
+        print(f"      Khung: {interval}, Số lượng: {limit}")
+        print("="*50)
 
-    print("\n" + "="*50)
-    print("      HOÀN THÀNH PHÂN TÍCH          ")
-    print("="*50)
-    
-    if args.output:
-        sys.stdout = original_stdout
-        f_output.close()
-        print(f"Kết quả lưu tại: {args.output}")
+        for sym in symbols_list:
+            if not sym: continue
+            us_only = False
+            # Bug fix: Chỉ strip 'M' nếu base symbol thuộc Global Assets
+            if sym.endswith('M') and len(sym) > 1:
+                base = sym[:-1].upper()
+                if base in TV_MAPPING or base in YF_MAPPING:
+                    sym, us_only = base, True
+            
+            analyze_stock(v, sym.upper(), limit, minimal_mode, interval, us_only=us_only)
+
+        print("\n" + "="*50)
+        print("      HOÀN THÀNH PHÂN TÍCH          ")
+        print("="*50)
+    finally:
+        if f_output is not None:
+            sys.stdout = original_stdout
+            f_output.close()
+            print(f"Kết quả lưu tại: {args.output}")
 
 if __name__ == "__main__":
     main()

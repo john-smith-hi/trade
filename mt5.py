@@ -1,6 +1,6 @@
 # HƯỚNG DẪN SỬ DỤNG
 # 1. Cài đặt thư viện cần thiết bằng câu lệnh: python -m pip install MetaTrader5 pandas
-# 2. Điền đúng số tài khoản, mật khẩu và server MT5 của bạn vào các biến ACCOUNT_REAL, ACCOUNT_FAKE, PASSWORD, SERVER_REAL, SERVER_FAKE.
+# 2. Điền đúng số tài khoản, mật khẩu và server MT5 của bạn vào mảng ACCOUNTS (type FAKE/REAL).
 #    Mặc định hệ thống sử dụng tài khoản FAKE. Sử dụng tham số --real để chạy trên tài khoản REAL, hoặc --fake cho tài khoản FAKE.
 # 3. Mở lệnh thử nghiệm BTC bằng câu lệnh: python mt5.py --action open --symbol BTCUSDm --side buy --lot 0.01 --tp-price 60000 --sl-price 58000 --fake
 #    Trong đó TP/SL là mức giá cụ thể, không phải số điểm. Ví dụ BUY có TP cao hơn giá mở, SL thấp hơn giá mở; SELL có TP thấp hơn giá mở, SL cao hơn giá mở.
@@ -15,14 +15,6 @@
 # 9. Xem trạng thái tài khoản và lệnh đang mở bằng câu lệnh: python mt5.py --action status --fake
 # 10. Mỗi lần thực thi lệnh sẽ tự động ghi lịch sử vào file history_mt5.txt ở đầu file, theo thứ tự thời gian giảm dần.
 
-# REAL
-# 201967146
-# Exness-MT5Real18
-
-# FAKE
-# 463579382
-# Exness-MT5Trial17
-
 import argparse
 from datetime import datetime
 from pathlib import Path
@@ -31,26 +23,22 @@ import MetaTrader5 as mt5
 
 HISTORY_FILE = Path(__file__).with_name("history_mt5.txt")
 
-def detect_account_type(server_name: str) -> str:
-    server_lower = server_name.lower()
-    if "real" in server_lower:
-        return "REAL"
-    if "trial" in server_lower or "demo" in server_lower:
-        return "FAKE"
-    return "UNKNOWN"
-
-ACCOUNT_REAL = 201967146
-ACCOUNT_FAKE = 463579382
-PASSWORD = "753159@Lmnnml."
-SERVER_REAL = "Exness-MT5Real18"
-SERVER_FAKE = "Exness-MT5Trial17"
-ACCOUNT = ACCOUNT_FAKE
-SERVER = SERVER_FAKE
-ACCOUNT_TYPE = "FAKE"
+ACCOUNTS = [
+    {"type": "FAKE", "login": 463579382, "password": "753159@Lmnnml.", "server": "Exness-MT5Trial17"},
+    {"type": "REAL", "login": 201967146, "password": "753159@Lmnnml.", "server": "Exness-MT5Real18"},
+]
+DEFAULT_ACCOUNT_TYPE = "FAKE"
 NO_ASK = False
 DEFAULT_MAGIC = 234567
 DEFAULT_DEVIATION = 20
 DEFAULT_SYMBOLS = ["BTCUSD", "BTCUSDm", "XAUUSDm", "XAUUSD"]
+
+
+def get_account(account_type):
+    for acc in ACCOUNTS:
+        if acc["type"] == account_type:
+            return acc
+    raise RuntimeError(f"Không tìm thấy cấu hình account loại: {account_type}")
 
 
 def save_trade_history(symbol, lot, result, request, status, detail=""):
@@ -86,20 +74,20 @@ def confirm_action(message):
     return answer in {"y", "yes"}
 
 
-def connect_mt5():
-    if not mt5.initialize(login=ACCOUNT, password=PASSWORD, server=SERVER, timeout=60000):
+def connect_mt5(account):
+    if not mt5.initialize(login=account["login"], password=account["password"], server=account["server"], timeout=60000):
         raise RuntimeError(f"Không thể kết nối vào MT5, lỗi: {mt5.last_error()}")
 
     if mt5.terminal_info() is None:
         mt5.shutdown()
         raise RuntimeError("MetaTrader 5 chưa mở hoặc không thể lấy thông tin.")
 
-    login_success = mt5.login(login=ACCOUNT, password=PASSWORD, server=SERVER)
+    login_success = mt5.login(login=account["login"], password=account["password"], server=account["server"])
     if not login_success:
         mt5.shutdown()
         raise RuntimeError(f"Đăng nhập thất bại, mã lỗi: {mt5.last_error()}")
 
-    print(f"Đang sử dụng tài khoản {ACCOUNT_TYPE}: {ACCOUNT} | server: {SERVER}")
+    print(f"Đang sử dụng tài khoản {account['type']}: {account['login']} | server: {account['server']}")
     print("Đăng nhập MT5 thành công!")
 
 
@@ -529,7 +517,7 @@ def print_current_price(symbol):
 
 
 def main():
-    global ACCOUNT, SERVER, ACCOUNT_TYPE, NO_ASK
+    global NO_ASK
 
     parser = argparse.ArgumentParser(description="MT5 trader demo")
     parser.add_argument("--action", choices=["open", "close", "close-all", "modify", "modify-all", "status", "price"], default="status")
@@ -550,17 +538,11 @@ def main():
 
     NO_ASK = args.no_ask
 
-    if args.real:
-        ACCOUNT = ACCOUNT_REAL
-        SERVER = SERVER_REAL
-        ACCOUNT_TYPE = "REAL"
-    else:
-        ACCOUNT = ACCOUNT_FAKE
-        SERVER = SERVER_FAKE
-        ACCOUNT_TYPE = "FAKE"
+    account_type = "REAL" if args.real else DEFAULT_ACCOUNT_TYPE
+    account = get_account(account_type)
 
     try:
-        connect_mt5()
+        connect_mt5(account)
         if args.action == "open":
             open_trade(args.symbol, args.side, args.lot, args.tp_price, args.sl_price, args.comment)
         elif args.action == "close":
