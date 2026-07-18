@@ -1,3 +1,5 @@
+2026-07-18 09:10:26 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3489939989 | retcode=10009 | comment=Close position | detail=ticket=3489939923
+2026-07-18 09:10:11 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3489939923 | retcode=10009 | comment=Python trader test
 2026-07-17 19:49:02 | account=prop_demo | symbol=XAUUSD | lot=0.05 | status=SUCCESS | ticket=498340529 | retcode=10009 | comment=Python trader test
 2026-07-17 19:49:02 | account=fake | symbol=XAUUSDm | lot=0.01 | status=SUCCESS | ticket=3487147438 | retcode=10009 | comment=Python trader test
 2026-07-17 19:46:33 | account=prop_demo | symbol=XAUUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=498335894 | retcode=10009 | comment=Close position | detail=ticket=498304443
