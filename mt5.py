@@ -62,6 +62,7 @@
 
 import argparse
 import sys
+import time
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from pathlib import Path
@@ -250,6 +251,10 @@ def connect_mt5(account):
             f"Điền trường \"path\" trong ACCOUNTS trỏ tới terminal64.exe do broker cấp (VD: FTMO)."
         )
 
+    # Ngắt phiên MT5 cũ trước khi gắn terminal khác (Exness -> FTMO Demo -> FTMO Server).
+    # Nếu không shutdown, tick/symbol có thể còn cache từ terminal trước -> giá vào sai.
+    mt5.shutdown()
+
     # Với các broker/prop-firm khác (VD: FTMO), phải chỉ định "path" tới terminal MT5 riêng của họ,
     # vì terminal MT5 mặc định (thường là bản Exness) không có server tương ứng nên sẽ bị IPC timeout.
     init_kwargs = {
@@ -273,8 +278,18 @@ def connect_mt5(account):
         mt5.shutdown()
         raise RuntimeError(f"Đăng nhập thất bại, mã lỗi: {mt5.last_error()}")
 
+    account_info = mt5.account_info()
+    if account_info is None or account_info.login != account["login"]:
+        mt5.shutdown()
+        raise RuntimeError(
+            f"Sau khi đăng nhập, terminal không khớp account '{account['name']}' "
+            f"(mong đợi login {account['login']}). Kiểm tra trường \"path\" trong accounts.xml."
+        )
+
     CURRENT_ACCOUNT_NAME = account["name"]
+    terminal_label = terminal_path or "(terminal mặc định đang chạy)"
     print(f"Đang sử dụng tài khoản {account['name']}: {account['login']} | server: {account['server']}")
+    print(f"Terminal: {terminal_label}")
     print("Đăng nhập MT5 thành công!")
 
 
@@ -291,11 +306,29 @@ def select_symbol(symbol, account):
     raise RuntimeError(f"Không tìm thấy symbol nào phù hợp: {resolved}")
 
 
-def get_current_price(symbol):
-    tick = mt5.symbol_info_tick(symbol)
-    if tick is None:
-        raise RuntimeError(f"Không lấy được tick cho symbol {symbol}")
-    return tick
+def get_current_price(symbol, retries=10, delay=0.3):
+    """Lấy tick mới sau khi chọn symbol; retry để tránh dùng giá cache khi vừa chuyển terminal."""
+    if not mt5.symbol_select(symbol, True):
+        raise RuntimeError(f"Không thể chọn symbol {symbol}")
+
+    last_tick = None
+    for attempt in range(retries):
+        tick = mt5.symbol_info_tick(symbol)
+        if tick is not None and tick.bid > 0 and tick.ask > 0 and tick.ask >= tick.bid:
+            last_tick = tick
+            # Đọc ít nhất 2 lần, lần sau cùng thường là feed mới sau khi chuyển terminal.
+            if attempt >= 1:
+                return tick
+        time.sleep(delay)
+
+    if last_tick is not None:
+        return last_tick
+    raise RuntimeError(f"Không lấy được tick hợp lệ cho symbol {symbol}")
+
+
+def get_entry_price(symbol, side):
+    tick = get_current_price(symbol)
+    return tick.ask if side == "buy" else tick.bid
 
 
 def get_filling_mode(symbol):
@@ -373,52 +406,12 @@ def build_trade_request(symbol, side, lot, tp_price=None, sl_price=None, comment
     return request
 
 
-def calculate_position_pnl(position):
-    symbol_info = mt5.symbol_info(position.symbol)
-    if symbol_info is None:
-        raise RuntimeError(f"Không lấy được thông tin symbol {position.symbol}")
-
-    tick = get_current_price(position.symbol)
-    contract_size = getattr(symbol_info, "trade_contract_size", 1) or 1
-    current_price = tick.bid if position.type == mt5.ORDER_TYPE_BUY else tick.ask
-
-    if position.type == mt5.ORDER_TYPE_BUY:
-        pnl_formula = (current_price - position.price_open) * position.volume * contract_size
-    else:
-        pnl_formula = (position.price_open - current_price) * position.volume * contract_size
-
-    return pnl_formula, current_price, contract_size
-
-
-def estimate_tp_sl_pnl(side, entry_price, tp_price, sl_price, volume, contract_size):
-    estimated = {}
-    if tp_price is not None:
-        if side == "buy":
-            estimated["tp"] = (tp_price - entry_price) * volume * contract_size
-        else:
-            estimated["tp"] = (entry_price - tp_price) * volume * contract_size
-    if sl_price is not None:
-        if side == "buy":
-            estimated["sl"] = (sl_price - entry_price) * volume * contract_size
-        else:
-            estimated["sl"] = (entry_price - sl_price) * volume * contract_size
-    return estimated
-
-
 def open_trade(account, symbol, side, lot, tp_price=None, sl_price=None, comment="Python trader test"):
     symbol = select_symbol(symbol, account)
+    entry_price = get_entry_price(symbol, side)
     print(f"Sẽ mở lệnh {side.upper()} trên {symbol} với khối lượng {lot} lot")
+    print(f"Giá vào dự kiến: {entry_price}")
     print(f"TP: {tp_price if tp_price is not None else 'không đặt'} | SL: {sl_price if sl_price is not None else 'không đặt'}")
-
-    symbol_info = mt5.symbol_info(symbol)
-    contract_size = getattr(symbol_info, "trade_contract_size", 1) or 1
-    entry_price = get_current_price(symbol).ask if side == "buy" else get_current_price(symbol).bid
-    estimated = estimate_tp_sl_pnl(side, entry_price, tp_price, sl_price, lot, contract_size)
-    if estimated:
-        if "tp" in estimated:
-            print(f"Ước tính lời TP: {estimated['tp']:.8f}")
-        if "sl" in estimated:
-            print(f"Ước tính lỗ SL: {estimated['sl']:.8f}")
 
     if not confirm_action("Bạn có muốn thực hiện hành động này không?"):
         print("Đã hủy mở lệnh.")
@@ -464,11 +457,11 @@ def build_close_request(position):
 
 
 def close_position(position, confirm=True):
-    pnl_value, current_price, _ = calculate_position_pnl(position)
+    tick = get_current_price(position.symbol)
+    current_price = tick.bid if position.type == mt5.ORDER_TYPE_BUY else tick.ask
     print(f"Lệnh hiện tại: ticket={position.ticket} | symbol={position.symbol}")
     print(f"Loại: {'BUY' if position.type == mt5.ORDER_TYPE_BUY else 'SELL'}")
     print(f"Giá vào: {position.price_open} | Giá hiện tại: {current_price}")
-    print(f"Lãi/lỗ hiện tại: {pnl_value:.6f} ({position.profit} theo MT5)")
 
     if confirm and not confirm_action(f"Bạn có muốn đóng lệnh {position.ticket} này không?"):
         print("Đã hủy đóng lệnh.")
@@ -533,15 +526,8 @@ def print_open_positions():
         return
 
     for position in positions:
-        pnl_formula, current_price, contract_size = calculate_position_pnl(position)
-        estimated = estimate_tp_sl_pnl(
-            "buy" if position.type == mt5.ORDER_TYPE_BUY else "sell",
-            position.price_open,
-            getattr(position, "tp", None),
-            getattr(position, "sl", None),
-            position.volume,
-            contract_size,
-        )
+        tick = get_current_price(position.symbol)
+        current_price = tick.bid if position.type == mt5.ORDER_TYPE_BUY else tick.ask
 
         print(f"- Ticket: {position.ticket} | Symbol: {position.symbol}")
         print(f"  Type: {'BUY' if position.type == mt5.ORDER_TYPE_BUY else 'SELL'}")
@@ -550,19 +536,6 @@ def print_open_positions():
         print(f"  Giá hiện tại: {current_price}")
         print(f"  Stop Loss: {getattr(position, 'sl', 'chưa đặt')}")
         print(f"  Take Profit: {getattr(position, 'tp', 'chưa đặt')}")
-        if pnl_formula > 0:
-            pnl_status = f"ĐANG LÃI {pnl_formula:.6f}"
-        elif pnl_formula < 0:
-            pnl_status = f"ĐANG LỖ {abs(pnl_formula):.6f}"
-        else:
-            pnl_status = "HÒA"
-        print(f"  Trạng thái: {pnl_status}")
-        print(f"  P/L hiện tại: {position.profit} (công thức: {pnl_formula:.6f})")
-        if estimated:
-            if "tp" in estimated:
-                print(f"  Ước tính lời TP: {estimated['tp']:.8f}")
-            if "sl" in estimated:
-                print(f"  Ước tính lỗ SL: {estimated['sl']:.8f}")
 
 
 def print_pending_orders():
@@ -702,6 +675,7 @@ def execute_request(account_name, action, symbol="BTCUSD", side="buy", lot=0.01,
                 try:
                     copy_account = get_account(copy_name)
                     mt5.shutdown()
+                    time.sleep(0.5)
                     lot_for_copy = lot * get_account_multi(copy_account) if action == "open" else lot
                     if action == "open" and lot_for_copy != lot:
                         print(f"Lot gốc: {lot} → Lot copy ({copy_name}, MULTI={get_account_multi(copy_account)}): {lot_for_copy}")

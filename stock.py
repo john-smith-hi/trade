@@ -1,11 +1,31 @@
+"""
+VNSTOCK & Global Market Analyzer
+
+Cách sử dụng:
+  python stock.py "<MÃ>" [SỐ_PHIÊN] [INTERVAL] [-o OUTPUT_FILE]
+
+Tham số:
+  MÃ          Mã cần xem (FPT, VNM, BTC, GOLD, WTI, BRENT, NAS100, ...)
+              Nhiều mã: "FPT VNM" hoặc "BTC,ETH,BNB"
+              Hậu tố M: lọc phiên Mỹ 20:00-03:00 VN (vd: NAS100M)
+  SỐ_PHIÊN    Số nến hiển thị (mặc định: 20)
+  INTERVAL    Khung thời gian: 1m, 5m, 15m, 1H, 1D, 1W, 1M (mặc định: 1D)
+  -o FILE     Xuất kết quả ra file UTF-8
+
+Ví dụ:
+  python stock.py FPT
+  python stock.py FPT 30 1H
+  python stock.py "GOLD WTI" 20 1D
+  python stock.py NAS100M 100 1H
+  python stock.py BTC,ETH,BNB 20 1H -o out.txt
+"""
+
 import sys
 import pandas as pd
-from vnstock import Vnstock
 from datetime import datetime, timedelta
 import os
 import time
 import re
-import warnings
 import io
 import argparse
 
@@ -130,7 +150,12 @@ def format_and_display_data(df, sym, limit, unit, us_only=False):
         df = df[df['time_vn'].dt.hour.isin([20, 21, 22, 23, 0, 1, 2, 3])]
     
     df['change'] = df['close'].diff().fillna(0.0)
-    df['pct_change'] = (df['close'].pct_change() * 100).fillna(0.0)
+    # Thân / râu nến: thân = C-O (âm nếu giảm); trên = high - max(O,C); dưới = min(O,C) - low
+    body_top = df[['open', 'close']].max(axis=1)
+    body_bot = df[['open', 'close']].min(axis=1)
+    df['body'] = df['close'] - df['open']
+    df['wick_up'] = df['high'] - body_top
+    df['wick_dn'] = body_bot - df['low']
     
     fmt = '%Y-%m-%d %H:%M:%S' if unit in ['m', 'H'] else '%Y-%m-%d'
     pd.options.display.float_format = '{:,.2f}'.format
@@ -144,7 +169,7 @@ def format_and_display_data(df, sym, limit, unit, us_only=False):
     show_df = df.tail(limit).copy()
     show_df['time'] = show_df['time_vn'].dt.strftime(fmt)
     
-    cols = ['time', 'symbol', 'open', 'high', 'low', 'close', 'change', 'pct_change', 'volume']
+    cols = ['time', 'symbol', 'open', 'high', 'low', 'close', 'change', 'wick_up', 'body', 'wick_dn', 'volume']
     cols_available = [c for c in cols if c in show_df.columns]
     
     print(show_df[cols_available].reset_index(drop=True))
@@ -224,7 +249,7 @@ def analyze_yf(sym, yf_config, interval, limit, value, unit, us_only=False):
     except Exception as e:
         print(f"Lỗi yfinance cho {sym}: {e}")
 
-def analyze_vnstock(v, sym, limit, minimal_mode, interval, value, unit, us_only=False):
+def analyze_vnstock(sym, limit, interval, value, unit, us_only=False):
     print_header(sym, "", interval)
     try:
         from vnstock.api.quote import Quote
@@ -258,20 +283,12 @@ def analyze_vnstock(v, sym, limit, minimal_mode, interval, value, unit, us_only=
             if interval.upper() != vn_base.upper():
                 df = resample_data(df, interval)
             format_and_display_data(df, sym, limit, unit, us_only=us_only)
-            
-            if not minimal_mode:
-                print(f"\n--- [ THÔNG TIN THÊM {sym} ] ---")
-                try:
-                    s = v.stock(symbol=sym, source='KBS')
-                    print(s.company.overview().head(1))
-                except Exception:
-                    pass
         else:
             print(f"Không tìm thấy dữ liệu cho {sym}.")
     except Exception as e:
         print(f"Lỗi vnstock cho {sym}: {e}")
 
-def analyze_stock(v, sym, limit, minimal_mode, interval='1D', us_only=False):
+def analyze_stock(sym, limit, interval='1D', us_only=False):
     """
     Hàm phân tích một mã cổ phiếu cụ thể với hỗ trợ khung thời gian linh hoạt.
     Bộ điều hướng (Router) cho các loại tài sản khác nhau.
@@ -289,132 +306,23 @@ def analyze_stock(v, sym, limit, minimal_mode, interval='1D', us_only=False):
         elif len(sym) >= 4 or sym in ['AMD', 'IBM', 'INTC', 'KO', 'DIS', 'NKE']: # Global stocks fallback
             analyze_yf(sym, None, interval, limit, value, unit, us_only=us_only)
         else:
-            analyze_vnstock(v, sym, limit, minimal_mode, interval, value, unit, us_only=us_only)
+            analyze_vnstock(sym, limit, interval, value, unit, us_only=us_only)
             
     except Exception as e:
         print(f"\nLỗi khởi tạo phân tích cho mã {sym}: {e}")
-
-def screen_hose_stocks(v):
-    print("\n" + "="*50)
-    print("      ĐANG LỌC CỔ PHIẾU SÀN HOSE (TARGET)       ")
-    print("="*50)
-    
-    hose_symbols = []
-    print("[1/4] Đang lấy danh sách mã niêm yết trên HOSE...")
-    
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            temp_stock = v.stock(symbol='FPT', source='KBS')
-            all_symbols_df = temp_stock.listing.all_symbols()
-            
-            if 'exchange' in all_symbols_df.columns:
-                hose_symbols = all_symbols_df[all_symbols_df['exchange'] == 'HOSE']['symbol'].unique().tolist()
-            else:
-                hose_symbols = all_symbols_df['symbol'].unique().tolist()
-            
-            if hose_symbols:
-                break
-        except Exception as e:
-            print(f"Lần thử {attempt + 1} thất bại: {e}")
-            if attempt < max_retries - 1:
-                time.sleep(2)
-            else:
-                print("Không thể lấy danh sách mã sau nhiều lần thử.")
-                return
-
-    if not hose_symbols:
-        print("Không tìm thấy mã chứng khoán nào.")
-        return
-
-    results = []
-    end_date = datetime.now().strftime('%Y-%m-%d')
-    start_date = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
-
-    print(f"[2/4] Đang phân tích kỹ thuật từng mã (Khung 1D)...")
-    
-    count = 0
-    total = len(hose_symbols)
-
-    for sym in hose_symbols:
-        count += 1
-        if count % 10 == 0:
-            print(f"Tiến độ: {count}/{total} mã...")
-
-        try:
-            time.sleep(3.5)
-            s = v.stock(symbol=sym, source='KBS')
-            df_full = s.quote.history(start=start_date, end=end_date)
-            
-            if df_full.empty or len(df_full) < 50:
-                continue
-
-            df = df_full.sort_values('time').copy()
-            df['sma20'] = df['close'].rolling(window=20).mean()
-            df['sma50'] = df['close'].rolling(window=50).mean()
-            df['vami20'] = df['volume'].rolling(window=20).mean()
-            
-            latest = df.iloc[-1]
-            prev = df.iloc[-2]
-            
-            if not (latest['vami20'] > 100000 and latest['close'] > 5.0): continue
-            if not (latest['close'] > latest['sma20'] and latest['close'] > latest['sma50']): continue
-
-            last_20 = df.tail(20)
-            range_pct = (last_20['high'].max() - last_20['low'].min()) / last_20['low'].min()
-            if range_pct > 0.15: continue
-
-            price_inc = (latest['close'] - prev['close']) / prev['close']
-            if price_inc > 0.02 and latest['close'] >= (latest['high'] + latest['low']) / 2 and latest['volume'] > 1.5 * latest['vami20']:
-                results.append({
-                    'symbol': sym,
-                    'price': latest['close'],
-                    'pct': price_inc * 100,
-                    'vol_ratio': latest['volume'] / latest['vami20'],
-                    'range_20p': range_pct * 100
-                })
-                print(f" -> Tìm thấy mã: {sym}")
-
-        except Exception as e:
-            if "Rate Limit" in str(e):
-                print(f"\n[WARNING] Hệ thống báo Rate Limit tại mã {sym}. Đang chờ 35 giây...")
-                time.sleep(35)
-            continue
-
-    print(f"[3/4] Tìm thấy {len(results)} mã thỏa mãn điều kiện.")
-
-    print("[4/4] Đang ghi kết quả vào file result.txt...")
-    with open('result.txt', 'w', encoding='utf-8') as f:
-        f.write(f"BÁO CÁO LỌC CỔ PHIẾU HOSE (TARGET) - {datetime.now().strftime('%d/%m/%Y %H:%M')}\n")
-        f.write("="*70 + "\n")
-        f.write(f"{'MÃ':<8} | {'GIÁ':<10} | {'TĂNG%':<10} | {'VOL/AVG20':<12} | {'BIÊN NỀN%':<10}\n")
-        f.write("-"*70 + "\n")
-        for r in results:
-            f.write(f"{r['symbol']:<8} | {r['price']:<10.2f} | {r['pct']:<10.2f} | {r['vol_ratio']:<12.2f} | {r['range_20p']:<10.2f}\n")
-        f.write("="*70 + "\n")
-
-    print(f"XONG! Kết quả đã lưu tại 'result.txt'.")
 
 def main():
     parser = argparse.ArgumentParser(description="VNSTOCK & Global Market Analyzer")
     parser.add_argument("symbols", nargs="?", default="FPT", help="Danh sách mã (ví dụ: FPT,VNM hoặc BTC NAS100M)")
     parser.add_argument("limit", type=int, nargs="?", default=20, help="Số lượng phiên (mặc định: 20)")
     parser.add_argument("interval", nargs="?", default="1D", help="Khung thời gian (1m, 1H, 1D, ...)")
-    parser.add_argument("minimal", type=int, nargs="?", default=1, help="Chế độ rút gọn (1: Có, 0: Không)")
     parser.add_argument("-o", "--output", help="Đường dẫn file để xuất kết quả")
     
-    # Hỗ trợ lệnh SCREEN_HOSE
-    args, unknown = parser.parse_known_args()
-    
-    if args.symbols.upper() == 'SCREEN_HOSE':
-        v = Vnstock()
-        screen_hose_stocks(v)
-        return
+    args = parser.parse_args()
 
     symbols_list = args.symbols.replace(',', ' ').split()
     limit = args.limit
     interval = args.interval
-    minimal_mode = (args.minimal == 1)
     
     # Redirect stdout sang file nếu có tham số -o
     original_stdout = sys.stdout
@@ -426,7 +334,6 @@ def main():
         sys.stdout = f_output
 
     try:
-        v = Vnstock()
         print("="*50)
         print(f"      VNSTOCK 4.x OPTIMIZED ANALYZER")
         print(f"      Danh sách: {', '.join(symbols_list)}")
@@ -442,7 +349,7 @@ def main():
                 if base in TV_MAPPING or base in YF_MAPPING:
                     sym, us_only = base, True
             
-            analyze_stock(v, sym.upper(), limit, minimal_mode, interval, us_only=us_only)
+            analyze_stock(sym.upper(), limit, interval, us_only=us_only)
 
         print("\n" + "="*50)
         print("      HOÀN THÀNH PHÂN TÍCH          ")
