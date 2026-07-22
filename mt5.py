@@ -28,6 +28,9 @@
 #   --symbol --side --lot --tp-price --sl-price --comment --copy --no-ask
 #   (Không có --no-ask → chỉ xem trước, KHÔNG gửi lệnh thật.)
 #   TP/SL là mức giá cụ thể (không phải số điểm).
+#   action=open BẮT BUỘC có cả --tp-price và --sl-price.
+#     BUY : SL < giá mở < TP
+#     SELL: TP < giá mở < SL
 #   Không truyền --copy → tự dùng auto_copy_enabled/auto_copy_targets của account (nếu có).
 #   Truyền --copy "tên1,tên2" → copy đúng danh sách này (override auto-copy).
 #   Truyền --copy "" → tắt hẳn copy cho lần chạy đó (bỏ qua cả auto-copy).
@@ -36,24 +39,24 @@
 #   # Xem trạng thái tài khoản
 #   python mt5.py --account prop_demo --action status
 #
-#   # Mở lệnh (xem trước)
+#   # Mở lệnh (xem trước) — bắt buộc TP + SL đúng hướng
 #   python mt5.py --account fake --action open --symbol XAUUSD --side buy --lot 0.01 --tp-price 60000 --sl-price 58000
 #
 #   # Mở lệnh thật
 #   python mt5.py --account fake --action open --symbol XAUUSD --side buy --lot 0.01 --tp-price 60000 --sl-price 58000 --no-ask
 #
-#   # Sửa TP/SL tất cả lệnh đang mở
+#   # Sửa TP/SL tất cả lệnh đang mở (hiện ước tính lời/lỗ so giá mở)
 #   python mt5.py --account fake --action modify-all --tp-price 60000 --sl-price 58000 --no-ask
 #
-#   # Đóng toàn bộ lệnh
+#   # Đóng toàn bộ lệnh (hiện P/L hiện tại từng lệnh + tổng)
 #   python mt5.py --account fake --action close-all --no-ask
 #
 #   # Copy lệnh từ real sang prop (lot prop = lot gốc × multi), chỉ định thủ công
-#   python mt5.py --account real --action open --symbol XAUUSD --side buy --lot 0.01 --copy prop_demo --no-ask
+#   python mt5.py --account real --action open --symbol XAUUSD --side buy --lot 0.01 --tp-price 60000 --sl-price 58000 --copy prop_demo --no-ask
 #
 #   # Account "real" đã cấu hình auto_copy_targets=prop_demo,prop_1 -> không cần --copy,
 #   # lệnh sẽ tự copy sang cả prop_demo và prop_1
-#   python mt5.py --account real --action open --symbol XAUUSD --side buy --lot 0.01 --no-ask
+#   python mt5.py --account real --action open --symbol XAUUSD --side buy --lot 0.01 --tp-price 60000 --sl-price 58000 --no-ask
 #
 # LỊCH SỬ
 #   Mỗi lần gửi lệnh sẽ ghi vào history_mt5.txt (mới nhất ở đầu file).
@@ -332,18 +335,114 @@ def get_entry_price(symbol, side):
 
 
 def estimate_tp_sl_pnl(side, entry_price, tp_price, sl_price, volume, contract_size):
+    """Ước tính lời/lỗ tại mức TP/SL theo (chênh giá × lot × contract_size)."""
     estimated = {}
+    side_l = (side or "").lower()
     if tp_price is not None:
-        if side == "buy":
-            estimated["tp"] = (tp_price - entry_price) * volume * contract_size
+        if side_l == "buy":
+            estimated["tp"] = (float(tp_price) - float(entry_price)) * float(volume) * float(contract_size)
         else:
-            estimated["tp"] = (entry_price - tp_price) * volume * contract_size
+            estimated["tp"] = (float(entry_price) - float(tp_price)) * float(volume) * float(contract_size)
     if sl_price is not None:
-        if side == "buy":
-            estimated["sl"] = (sl_price - entry_price) * volume * contract_size
+        if side_l == "buy":
+            estimated["sl"] = (float(sl_price) - float(entry_price)) * float(volume) * float(contract_size)
         else:
-            estimated["sl"] = (entry_price - sl_price) * volume * contract_size
+            estimated["sl"] = (float(entry_price) - float(sl_price)) * float(volume) * float(contract_size)
     return estimated
+
+
+def resolve_contract_size(symbol):
+    """Lấy contract size; ưu tiên trade_contract_size, fallback tick_value/tick_size."""
+    symbol_info = mt5.symbol_info(symbol)
+    if symbol_info is None:
+        return 1.0
+
+    contract_size = getattr(symbol_info, "trade_contract_size", None)
+    if contract_size and contract_size > 0:
+        return float(contract_size)
+
+    tick_size = getattr(symbol_info, "trade_tick_size", None) or getattr(symbol_info, "point", None)
+    tick_value = getattr(symbol_info, "trade_tick_value", None)
+    if tick_size and tick_value and tick_size > 0:
+        return float(tick_value) / float(tick_size)
+
+    return 1.0
+
+
+def collect_tp_sl_warnings(side, entry_price, tp_price=None, sl_price=None):
+    """Trả về list cảnh báo khi TP/SL ngược hướng so với side + giá vào."""
+    warnings = []
+    side_l = (side or "").lower()
+    entry = float(entry_price)
+
+    if tp_price is not None:
+        tp = float(tp_price)
+        if tp <= 0:
+            warnings.append(f"TP={tp} không hợp lệ (phải > 0)")
+        elif side_l == "buy" and tp <= entry:
+            warnings.append(
+                f"TP={tp} bất thường với lệnh BUY: phải LỚN HƠN giá vào {entry} "
+                f"(hiện TP đang thấp hơn → chốt lời sẽ thành lỗ)"
+            )
+        elif side_l == "sell" and tp >= entry:
+            warnings.append(
+                f"TP={tp} bất thường với lệnh SELL: phải NHỎ HƠN giá vào {entry} "
+                f"(hiện TP đang cao hơn → chốt lời sẽ thành lỗ)"
+            )
+
+    if sl_price is not None:
+        sl = float(sl_price)
+        if sl <= 0:
+            warnings.append(f"SL={sl} không hợp lệ (phải > 0)")
+        elif side_l == "buy" and sl >= entry:
+            warnings.append(
+                f"SL={sl} bất thường với lệnh BUY: phải NHỎ HƠN giá vào {entry} "
+                f"(hiện SL đang cao hơn → dừng lỗ sẽ thành lãi giả)"
+            )
+        elif side_l == "sell" and sl <= entry:
+            warnings.append(
+                f"SL={sl} bất thường với lệnh SELL: phải LỚN HƠN giá vào {entry} "
+                f"(hiện SL đang thấp hơn → dừng lỗ sẽ thành lãi giả)"
+            )
+
+    if tp_price is not None and sl_price is not None:
+        tp = float(tp_price)
+        sl = float(sl_price)
+        if side_l == "buy" and not (sl < entry < tp):
+            if sl >= tp:
+                warnings.append(f"Với BUY cần SL < giá vào < TP, nhưng SL={sl} và TP={tp} đang sai thứ tự")
+        elif side_l == "sell" and not (tp < entry < sl):
+            if tp >= sl:
+                warnings.append(f"Với SELL cần TP < giá vào < SL, nhưng TP={tp} và SL={sl} đang sai thứ tự")
+
+    return warnings
+
+
+def print_tp_sl_warnings(side, entry_price, tp_price=None, sl_price=None, indent=""):
+    warnings = collect_tp_sl_warnings(side, entry_price, tp_price, sl_price)
+    for msg in warnings:
+        print(f"{indent}[CẢNH BÁO] {msg}", flush=True)
+    return warnings
+
+
+def print_open_tp_sl_estimate(symbol, side, entry_price, tp_price, sl_price, lot):
+    """Luôn in ước tính lời/lỗ khi có TP hoặc SL (dùng khi mở lệnh)."""
+    if tp_price is None and sl_price is None:
+        return
+
+    try:
+        contract_size = resolve_contract_size(symbol)
+        estimated = estimate_tp_sl_pnl(side, entry_price, tp_price, sl_price, lot, contract_size)
+        if "tp" in estimated:
+            label = "lời" if estimated["tp"] >= 0 else "LỖ (bất thường)"
+            print(f"Ước tính {label} TP: {estimated['tp']:.8f}", flush=True)
+        if "sl" in estimated:
+            label = "lỗ" if estimated["sl"] <= 0 else "LÃI (bất thường)"
+            print(f"Ước tính {label} SL: {estimated['sl']:.8f}", flush=True)
+        if not estimated:
+            print("Không ước tính được lời/lỗ (thiếu TP/SL).", flush=True)
+    except Exception as exc:
+        print(f"Không ước tính được lời/lỗ: {exc}", flush=True)
 
 
 def get_filling_mode(symbol):
@@ -369,21 +468,47 @@ def get_filling_mode(symbol):
 
 
 def validate_tp_sl(side, entry_price, tp_price, sl_price, is_modification=False):
+    """Kiểm tra hướng TP/SL. is_modification chỉ cho phép truyền None (không đổi field đó)."""
+    side_l = (side or "").lower()
+    entry = float(entry_price)
+
     if tp_price is not None and tp_price <= 0:
         raise RuntimeError("TP phải lớn hơn 0")
     if sl_price is not None and sl_price <= 0:
         raise RuntimeError("SL phải lớn hơn 0")
 
-    if side == "buy":
-        if tp_price is not None and tp_price <= entry_price:
-            raise RuntimeError(f"TP mua không hợp lệ: {tp_price} phải lớn hơn giá mở {entry_price}")
-        if not is_modification and sl_price is not None and sl_price >= entry_price:
-            raise RuntimeError(f"SL mua không hợp lệ: {sl_price} phải nhỏ hơn giá mở {entry_price}")
+    if side_l == "buy":
+        if tp_price is not None and tp_price <= entry:
+            raise RuntimeError(f"TP mua không hợp lệ: {tp_price} phải lớn hơn giá mở {entry}")
+        if sl_price is not None and sl_price >= entry:
+            raise RuntimeError(f"SL mua không hợp lệ: {sl_price} phải nhỏ hơn giá mở {entry}")
     else:
-        if tp_price is not None and tp_price >= entry_price:
-            raise RuntimeError(f"TP bán không hợp lệ: {tp_price} phải nhỏ hơn giá mở {entry_price}")
-        if not is_modification and sl_price is not None and sl_price <= entry_price:
-            raise RuntimeError(f"SL bán không hợp lệ: {sl_price} phải lớn hơn giá mở {entry_price}")
+        if tp_price is not None and tp_price >= entry:
+            raise RuntimeError(f"TP bán không hợp lệ: {tp_price} phải nhỏ hơn giá mở {entry}")
+        if sl_price is not None and sl_price <= entry:
+            raise RuntimeError(f"SL bán không hợp lệ: {sl_price} phải lớn hơn giá mở {entry}")
+
+
+def calculate_position_pnl(position):
+    """Tính P/L hiện tại theo giá thị trường; trả về (pnl_formula, current_price, contract_size)."""
+    contract_size = resolve_contract_size(position.symbol)
+    tick = get_current_price(position.symbol)
+    current_price = tick.bid if position.type == mt5.ORDER_TYPE_BUY else tick.ask
+
+    if position.type == mt5.ORDER_TYPE_BUY:
+        pnl_formula = (current_price - position.price_open) * position.volume * contract_size
+    else:
+        pnl_formula = (position.price_open - current_price) * position.volume * contract_size
+
+    return pnl_formula, current_price, contract_size
+
+
+def format_pnl_status(pnl_value):
+    if pnl_value > 0:
+        return f"ĐANG LÃI {pnl_value:.6f}"
+    if pnl_value < 0:
+        return f"ĐANG LỖ {abs(pnl_value):.6f}"
+    return "HÒA"
 
 
 def build_trade_request(symbol, side, lot, tp_price=None, sl_price=None, comment="Python trader test"):
@@ -422,20 +547,17 @@ def build_trade_request(symbol, side, lot, tp_price=None, sl_price=None, comment
 
 
 def open_trade(account, symbol, side, lot, tp_price=None, sl_price=None, comment="Python trader test"):
+    if tp_price is None or sl_price is None:
+        raise RuntimeError("Lệnh open bắt buộc phải có --tp-price và --sl-price")
+
     symbol = select_symbol(symbol, account)
     entry_price = get_entry_price(symbol, side)
+    validate_tp_sl(side, entry_price, tp_price, sl_price)
+
     print(f"Sẽ mở lệnh {side.upper()} trên {symbol} với khối lượng {lot} lot")
     print(f"Giá vào dự kiến: {entry_price}")
-    print(f"TP: {tp_price if tp_price is not None else 'không đặt'} | SL: {sl_price if sl_price is not None else 'không đặt'}")
-
-    symbol_info = mt5.symbol_info(symbol)
-    contract_size = (getattr(symbol_info, "trade_contract_size", 1) or 1) if symbol_info else 1
-    estimated = estimate_tp_sl_pnl(side, entry_price, tp_price, sl_price, lot, contract_size)
-    if estimated:
-        if "tp" in estimated:
-            print(f"Ước tính lời TP: {estimated['tp']:.8f}")
-        if "sl" in estimated:
-            print(f"Ước tính lỗ SL: {estimated['sl']:.8f}")
+    print(f"TP: {tp_price} | SL: {sl_price}")
+    print_open_tp_sl_estimate(symbol, side, entry_price, tp_price, sl_price, lot)
 
     if not confirm_action("Bạn có muốn thực hiện hành động này không?"):
         print("Đã hủy mở lệnh.")
@@ -481,11 +603,12 @@ def build_close_request(position):
 
 
 def close_position(position, confirm=True):
-    tick = get_current_price(position.symbol)
-    current_price = tick.bid if position.type == mt5.ORDER_TYPE_BUY else tick.ask
+    pnl_formula, current_price, _ = calculate_position_pnl(position)
     print(f"Lệnh hiện tại: ticket={position.ticket} | symbol={position.symbol}")
     print(f"Loại: {'BUY' if position.type == mt5.ORDER_TYPE_BUY else 'SELL'}")
     print(f"Giá vào: {position.price_open} | Giá hiện tại: {current_price}")
+    print(f"  Trạng thái: {format_pnl_status(pnl_formula)}")
+    print(f"  P/L hiện tại: {position.profit} (công thức: {pnl_formula:.6f})")
 
     if confirm and not confirm_action(f"Bạn có muốn đóng lệnh {position.ticket} này không?"):
         print("Đã hủy đóng lệnh.")
@@ -514,8 +637,22 @@ def close_all_positions():
         return []
 
     print(f"Tìm thấy {len(positions)} lệnh đang mở. Đang chuẩn bị đóng toàn bộ...")
+    total_pnl = 0.0
+    total_mt5 = 0.0
     for position in positions:
-        print(f"- Ticket: {position.ticket} | Symbol: {position.symbol} | Type: {'BUY' if position.type == mt5.ORDER_TYPE_BUY else 'SELL'}")
+        pnl_formula, current_price, _ = calculate_position_pnl(position)
+        total_pnl += pnl_formula
+        total_mt5 += float(position.profit)
+        print(
+            f"- Ticket: {position.ticket} | Symbol: {position.symbol} | "
+            f"Type: {'BUY' if position.type == mt5.ORDER_TYPE_BUY else 'SELL'} | "
+            f"Vol: {position.volume}"
+        )
+        print(f"  Giá vào: {position.price_open} | Giá hiện tại: {current_price}")
+        print(f"  Trạng thái: {format_pnl_status(pnl_formula)}")
+        print(f"  P/L: {position.profit} (công thức: {pnl_formula:.6f})")
+
+    print(f"Tổng P/L tất cả lệnh: {format_pnl_status(total_pnl)} | MT5: {total_mt5:.6f}")
 
     if not confirm_action("Bạn có muốn đóng toàn bộ các lệnh này không?"):
         print("Đã hủy đóng toàn bộ lệnh.")
@@ -550,8 +687,7 @@ def print_open_positions():
         return
 
     for position in positions:
-        tick = get_current_price(position.symbol)
-        current_price = tick.bid if position.type == mt5.ORDER_TYPE_BUY else tick.ask
+        pnl_formula, current_price, _ = calculate_position_pnl(position)
 
         print(f"- Ticket: {position.ticket} | Symbol: {position.symbol}")
         print(f"  Type: {'BUY' if position.type == mt5.ORDER_TYPE_BUY else 'SELL'}")
@@ -560,6 +696,8 @@ def print_open_positions():
         print(f"  Giá hiện tại: {current_price}")
         print(f"  Stop Loss: {getattr(position, 'sl', 'chưa đặt')}")
         print(f"  Take Profit: {getattr(position, 'tp', 'chưa đặt')}")
+        print(f"  Trạng thái: {format_pnl_status(pnl_formula)}")
+        print(f"  P/L hiện tại: {position.profit} (công thức: {pnl_formula:.6f})")
 
 
 def print_pending_orders():
@@ -579,35 +717,38 @@ def modify_all_positions_tp_sl(tp_price=None, sl_price=None):
     if not positions:
         print("Không có lệnh nào đang mở để thay đổi.")
         return []
-    
+
     print(f"Tìm thấy {len(positions)} lệnh đang mở. Đang chuẩn bị thay đổi TP/SL cho tất cả...")
     for position in positions:
         side = "buy" if position.type == mt5.ORDER_TYPE_BUY else "sell"
+        new_tp = tp_price if tp_price is not None else (position.tp if position.tp > 0 else None)
+        new_sl = sl_price if sl_price is not None else (position.sl if position.sl > 0 else None)
+
         print(f"- Ticket: {position.ticket} | Symbol: {position.symbol} | Type: {side.upper()}")
         print(f"  Giá vào: {position.price_open} | TP cũ: {position.tp if position.tp > 0 else 'chưa đặt'} | SL cũ: {position.sl if position.sl > 0 else 'chưa đặt'}")
         if tp_price is not None:
             print(f"  → TP mới: {tp_price}")
         if sl_price is not None:
             print(f"  → SL mới: {sl_price}")
-    
+        print_tp_sl_warnings(side, position.price_open, new_tp, new_sl, indent="  ")
+        print_open_tp_sl_estimate(position.symbol, side, position.price_open, new_tp, new_sl, position.volume)
+
     if not confirm_action("Bạn có muốn thay đổi TP/SL cho tất cả các lệnh này không?"):
         print("Đã hủy thay đổi TP/SL cho tất cả lệnh.")
         return []
-    
+
     results = []
     for position in positions:
         side = "buy" if position.type == mt5.ORDER_TYPE_BUY else "sell"
-        
-        # Validate TP/SL
+
         if tp_price is not None:
             validate_tp_sl(side, position.price_open, tp_price, None, is_modification=True)
         if sl_price is not None:
             validate_tp_sl(side, position.price_open, None, sl_price, is_modification=True)
-        
-        # Sử dụng giá trị cũ nếu không có giá trị mới
+
         new_tp = tp_price if tp_price is not None else position.tp
         new_sl = sl_price if sl_price is not None else position.sl
-        
+
         request = {
             "action": mt5.TRADE_ACTION_SLTP,
             "symbol": position.symbol,
@@ -617,22 +758,22 @@ def modify_all_positions_tp_sl(tp_price=None, sl_price=None):
             "magic": DEFAULT_MAGIC,
             "comment": "Modified TP/SL",
         }
-        
+
         result = mt5.order_send(request)
         if result is None:
             print(f"Thay đổi TP/SL cho ticket {position.ticket} thất bại! Không nhận được phản hồi.")
             results.append(None)
             continue
-        
+
         if result.retcode != mt5.TRADE_RETCODE_DONE:
             print(f"Thay đổi TP/SL cho ticket {position.ticket} thất bại! Mã lỗi: {result.retcode} ({result.comment})")
             save_trade_history(position.symbol, position.volume, result, request, "MODIFY_FAILED", f"ticket={position.ticket} | {result.comment}")
         else:
             print(f"Thay đổi TP/SL cho ticket {position.ticket} thành công!")
             save_trade_history(position.symbol, position.volume, result, request, "MODIFY_SUCCESS", f"ticket={position.ticket}")
-        
+
         results.append(result)
-    
+
     return results
 
 
@@ -736,6 +877,9 @@ def main():
     )
 
     args = parser.parse_args()
+
+    if args.action == "open" and (args.tp_price is None or args.sl_price is None):
+        parser.error("action=open bắt buộc phải có cả --tp-price và --sl-price")
 
     copy_names = None
     if args.copy is not None:
