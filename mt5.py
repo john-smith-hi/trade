@@ -237,6 +237,9 @@ def save_trade_history(symbol, lot, result, request, status, detail=""):
 
 
 def confirm_action(message):
+    """Xác nhận hành động. Không có --no-ask → chỉ xem trước, KHÔNG gửi lệnh thật.
+    Các bước in thông tin / ước tính lời-lỗ phía trước vẫn luôn chạy.
+    """
     if NO_ASK:
         return True
     print(f"[XEM TRƯỚC] {message}")
@@ -426,23 +429,32 @@ def print_tp_sl_warnings(side, entry_price, tp_price=None, sl_price=None, indent
 
 
 def print_open_tp_sl_estimate(symbol, side, entry_price, tp_price, sl_price, lot):
-    """Luôn in ước tính lời/lỗ khi có TP hoặc SL (dùng khi mở lệnh)."""
+    """In ước tính lời/lỗ tại TP/SL. Luôn chạy ở chế độ xem trước (kể cả khi chưa --no-ask)."""
     if tp_price is None and sl_price is None:
+        print("Không có TP/SL để ước tính lời/lỗ.", flush=True)
         return
 
     try:
         contract_size = resolve_contract_size(symbol)
         estimated = estimate_tp_sl_pnl(side, entry_price, tp_price, sl_price, lot, contract_size)
+        # Luôn in rõ — không phụ thuộc --no-ask (confirm_action chỉ chặn gửi lệnh thật).
         if "tp" in estimated:
-            label = "lời" if estimated["tp"] >= 0 else "LỖ (bất thường)"
-            print(f"Ước tính {label} TP: {estimated['tp']:.8f}", flush=True)
+            print(f"Ước tính lời TP: {estimated['tp']:.8f}", flush=True)
         if "sl" in estimated:
-            label = "lỗ" if estimated["sl"] <= 0 else "LÃI (bất thường)"
-            print(f"Ước tính {label} SL: {estimated['sl']:.8f}", flush=True)
+            print(f"Ước tính lỗ SL: {estimated['sl']:.8f}", flush=True)
         if not estimated:
             print("Không ước tính được lời/lỗ (thiếu TP/SL).", flush=True)
     except Exception as exc:
-        print(f"Không ước tính được lời/lỗ: {exc}", flush=True)
+        # Fallback tính thô nếu lấy contract_size từ MT5 lỗi
+        try:
+            estimated = estimate_tp_sl_pnl(side, entry_price, tp_price, sl_price, lot, 1.0)
+            print(f"(fallback contract_size=1) Không lấy được contract size: {exc}", flush=True)
+            if "tp" in estimated:
+                print(f"Ước tính lời TP: {estimated['tp']:.8f}", flush=True)
+            if "sl" in estimated:
+                print(f"Ước tính lỗ SL: {estimated['sl']:.8f}", flush=True)
+        except Exception as exc2:
+            print(f"Không ước tính được lời/lỗ: {exc2}", flush=True)
 
 
 def get_filling_mode(symbol):
@@ -557,7 +569,12 @@ def open_trade(account, symbol, side, lot, tp_price=None, sl_price=None, comment
     print(f"Sẽ mở lệnh {side.upper()} trên {symbol} với khối lượng {lot} lot")
     print(f"Giá vào dự kiến: {entry_price}")
     print(f"TP: {tp_price} | SL: {sl_price}")
-    print_open_tp_sl_estimate(symbol, side, entry_price, tp_price, sl_price, lot)
+
+    # Ước tính luôn in ở chế độ xem trước — --no-ask chỉ quyết định có gửi lệnh thật hay không.
+    contract_size = resolve_contract_size(symbol)
+    estimated = estimate_tp_sl_pnl(side, entry_price, tp_price, sl_price, lot, contract_size)
+    print(f"Ước tính lời TP: {estimated.get('tp', 0):.8f}")
+    print(f"Ước tính lỗ SL: {estimated.get('sl', 0):.8f}")
 
     if not confirm_action("Bạn có muốn thực hiện hành động này không?"):
         print("Đã hủy mở lệnh.")
