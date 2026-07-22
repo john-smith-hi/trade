@@ -331,6 +331,21 @@ def get_entry_price(symbol, side):
     return tick.ask if side == "buy" else tick.bid
 
 
+def estimate_tp_sl_pnl(side, entry_price, tp_price, sl_price, volume, contract_size):
+    estimated = {}
+    if tp_price is not None:
+        if side == "buy":
+            estimated["tp"] = (tp_price - entry_price) * volume * contract_size
+        else:
+            estimated["tp"] = (entry_price - tp_price) * volume * contract_size
+    if sl_price is not None:
+        if side == "buy":
+            estimated["sl"] = (sl_price - entry_price) * volume * contract_size
+        else:
+            estimated["sl"] = (entry_price - sl_price) * volume * contract_size
+    return estimated
+
+
 def get_filling_mode(symbol):
     """
     Tự động kiểm tra chế độ khớp lệnh (Filling Mode) bằng bitmask nguyên bản.
@@ -412,6 +427,15 @@ def open_trade(account, symbol, side, lot, tp_price=None, sl_price=None, comment
     print(f"Sẽ mở lệnh {side.upper()} trên {symbol} với khối lượng {lot} lot")
     print(f"Giá vào dự kiến: {entry_price}")
     print(f"TP: {tp_price if tp_price is not None else 'không đặt'} | SL: {sl_price if sl_price is not None else 'không đặt'}")
+
+    symbol_info = mt5.symbol_info(symbol)
+    contract_size = (getattr(symbol_info, "trade_contract_size", 1) or 1) if symbol_info else 1
+    estimated = estimate_tp_sl_pnl(side, entry_price, tp_price, sl_price, lot, contract_size)
+    if estimated:
+        if "tp" in estimated:
+            print(f"Ước tính lời TP: {estimated['tp']:.8f}")
+        if "sl" in estimated:
+            print(f"Ước tính lỗ SL: {estimated['sl']:.8f}")
 
     if not confirm_action("Bạn có muốn thực hiện hành động này không?"):
         print("Đã hủy mở lệnh.")
