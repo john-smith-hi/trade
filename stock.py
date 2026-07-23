@@ -7,7 +7,10 @@ Cách sử dụng:
 Tham số:
   MÃ          Mã cần xem (FPT, VNM, BTC, GOLD, WTI, BRENT, NAS100, ...)
               Nhiều mã: "FPT VNM" hoặc "BTC,ETH,BNB"
-              Hậu tố M: lọc phiên Mỹ 20:00-03:00 VN (vd: NAS100M)
+              Hậu tố m (chữ thường): lọc phiên Mỹ 20:00-03:00 VN
+              (vd: GOLDm, BTCm, NAS100m — áp dụng cho bất kỳ mã nào)
+              Hậu tố M (chữ hoa, tương thích cũ): NAS100M cũng lọc phiên Mỹ
+              nếu base thuộc Global Assets (không ảnh hưởng mã VN như VNM)
   SỐ_PHIÊN    Số nến hiển thị (mặc định: 20)
   INTERVAL    Khung thời gian: 1m, 5m, 15m, 1H, 1D, 1W, 1M (mặc định: 1D)
   -o FILE     Xuất kết quả ra file UTF-8
@@ -16,6 +19,7 @@ Ví dụ:
   python stock.py FPT
   python stock.py FPT 30 1H
   python stock.py "GOLD WTI" 20 1D
+  python stock.py GOLDm 100 1H
   python stock.py NAS100M 100 1H
   python stock.py BTC,ETH,BNB 20 1H -o out.txt
 """
@@ -310,7 +314,7 @@ def analyze_stock(sym, limit, interval='1D', us_only=False):
 
 def main():
     parser = argparse.ArgumentParser(description="VNSTOCK & Global Market Analyzer")
-    parser.add_argument("symbols", nargs="?", default="FPT", help="Danh sách mã (ví dụ: FPT,VNM hoặc BTC NAS100M)")
+    parser.add_argument("symbols", nargs="?", default="FPT", help="Danh sách mã (ví dụ: FPT,VNM hoặc GOLDm, NAS100M)")
     parser.add_argument("limit", type=int, nargs="?", default=20, help="Số lượng phiên (mặc định: 20)")
     parser.add_argument("interval", nargs="?", default="1D", help="Khung thời gian (1m, 1H, 1D, ...)")
     parser.add_argument("-o", "--output", help="Đường dẫn file để xuất kết quả")
@@ -340,12 +344,16 @@ def main():
         for sym in symbols_list:
             if not sym: continue
             us_only = False
-            # Bug fix: Chỉ strip 'M' nếu base symbol thuộc Global Assets
-            if sym.endswith('M') and len(sym) > 1:
+            # Hậu tố 'm' (chữ thường): bất kỳ mã nào cũng lọc phiên Mỹ (vd: GOLDm, BTCm)
+            if len(sym) > 1 and sym.endswith('m'):
+                sym, us_only = sym[:-1], True
+            # Hậu tố 'M' (chữ hoa, tương thích cũ): chỉ strip nếu base thuộc Global Assets
+            # để không làm hỏng mã VN như VNM
+            elif len(sym) > 1 and sym.endswith('M'):
                 base = sym[:-1].upper()
                 if base in TV_MAPPING or base in YF_MAPPING:
                     sym, us_only = base, True
-            
+
             analyze_stock(sym.upper(), limit, interval, us_only=us_only)
 
         print("\n" + "="*50)
