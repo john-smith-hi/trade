@@ -810,7 +810,7 @@ def run_action_on_account(account, args, lot):
         print_pending_orders()
 
 
-def execute_request(account_name, action, symbol="BTCUSD", side="buy", lot=0.01,
+def execute_request(account_name, action, symbol="XAUUSD", side="buy", lot=0.01,
                      tp_price=None, sl_price=None, comment="Python trader test",
                      no_ask=False, copy_names=None):
     """Thực thi 1 hành động (status/open/close-all/modify-all) cho account_name,
@@ -879,7 +879,7 @@ def main():
         help="Bắt buộc: chọn tài khoản chính theo name khai báo trong accounts.xml (vd: prop_demo, prop_1, real, fake)",
     )
     parser.add_argument("--action", choices=["open", "close-all", "modify-all", "status"], required=True)
-    parser.add_argument("--symbol", default="BTCUSD")
+    parser.add_argument("--symbol", default="XAUUSD")
     parser.add_argument("--side", choices=["buy", "sell"], default="buy")
     parser.add_argument("--lot", type=float, default=0.01)
     parser.add_argument("--tp-price", type=float, default=None)

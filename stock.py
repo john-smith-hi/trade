@@ -297,10 +297,7 @@ def analyze_stock(sym, limit, interval='1D', us_only=False):
         value, unit = parse_interval(interval)
         
         if sym in TV_MAPPING:
-            success = analyze_tv(sym, TV_MAPPING[sym], interval, limit, value, unit, us_only=us_only)
-            if not success:
-                print(f"--- [!] FALLBACK: Chuyển sang nguồn dữ liệu thay thế cho {sym} ---")
-                analyze_yf(sym, YF_MAPPING.get(sym), interval, limit, value, unit, us_only=us_only)
+            analyze_tv(sym, TV_MAPPING[sym], interval, limit, value, unit, us_only=us_only)
         elif sym in YF_MAPPING:
             analyze_yf(sym, YF_MAPPING[sym], interval, limit, value, unit, us_only=us_only)
         elif len(sym) >= 4 or sym in ['AMD', 'IBM', 'INTC', 'KO', 'DIS', 'NKE']: # Global stocks fallback
