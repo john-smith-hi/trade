@@ -88,7 +88,7 @@ def action_endpoint():
     if not account or not action:
         return jsonify({"error": "Thiếu 'account' hoặc 'action'"}), 400
 
-    symbol = data.get("symbol") or "BTCUSD"
+    symbol = data.get("symbol") or "XAUUSD"
     side = data.get("side") or "buy"
     comment = data.get("comment") or "Python trader test"
     no_ask = bool(data.get("no_ask", False))

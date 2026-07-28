@@ -178,42 +178,157 @@ def format_and_display_data(df, sym, limit, unit, us_only=False):
     
     print(show_df[cols_available].reset_index(drop=True))
 
+def fetch_tv_df(sym, tv_config, interval, limit, value, unit, us_only=False):
+    """Lấy OHLC từ TradingView, trả về DataFrame đã clean (có thể rỗng)."""
+    tv_sym, tv_exc, _full_name = tv_config
+    if not TvDatafeed:
+        raise RuntimeError(f"Thư viện tvDatafeed chưa được cài đặt (mã {sym}).")
+
+    tv = TvDatafeed()
+    tv_interval = Interval.in_daily
+    if unit == 'm':
+        m_map = {1: Interval.in_1_minute, 3: Interval.in_3_minute, 5: Interval.in_5_minute,
+                 15: Interval.in_15_minute, 30: Interval.in_30_minute, 45: Interval.in_45_minute}
+        tv_interval = next((v for k, v in m_map.items() if value <= k), Interval.in_1_hour)
+    elif unit == 'H':
+        h_map = {1: Interval.in_1_hour, 2: Interval.in_2_hour, 4: Interval.in_4_hour}
+        tv_interval = h_map.get(value, Interval.in_daily)
+    elif unit == 'D':
+        tv_interval = Interval.in_daily
+    elif unit == 'W':
+        tv_interval = Interval.in_weekly
+    elif unit == 'M':
+        tv_interval = Interval.in_monthly
+
+    fetch_limit = limit * 5 if us_only else limit + 5
+    df = None
+    for _ in range(3):
+        df = tv.get_hist(
+            symbol=tv_sym,
+            exchange=tv_exc if tv_exc else None,
+            interval=tv_interval,
+            n_bars=fetch_limit,
+        )
+        if df is not None and not df.empty:
+            break
+        time.sleep(1)
+
+    if df is None or df.empty:
+        return pd.DataFrame()
+    df = df.copy()
+    df['symbol'] = sym
+    return clean_data(df)
+
+
+def fetch_yf_df(sym, yf_config, interval, limit, value, unit, us_only=False):
+    """Lấy OHLC từ Yahoo Finance, trả về DataFrame đã clean (có thể rỗng)."""
+    if yf_config:
+        yf_sym, _full_name = yf_config
+    else:
+        yf_sym = sym
+
+    if not yf:
+        raise RuntimeError(f"Thư viện yfinance chưa được cài đặt (mã {sym}).")
+
+    yf_interval = "1d"
+    if unit == 'm':
+        yf_interval = f"{value if value in [1, 2, 5, 15, 30, 60, 90] else 1}m"
+    elif unit == 'H':
+        yf_interval = "1h"
+    elif unit == 'D':
+        yf_interval = "5d" if value == 5 else "1d"
+    elif unit == 'W':
+        yf_interval = "1wk"
+    elif unit == 'M':
+        yf_interval = "3mo" if value == 3 else "1mo"
+
+    period = "max"
+    if unit == 'm':
+        period = "7d" if value == 1 else "60d"
+    elif unit == 'H':
+        period = "730d"
+
+    df = yf.download(tickers=yf_sym, interval=yf_interval, period=period, progress=False)
+    if df is None or df.empty:
+        return pd.DataFrame()
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = [col[0] for col in df.columns]
+    df = df.copy()
+    df['symbol'] = sym
+    if not (yf_interval == f"{value}{unit.lower()}" or (unit == 'H' and yf_interval == '1h' and value == 1)):
+        df = resample_data(df, interval)
+    return clean_data(df)
+
+
+def fetch_vnstock_df(sym, limit, interval, value, unit, us_only=False):
+    """Lấy OHLC từ vnstock, trả về DataFrame đã clean (có thể rỗng)."""
+    from vnstock.api.quote import Quote
+    q = Quote(symbol=sym, source='KBS')
+
+    offset_map = {'m': 5, 'H': 10, 'D': 6, 'W': 12, 'M': 60}
+    days_offset = (limit * value * offset_map.get(unit, 2))
+
+    if unit == 'm':
+        days_offset = max(7, int(value * limit / 100) + 5)
+    elif unit == 'H':
+        days_offset = max(10, int(value * limit / 4) + 7)
+    elif unit == 'D':
+        days_offset = max(30, days_offset)
+
+    start_date = (datetime.now() - timedelta(days=int(days_offset))).strftime('%Y-%m-%d')
+    end_date = datetime.now().strftime('%Y-%m-%d')
+
+    vn_base = '1D'
+    if unit == 'm':
+        for b in ['30m', '15m', '5m', '1m']:
+            if value % int(b[:-1]) == 0:
+                vn_base = b
+                break
+    elif unit == 'H':
+        vn_base = '1H'
+
+    df = q.history(start=start_date, end=end_date, interval=vn_base)
+    if df is None or df.empty:
+        return pd.DataFrame()
+    df = df.sort_values('time')
+    if interval.upper() != vn_base.upper():
+        df = resample_data(df, interval)
+    df = df.copy()
+    df['symbol'] = sym
+    return clean_data(df)
+
+
+def fetch_stock_df(sym, limit=20, interval='1D', us_only=False):
+    """
+    Lấy OHLC cho một mã, trả về DataFrame đã clean (không in ra console).
+    Router giống analyze_stock. DataFrame rỗng nếu nguồn không trả dữ liệu.
+    """
+    value, unit = parse_interval(interval)
+    sym = sym.upper()
+
+    if sym in TV_MAPPING:
+        return fetch_tv_df(sym, TV_MAPPING[sym], interval, limit, value, unit, us_only=us_only)
+    if sym in YF_MAPPING:
+        return fetch_yf_df(sym, YF_MAPPING[sym], interval, limit, value, unit, us_only=us_only)
+    if len(sym) >= 4 or sym in ['AMD', 'IBM', 'INTC', 'KO', 'DIS', 'NKE']:
+        return fetch_yf_df(sym, None, interval, limit, value, unit, us_only=us_only)
+    return fetch_vnstock_df(sym, limit, interval, value, unit, us_only=us_only)
+
+
 def analyze_tv(sym, tv_config, interval, limit, value, unit, us_only=False):
     tv_sym, tv_exc, full_name = tv_config
     if not TvDatafeed:
         print(f"Bỏ qua {sym}: Thư viện tvDatafeed chưa được cài đặt.")
         return
-        
+
     print_header(sym, full_name, interval)
     try:
-        tv = TvDatafeed()
-        # Mapping interval
-        tv_interval = Interval.in_daily
-        if unit == 'm':
-            m_map = {1: Interval.in_1_minute, 3: Interval.in_3_minute, 5: Interval.in_5_minute, 
-                     15: Interval.in_15_minute, 30: Interval.in_30_minute, 45: Interval.in_45_minute}
-            tv_interval = next((v for k, v in m_map.items() if value <= k), Interval.in_1_hour)
-        elif unit == 'H':
-            h_map = {1: Interval.in_1_hour, 2: Interval.in_2_hour, 4: Interval.in_4_hour}
-            tv_interval = h_map.get(value, Interval.in_daily)
-        elif unit == 'D': tv_interval = Interval.in_daily
-        elif unit == 'W': tv_interval = Interval.in_weekly
-        elif unit == 'M': tv_interval = Interval.in_monthly
-        
-        fetch_limit = limit * 5 if us_only else limit + 5
-        df = None
-        for _ in range(3):
-            df = tv.get_hist(symbol=tv_sym, exchange=tv_exc if tv_exc else None, interval=tv_interval, n_bars=fetch_limit)
-            if df is not None and not df.empty: break
-            time.sleep(1)
-            
-        if df is not None and not df.empty:
-            df['symbol'] = sym
+        df = fetch_tv_df(sym, tv_config, interval, limit, value, unit, us_only=us_only)
+        if not df.empty:
             format_and_display_data(df, sym, limit, unit, us_only=us_only)
             return True
-        else:
-            print(f"Không nhận được dữ liệu từ TradingView cho {sym}.")
-            return False
+        print(f"Không nhận được dữ liệu từ TradingView cho {sym}.")
+        return False
     except Exception as e:
         print(f"Lỗi TradingView cho {sym}: {e}")
         return False
@@ -223,32 +338,15 @@ def analyze_yf(sym, yf_config, interval, limit, value, unit, us_only=False):
         yf_sym, full_name = yf_config
     else:
         yf_sym, full_name = sym, f"{sym} (Yahoo Finance)"
-    
+
     if not yf:
         print(f"Bỏ qua {sym}: Thư viện yfinance chưa được cài đặt.")
         return
-        
+
     print_header(sym, full_name, interval)
     try:
-        yf_interval = "1d"
-        if unit == 'm': yf_interval = f"{value if value in [1,2,5,15,30,60,90] else 1}m"
-        elif unit == 'H': yf_interval = "1h"
-        elif unit == 'D': yf_interval = "5d" if value == 5 else "1d"
-        elif unit == 'W': yf_interval = "1wk"
-        elif unit == 'M': yf_interval = "3mo" if value == 3 else "1mo"
-        
-        # Tự động tính period
-        period = "max"
-        if unit == 'm': period = "7d" if value == 1 else "60d"
-        elif unit == 'H': period = "730d"
-        
-        df = yf.download(tickers=yf_sym, interval=yf_interval, period=period, progress=False)
+        df = fetch_yf_df(sym, yf_config, interval, limit, value, unit, us_only=us_only)
         if not df.empty:
-            if isinstance(df.columns, pd.MultiIndex):
-                df.columns = [col[0] for col in df.columns]
-            df['symbol'] = sym
-            if not (yf_interval == f"{value}{unit.lower()}" or (unit == 'H' and yf_interval == '1h' and value == 1)):
-                df = resample_data(df, interval)
             format_and_display_data(df, sym, limit, unit, us_only=us_only)
     except Exception as e:
         print(f"Lỗi yfinance cho {sym}: {e}")
@@ -256,36 +354,8 @@ def analyze_yf(sym, yf_config, interval, limit, value, unit, us_only=False):
 def analyze_vnstock(sym, limit, interval, value, unit, us_only=False):
     print_header(sym, "", interval)
     try:
-        from vnstock.api.quote import Quote
-        q = Quote(symbol=sym, source='KBS')
-        
-        # Tính toán offset ngày (Lookback window)
-        # Tăng hệ số để đảm bảo lấy đủ số nến cho cả các mã thanh khoản thấp
-        offset_map = {'m': 5, 'H': 10, 'D': 6, 'W': 12, 'M': 60}
-        days_offset = (limit * value * offset_map.get(unit, 2))
-        
-        # Điều chỉnh cho các khung thời gian ngắn hoặc yêu cầu quá ít
-        if unit == 'm': days_offset = max(7, int(value * limit / 100) + 5)
-        elif unit == 'H': days_offset = max(10, int(value * limit / 4) + 7)
-        elif unit == 'D': days_offset = max(30, days_offset) # Tối thiểu 30 ngày cho khung D
-
-        start_date = (datetime.now() - timedelta(days=int(days_offset))).strftime('%Y-%m-%d')
-        end_date = datetime.now().strftime('%Y-%m-%d')
-        
-        # Mapping interval cho vnstock
-        vn_base = '1D'
-        if unit == 'm':
-            for b in ['30m', '15m', '5m', '1m']:
-                if value % int(b[:-1]) == 0:
-                    vn_base = b
-                    break
-        elif unit == 'H': vn_base = '1H'
-        
-        df = q.history(start=start_date, end=end_date, interval=vn_base)
+        df = fetch_vnstock_df(sym, limit, interval, value, unit, us_only=us_only)
         if not df.empty:
-            df = df.sort_values('time')
-            if interval.upper() != vn_base.upper():
-                df = resample_data(df, interval)
             format_and_display_data(df, sym, limit, unit, us_only=us_only)
         else:
             print(f"Không tìm thấy dữ liệu cho {sym}.")
@@ -299,7 +369,7 @@ def analyze_stock(sym, limit, interval='1D', us_only=False):
     """
     try:
         value, unit = parse_interval(interval)
-        
+
         if sym in TV_MAPPING:
             analyze_tv(sym, TV_MAPPING[sym], interval, limit, value, unit, us_only=us_only)
         elif sym in YF_MAPPING:
@@ -308,7 +378,7 @@ def analyze_stock(sym, limit, interval='1D', us_only=False):
             analyze_yf(sym, None, interval, limit, value, unit, us_only=us_only)
         else:
             analyze_vnstock(sym, limit, interval, value, unit, us_only=us_only)
-            
+
     except Exception as e:
         print(f"\nLỗi khởi tạo phân tích cho mã {sym}: {e}")
 

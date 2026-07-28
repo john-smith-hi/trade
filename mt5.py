@@ -515,12 +515,52 @@ def calculate_position_pnl(position):
     return pnl_formula, current_price, contract_size
 
 
+def safe_position_pnl(position):
+    """P/L hiển thị: luôn dùng position.profit từ MT5; bổ sung giá/công thức nếu lấy được tick.
+
+    Tránh việc get_current_price lỗi làm mất cả khối in lời/lỗ trong action status.
+    Trả về dict: mt5_profit, pnl_formula (hoặc None), current_price (hoặc None), error (hoặc None).
+    """
+    mt5_profit = float(getattr(position, "profit", 0.0) or 0.0)
+    try:
+        pnl_formula, current_price, _ = calculate_position_pnl(position)
+        return {
+            "mt5_profit": mt5_profit,
+            "pnl_formula": pnl_formula,
+            "current_price": current_price,
+            "error": None,
+        }
+    except Exception as exc:
+        return {
+            "mt5_profit": mt5_profit,
+            "pnl_formula": None,
+            "current_price": None,
+            "error": str(exc),
+        }
+
+
 def format_pnl_status(pnl_value):
     if pnl_value > 0:
         return f"ĐANG LÃI {pnl_value:.6f}"
     if pnl_value < 0:
         return f"ĐANG LỖ {abs(pnl_value):.6f}"
     return "HÒA"
+
+
+def print_position_pnl_lines(position, indent="  "):
+    """In trạng thái lời/lỗ của 1 vị thế (không để lỗi tick làm mất dòng P/L)."""
+    info = safe_position_pnl(position)
+    mt5_profit = info["mt5_profit"]
+    print(f"{indent}Trạng thái: {format_pnl_status(mt5_profit)}")
+    if info["current_price"] is not None:
+        print(f"{indent}Giá hiện tại: {info['current_price']}")
+    else:
+        print(f"{indent}Giá hiện tại: không lấy được ({info['error']})")
+    if info["pnl_formula"] is not None:
+        print(f"{indent}P/L hiện tại: {mt5_profit} (công thức: {info['pnl_formula']:.6f})")
+    else:
+        print(f"{indent}P/L hiện tại: {mt5_profit} (MT5)")
+    return info
 
 
 def build_trade_request(symbol, side, lot, tp_price=None, sl_price=None, comment="Python trader test"):
@@ -620,12 +660,10 @@ def build_close_request(position):
 
 
 def close_position(position, confirm=True):
-    pnl_formula, current_price, _ = calculate_position_pnl(position)
     print(f"Lệnh hiện tại: ticket={position.ticket} | symbol={position.symbol}")
     print(f"Loại: {'BUY' if position.type == mt5.ORDER_TYPE_BUY else 'SELL'}")
-    print(f"Giá vào: {position.price_open} | Giá hiện tại: {current_price}")
-    print(f"  Trạng thái: {format_pnl_status(pnl_formula)}")
-    print(f"  P/L hiện tại: {position.profit} (công thức: {pnl_formula:.6f})")
+    print(f"Giá vào: {position.price_open}")
+    print_position_pnl_lines(position, indent="")
 
     if confirm and not confirm_action(f"Bạn có muốn đóng lệnh {position.ticket} này không?"):
         print("Đã hủy đóng lệnh.")
@@ -654,22 +692,27 @@ def close_all_positions():
         return []
 
     print(f"Tìm thấy {len(positions)} lệnh đang mở. Đang chuẩn bị đóng toàn bộ...")
-    total_pnl = 0.0
     total_mt5 = 0.0
+    total_formula = 0.0
+    formula_ok = True
     for position in positions:
-        pnl_formula, current_price, _ = calculate_position_pnl(position)
-        total_pnl += pnl_formula
-        total_mt5 += float(position.profit)
         print(
             f"- Ticket: {position.ticket} | Symbol: {position.symbol} | "
             f"Type: {'BUY' if position.type == mt5.ORDER_TYPE_BUY else 'SELL'} | "
             f"Vol: {position.volume}"
         )
-        print(f"  Giá vào: {position.price_open} | Giá hiện tại: {current_price}")
-        print(f"  Trạng thái: {format_pnl_status(pnl_formula)}")
-        print(f"  P/L: {position.profit} (công thức: {pnl_formula:.6f})")
+        print(f"  Giá vào: {position.price_open}")
+        info = print_position_pnl_lines(position)
+        total_mt5 += info["mt5_profit"]
+        if info["pnl_formula"] is not None:
+            total_formula += info["pnl_formula"]
+        else:
+            formula_ok = False
 
-    print(f"Tổng P/L tất cả lệnh: {format_pnl_status(total_pnl)} | MT5: {total_mt5:.6f}")
+    if formula_ok:
+        print(f"Tổng P/L tất cả lệnh: {format_pnl_status(total_mt5)} | công thức: {total_formula:.6f}")
+    else:
+        print(f"Tổng P/L tất cả lệnh: {format_pnl_status(total_mt5)} (MT5)")
 
     if not confirm_action("Bạn có muốn đóng toàn bộ các lệnh này không?"):
         print("Đã hủy đóng toàn bộ lệnh.")
@@ -703,18 +746,21 @@ def print_open_positions():
         print("- Không có lệnh nào đang mở")
         return
 
+    total_mt5 = 0.0
     for position in positions:
-        pnl_formula, current_price, _ = calculate_position_pnl(position)
-
+        sl = getattr(position, "sl", 0) or 0
+        tp = getattr(position, "tp", 0) or 0
         print(f"- Ticket: {position.ticket} | Symbol: {position.symbol}")
         print(f"  Type: {'BUY' if position.type == mt5.ORDER_TYPE_BUY else 'SELL'}")
         print(f"  Volume: {position.volume}")
         print(f"  Giá mở cửa: {position.price_open}")
-        print(f"  Giá hiện tại: {current_price}")
-        print(f"  Stop Loss: {getattr(position, 'sl', 'chưa đặt')}")
-        print(f"  Take Profit: {getattr(position, 'tp', 'chưa đặt')}")
-        print(f"  Trạng thái: {format_pnl_status(pnl_formula)}")
-        print(f"  P/L hiện tại: {position.profit} (công thức: {pnl_formula:.6f})")
+        print(f"  Stop Loss: {sl if sl > 0 else 'chưa đặt'}")
+        print(f"  Take Profit: {tp if tp > 0 else 'chưa đặt'}")
+        info = print_position_pnl_lines(position)
+        total_mt5 += info["mt5_profit"]
+
+    if len(positions) > 1:
+        print(f"Tổng P/L các lệnh mở: {format_pnl_status(total_mt5)}")
 
 
 def print_pending_orders():
@@ -726,6 +772,7 @@ def print_pending_orders():
 
     for order in orders:
         print(f"- Ticket: {order.ticket} | Symbol: {order.symbol} | Type: {order.type} | Price: {order.price}")
+
 
 
 def modify_all_positions_tp_sl(tp_price=None, sl_price=None):
@@ -890,7 +937,7 @@ def main():
         "--copy", default=None,
         help="Danh sách account name cần copy lệnh sang, phân tách bằng dấu phẩy, ví dụ: prop_demo,prop_1. "
              "Không truyền --copy sẽ tự dùng cấu hình auto_copy_enabled/auto_copy_targets của account trong accounts.xml (nếu có). "
-             "Truyền --copy \"\" để tắt hẳn copy (bỏ qua cả auto-copy).",
+             'Truyền --copy "" để tắt hẳn copy (bỏ qua cả auto-copy).',
     )
 
     args = parser.parse_args()
