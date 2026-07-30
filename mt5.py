@@ -184,11 +184,33 @@ def save_accounts(accounts):
 ACCOUNTS = load_accounts()
 
 
+def _accounts_file_mtime():
+    try:
+        return ACCOUNTS_FILE.stat().st_mtime
+    except OSError:
+        return None
+
+
+_accounts_mtime = _accounts_file_mtime()
+
+
 def reload_accounts():
     """Nạp lại ACCOUNTS từ accounts.xml (dùng sau khi sửa file hoặc lưu qua GUI)."""
-    global ACCOUNTS
+    global ACCOUNTS, _accounts_mtime
     ACCOUNTS = load_accounts()
+    _accounts_mtime = _accounts_file_mtime()
     return ACCOUNTS
+
+
+def ensure_accounts_fresh():
+    """Nếu accounts.xml đổi trên đĩa thì nạp lại vào bộ nhớ. Trả True nếu đã reload."""
+    global ACCOUNTS, _accounts_mtime
+    mtime = _accounts_file_mtime()
+    if mtime == _accounts_mtime:
+        return False
+    ACCOUNTS = load_accounts()
+    _accounts_mtime = _accounts_file_mtime()
+    return True
 
 
 def get_account(account_name):

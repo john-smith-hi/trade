@@ -11,12 +11,17 @@
 #
 # CHẠY
 #   python api.py
+#   hoặc start_api.bat
 #   (mặc định lắng nghe tại http://127.0.0.1:5001, chỉ localhost, không expose
 #   ra mạng ngoài vì có thao tác gửi lệnh thật + thông tin tài khoản)
 #
+# AUTO-RELOAD
+#   - Sửa file .py (api.py, mt5.py, ...) → process tự restart, nhận code mới.
+#   - Sửa xml/accounts.xml → nạp lại tự động ở request tiếp theo (không cần restart).
+#
 # ENDPOINT
 #   GET  /api/accounts          -> danh sách account (không kèm password)
-#   POST /api/reload-accounts   -> nạp lại xml/accounts.xml (sau khi sửa tay)
+#   POST /api/reload-accounts   -> nạp lại xml/accounts.xml (ép buộc)
 #   POST /api/action            -> thực thi action (status/open/close-all/modify-all)
 #   GET  /api/history?limit=50  -> N dòng gần nhất trong history_mt5.txt
 #
@@ -27,7 +32,9 @@
 
 import contextlib
 import io
+import os
 import threading
+from pathlib import Path
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -36,6 +43,7 @@ import mt5 as mt5app
 
 API_HOST = "127.0.0.1"
 API_PORT = 5001
+ROOT_DIR = Path(__file__).resolve().parent
 
 app = Flask(__name__)
 CORS(app)
@@ -43,6 +51,11 @@ CORS(app)
 # mt5.py giữ state toàn cục (NO_ASK, CURRENT_ACCOUNT_NAME, kết nối MT5 đang mở),
 # nên phải serialize mọi lệnh gọi vào đó để 2 request web không chạy song song.
 _lock = threading.Lock()
+
+
+def _watch_extra_files():
+    """Mọi file .py ở root project — đổi là reloader restart process."""
+    return [str(p) for p in ROOT_DIR.glob("*.py") if p.is_file()]
 
 
 def _account_public(acc):
@@ -69,7 +82,10 @@ def _to_float_or_none(value, field_name):
 
 @app.get("/api/accounts")
 def get_accounts():
-    return jsonify({"accounts": [_account_public(acc) for acc in mt5app.ACCOUNTS]})
+    with _lock:
+        mt5app.ensure_accounts_fresh()
+        accounts = [_account_public(acc) for acc in mt5app.ACCOUNTS]
+    return jsonify({"accounts": accounts})
 
 
 @app.post("/api/reload-accounts")
@@ -108,6 +124,7 @@ def action_endpoint():
 
     buf = io.StringIO()
     with _lock:
+        mt5app.ensure_accounts_fresh()
         try:
             with contextlib.redirect_stdout(buf):
                 mt5app.execute_request(
@@ -132,5 +149,15 @@ def history_endpoint():
 
 
 if __name__ == "__main__":
-    print(f"Đang chạy MT5 API tại http://{API_HOST}:{API_PORT} (chỉ localhost)")
-    app.run(host=API_HOST, port=API_PORT, threaded=True)
+    # Process mẹ của reloader có WERKZEUG_RUN_MAIN=false — bỏ qua banner trùng.
+    if os.environ.get("WERKZEUG_RUN_MAIN") != "false":
+        print(f"Đang chạy MT5 API tại http://{API_HOST}:{API_PORT} (chỉ localhost)")
+        print("Auto-reload: sửa .py → restart; sửa xml/accounts.xml → nạp lại ở request tiếp theo.")
+
+    app.run(
+        host=API_HOST,
+        port=API_PORT,
+        threaded=True,
+        use_reloader=True,
+        extra_files=_watch_extra_files(),
+    )
