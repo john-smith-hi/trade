@@ -48,6 +48,7 @@ Khi thêm file JS/CSS mới: **thêm vào list trong `ver.php`**.
 - **Accounts**: `Promise.all` paths + accounts; load song song.
 - **Trade (`app.js`)**:
   - Layout tham số: Symbol|Side → Lot (riêng dòng) → TP|SL (cùng dòng) → Comment (riêng) → Copy.
+  - Mobile (`≤720px`): nav scroll ngang dạng chip, form 1 cột, nút full-width, input 16px (tránh zoom iOS); TP|SL vẫn 2 cột (máy rất hẹp mới xếp dọc).
   - Chọn **open** → `GET /api/quote` điền TP/SL = giá entry (ask/bid theo side); đổi symbol/side/account thì lấy lại.
   - Chọn **modify-all** / **close-all** → `GET /api/positions` kiểm tra lệnh mở.
     - **Không có lệnh mở** → báo vô nghĩa, khóa nút Xem trước / Xác nhận.
