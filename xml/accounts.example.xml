@@ -2,21 +2,19 @@
 <!--
     MẪU file cấu hình tài khoản MT5 (không chứa dữ liệu thật, an toàn để commit lên git).
     Copy file này thành "accounts.xml" (trong thư mục xml/) rồi điền thông tin thật vào.
-    Có thể chỉnh sửa trực tiếp bằng tay bằng Notepad/VS Code.
 
     - name              : tên account dùng trong tham số account (không trùng nhau).
     - login             : số tài khoản MT5.
     - password          : mật khẩu đăng nhập MT5.
     - server            : tên server broker.
-    - path              : đường dẫn terminal64.exe tương ứng broker (để trống nếu dùng terminal mặc định).
+    - path              : TÊN path trong xml/paths.xml (vd: exness, ftmo) — KHÔNG ghi full path.
     - suffix            : hậu tố symbol riêng của broker (Exness = "m", FTMO = "").
     - multi             : hệ số nhân lot khi copy lệnh sang tài khoản này (bỏ trống/1.0 nếu không cần).
     - xauusd_max_loss   : |ước tính lỗ SL| tối đa cho XAUUSD/XAUUSDm (bỏ trống = không giới hạn;
                           khi là account copy và bỏ trống → lấy của account gốc × multi).
     - auto_copy_enabled : true/false, bật thì khi chạy account này (không truyền tham số copy),
                           sẽ TỰ ĐỘNG copy lệnh sang các account trong auto_copy_targets.
-    - auto_copy_targets : danh sách tên account tự động copy sang, phân tách bằng dấu phẩy (vd: prop_demo,prop_1).
-                          Chỉ có tác dụng khi auto_copy_enabled = true.
+    - auto_copy_targets : danh sách tên account tự động copy sang, phân tách bằng dấu phẩy.
 -->
 <accounts>
     <account>
@@ -24,7 +22,7 @@
         <login>0</login>
         <password>CHANGE_ME</password>
         <server>CHANGE_ME</server>
-        <path></path>
+        <path>exness</path>
         <suffix></suffix>
         <multi>1.0</multi>
         <xauusd_max_loss></xauusd_max_loss>

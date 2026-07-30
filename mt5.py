@@ -10,7 +10,8 @@
 #     tự tạo từ xml/accounts.example.xml (dữ liệu mẫu) khi chạy lần đầu.
 #   - Sửa trực tiếp file này bằng tay (Notepad/VS Code...) để thêm/sửa/xóa tài khoản.
 #   - name   : tên account dùng trong --account.
-#   - path   : đường dẫn terminal64.exe (Exness và FTMO dùng terminal riêng).
+#   - path   : TÊN path trong xml/paths.xml (vd: exness, ftmo) — không ghi full path.
+#   - Đường dẫn terminal64.exe khai báo trong xml/paths.xml (name + exe).
 #   - suffix : hậu tố symbol theo broker — Exness = "m", FTMO = "".
 #              Ví dụ --symbol XAUUSD → XAUUSDm (Exness) hoặc XAUUSD (FTMO).
 #   - multi  : hệ số nhân lot khi copy lệnh sang tài khoản đó.
@@ -86,6 +87,8 @@ HISTORY_FILE = Path(__file__).with_name("history_mt5.txt")
 XML_DIR = Path(__file__).with_name("xml")
 ACCOUNTS_FILE = XML_DIR / "accounts.xml"
 ACCOUNTS_EXAMPLE_FILE = XML_DIR / "accounts.example.xml"
+PATHS_FILE = XML_DIR / "paths.xml"
+PATHS_EXAMPLE_FILE = XML_DIR / "paths.example.xml"
 
 COPYABLE_ACTIONS = {"open", "close-all", "modify-all"}
 NO_ASK = False
@@ -117,11 +120,66 @@ def _xml_list(node, tag):
     return [item.strip() for item in text.split(",") if item.strip()]
 
 
+def _default_paths():
+    return [
+        {
+            "name": "exness",
+            "exe": r"C:\Program Files\MetaTrader 5 EXNESS\terminal64.exe",
+        },
+        {
+            "name": "ftmo",
+            "exe": r"C:\Program Files\FTMO Global Markets MT5 Terminal\terminal64.exe",
+        },
+    ]
+
+
+def load_paths():
+    """Đọc danh sách path (name → exe) từ xml/paths.xml."""
+    XML_DIR.mkdir(parents=True, exist_ok=True)
+    if not PATHS_FILE.exists():
+        if PATHS_EXAMPLE_FILE.exists():
+            PATHS_FILE.write_text(PATHS_EXAMPLE_FILE.read_text(encoding="utf-8"), encoding="utf-8")
+        else:
+            save_paths(_default_paths())
+
+    try:
+        root = ET.parse(PATHS_FILE).getroot()
+    except ET.ParseError as exc:
+        raise RuntimeError(f"File paths.xml bị lỗi định dạng: {exc}")
+
+    paths = []
+    for node in root.findall("path"):
+        name = _xml_text(node, "name").lower()
+        exe = _xml_text(node, "exe")
+        if not name:
+            continue
+        paths.append({"name": name, "exe": exe})
+    if not paths:
+        paths = _default_paths()
+        save_paths(paths)
+    return paths
+
+
+def save_paths(paths):
+    """Ghi danh sách path ra xml/paths.xml."""
+    XML_DIR.mkdir(parents=True, exist_ok=True)
+    root = ET.Element("paths")
+    for item in paths:
+        node = ET.SubElement(root, "path")
+        ET.SubElement(node, "name").text = str(item.get("name", "")).strip().lower()
+        ET.SubElement(node, "exe").text = str(item.get("exe") or "")
+    tree = ET.ElementTree(root)
+    ET.indent(tree, space="    ")
+    tree.write(PATHS_FILE, encoding="UTF-8", xml_declaration=True)
+
+
 def load_accounts():
     """Đọc danh sách tài khoản từ accounts.xml.
 
     Nếu accounts.xml chưa tồn tại, tự tạo từ accounts.example.xml (hoặc file rỗng
     nếu không có mẫu) để lần đầu chạy không bị lỗi thiếu file.
+
+    Trường path trên account là TÊN path trong paths.xml (vd: exness, ftmo).
     """
     XML_DIR.mkdir(parents=True, exist_ok=True)
     if not ACCOUNTS_FILE.exists():
@@ -161,12 +219,19 @@ def load_accounts():
             except ValueError:
                 xauusd_max_loss = None
 
+        path_ref = _xml_text(node, "path") or None
+        if path_ref:
+            path_ref = path_ref.strip()
+            # Chuẩn hóa tên path về chữ thường nếu không phải legacy full path.
+            if not _looks_like_filesystem_path(path_ref):
+                path_ref = path_ref.lower()
+
         accounts.append({
             "name": name,
             "login": login,
             "password": _xml_text(node, "password"),
             "server": _xml_text(node, "server"),
-            "path": _xml_text(node, "path") or None,
+            "path": path_ref,
             "suffix": _xml_text(node, "suffix"),
             "multi": multi,
             "xauusd_max_loss": xauusd_max_loss,
@@ -186,7 +251,10 @@ def save_accounts(accounts):
         ET.SubElement(node, "login").text = str(acc.get("login", 0))
         ET.SubElement(node, "password").text = str(acc.get("password", ""))
         ET.SubElement(node, "server").text = str(acc.get("server", ""))
-        ET.SubElement(node, "path").text = str(acc.get("path") or "")
+        path_ref = acc.get("path") or ""
+        if path_ref and not _looks_like_filesystem_path(str(path_ref)):
+            path_ref = str(path_ref).strip().lower()
+        ET.SubElement(node, "path").text = str(path_ref)
         ET.SubElement(node, "suffix").text = str(acc.get("suffix", ""))
         ET.SubElement(node, "multi").text = str(acc.get("multi", 1.0))
         max_loss = acc.get("xauusd_max_loss")
@@ -199,7 +267,20 @@ def save_accounts(accounts):
     tree.write(ACCOUNTS_FILE, encoding="UTF-8", xml_declaration=True)
 
 
+def _looks_like_filesystem_path(value):
+    text = str(value or "")
+    return ("\\" in text) or ("/" in text) or text.lower().endswith(".exe")
+
+
+PATHS = load_paths()
 ACCOUNTS = load_accounts()
+
+
+def _paths_file_mtime():
+    try:
+        return PATHS_FILE.stat().st_mtime
+    except OSError:
+        return None
 
 
 def _accounts_file_mtime():
@@ -209,12 +290,69 @@ def _accounts_file_mtime():
         return None
 
 
+_paths_mtime = _paths_file_mtime()
 _accounts_mtime = _accounts_file_mtime()
+
+
+def reload_paths():
+    """Nạp lại PATHS từ paths.xml."""
+    global PATHS, _paths_mtime
+    PATHS = load_paths()
+    _paths_mtime = _paths_file_mtime()
+    return PATHS
+
+
+def ensure_paths_fresh():
+    """Nếu paths.xml đổi trên đĩa thì nạp lại. Trả True nếu đã reload."""
+    global PATHS, _paths_mtime
+    mtime = _paths_file_mtime()
+    if mtime == _paths_mtime:
+        return False
+    PATHS = load_paths()
+    _paths_mtime = _paths_file_mtime()
+    return True
+
+
+def get_path_entry(path_name):
+    """Lấy cấu hình path theo name (vd: exness, ftmo)."""
+    key = str(path_name or "").strip().lower()
+    for item in PATHS:
+        if item.get("name") == key:
+            return item
+    raise RuntimeError(f"Không tìm thấy path tên: {path_name}")
+
+
+def resolve_terminal_path(account):
+    """Từ account.path (tên trong paths.xml) → đường dẫn exe thật.
+
+    Hỗ trợ legacy: nếu path vẫn là full path (.exe / có \\) thì dùng trực tiếp.
+    """
+    path_ref = account.get("path")
+    if not path_ref:
+        return None
+    path_ref = str(path_ref).strip()
+    if not path_ref:
+        return None
+    if _looks_like_filesystem_path(path_ref):
+        return path_ref
+    entry = get_path_entry(path_ref)
+    exe = (entry.get("exe") or "").strip()
+    if not exe:
+        raise RuntimeError(
+            f"Path '{path_ref}' chưa có exe trong paths.xml. "
+            f"Vào trang Accounts → Cấu hình path để điền terminal64.exe."
+        )
+    if "CHANGE_ME" in exe:
+        raise RuntimeError(
+            f"Path '{path_ref}' chưa cấu hình exe thật (còn CHANGE_ME)."
+        )
+    return exe
 
 
 def reload_accounts():
     """Nạp lại ACCOUNTS từ accounts.xml (dùng sau khi sửa file hoặc lưu qua GUI)."""
     global ACCOUNTS, _accounts_mtime
+    ensure_paths_fresh()
     ACCOUNTS = load_accounts()
     _accounts_mtime = _accounts_file_mtime()
     return ACCOUNTS
@@ -223,6 +361,7 @@ def reload_accounts():
 def ensure_accounts_fresh():
     """Nếu accounts.xml đổi trên đĩa thì nạp lại vào bộ nhớ. Trả True nếu đã reload."""
     global ACCOUNTS, _accounts_mtime
+    ensure_paths_fresh()
     mtime = _accounts_file_mtime()
     if mtime == _accounts_mtime:
         return False
@@ -325,18 +464,13 @@ def confirm_action(message):
 def connect_mt5(account):
     global CURRENT_ACCOUNT_NAME
 
-    terminal_path = account.get("path")
-    if terminal_path and "CHANGE_ME" in str(terminal_path):
-        raise RuntimeError(
-            f"Chưa cấu hình đường dẫn terminal MT5 cho account '{account['name']}'. "
-            f"Điền trường \"path\" trong ACCOUNTS trỏ tới terminal64.exe do broker cấp (VD: FTMO)."
-        )
+    terminal_path = resolve_terminal_path(account)
 
     # Ngắt phiên MT5 cũ trước khi gắn terminal khác (Exness -> FTMO Demo -> FTMO Server).
     # Nếu không shutdown, tick/symbol có thể còn cache từ terminal trước -> giá vào sai.
     mt5.shutdown()
 
-    # Với các broker/prop-firm khác (VD: FTMO), phải chỉ định "path" tới terminal MT5 riêng của họ,
+    # Với các broker/prop-firm khác (VD: FTMO), phải chỉ định path tới terminal MT5 riêng của họ,
     # vì terminal MT5 mặc định (thường là bản Exness) không có server tương ứng nên sẽ bị IPC timeout.
     init_kwargs = {
         "login": account["login"],
@@ -364,13 +498,14 @@ def connect_mt5(account):
         mt5.shutdown()
         raise RuntimeError(
             f"Sau khi đăng nhập, terminal không khớp account '{account['name']}' "
-            f"(mong đợi login {account['login']}). Kiểm tra trường \"path\" trong accounts.xml."
+            f"(mong đợi login {account['login']}). Kiểm tra path '{account.get('path')}' trong paths.xml."
         )
 
     CURRENT_ACCOUNT_NAME = account["name"]
+    path_ref = account.get("path") or "(mặc định)"
     terminal_label = terminal_path or "(terminal mặc định đang chạy)"
     print(f"Đang sử dụng tài khoản {account['name']}: {account['login']} | server: {account['server']}")
-    print(f"Terminal: {terminal_label}")
+    print(f"Path config: {path_ref} → {terminal_label}")
     print("Đăng nhập MT5 thành công!")
 
 
@@ -588,7 +723,10 @@ def get_filling_mode(symbol):
 
 
 def validate_tp_sl(side, entry_price, tp_price, sl_price, is_modification=False):
-    """Kiểm tra hướng TP/SL. is_modification chỉ cho phép truyền None (không đổi field đó)."""
+    """Kiểm tra hướng TP/SL so với giá vào (dùng cho open).
+
+    is_modification: chỉ cho phép None (không đổi field đó). Không dùng so với giá thị trường.
+    """
     side_l = (side or "").lower()
     entry = float(entry_price)
 
@@ -607,6 +745,31 @@ def validate_tp_sl(side, entry_price, tp_price, sl_price, is_modification=False)
             raise RuntimeError(f"TP bán không hợp lệ: {tp_price} phải nhỏ hơn giá mở {entry}")
         if sl_price is not None and sl_price <= entry:
             raise RuntimeError(f"SL bán không hợp lệ: {sl_price} phải lớn hơn giá mở {entry}")
+
+
+def validate_tp_sl_modify(side, tp_price, sl_price):
+    """Modify-all: không so với giá hiện tại / giá mở — chỉ kiểm tra TP/SL hợp lệ theo side.
+
+    BUY: SL < TP (nếu cả hai có). SELL: TP < SL (nếu cả hai có). Giá phải > 0.
+    """
+    side_l = (side or "").lower()
+
+    if tp_price is not None and tp_price <= 0:
+        raise RuntimeError("TP phải lớn hơn 0")
+    if sl_price is not None and sl_price <= 0:
+        raise RuntimeError("SL phải lớn hơn 0")
+
+    if tp_price is None or sl_price is None:
+        return
+
+    tp = float(tp_price)
+    sl = float(sl_price)
+    if side_l == "buy":
+        if not (sl < tp):
+            raise RuntimeError(f"TP/SL mua không hợp lệ: cần SL < TP (SL={sl}, TP={tp})")
+    else:
+        if not (tp < sl):
+            raise RuntimeError(f"TP/SL bán không hợp lệ: cần TP < SL (TP={tp}, SL={sl})")
 
 
 def calculate_position_pnl(position):
@@ -903,7 +1066,11 @@ def modify_all_positions_tp_sl(tp_price=None, sl_price=None):
             print(f"  → TP mới: {tp_price}")
         if sl_price is not None:
             print(f"  → SL mới: {sl_price}")
-        print_tp_sl_warnings(side, position.price_open, new_tp, new_sl, indent="  ")
+        # Modify: không bắt so với giá hiện tại / giá mở — chỉ kiểm tra cặp TP/SL theo side.
+        try:
+            validate_tp_sl_modify(side, new_tp, new_sl)
+        except RuntimeError as exc:
+            print(f"  [CẢNH BÁO] {exc}", flush=True)
         print_open_tp_sl_estimate(position.symbol, side, position.price_open, new_tp, new_sl, position.volume)
         if new_sl is not None:
             validate_xauusd_max_loss(position.symbol, side, position.price_open, new_sl, position.volume)
@@ -916,13 +1083,12 @@ def modify_all_positions_tp_sl(tp_price=None, sl_price=None):
     for position in positions:
         side = "buy" if position.type == mt5.ORDER_TYPE_BUY else "sell"
 
-        if tp_price is not None:
-            validate_tp_sl(side, position.price_open, tp_price, None, is_modification=True)
-        if sl_price is not None:
-            validate_tp_sl(side, position.price_open, None, sl_price, is_modification=True)
-
         new_tp = tp_price if tp_price is not None else position.tp
         new_sl = sl_price if sl_price is not None else position.sl
+        check_tp = tp_price if tp_price is not None else (new_tp if new_tp and new_tp > 0 else None)
+        check_sl = sl_price if sl_price is not None else (new_sl if new_sl and new_sl > 0 else None)
+        validate_tp_sl_modify(side, check_tp, check_sl)
+
         if new_sl is not None and new_sl > 0:
             validate_xauusd_max_loss(position.symbol, side, position.price_open, new_sl, position.volume)
 
@@ -952,6 +1118,44 @@ def modify_all_positions_tp_sl(tp_price=None, sl_price=None):
         results.append(result)
 
     return results
+
+
+def fetch_quote(account, symbol, side="buy"):
+    """Lấy bid/ask/entry cho symbol sau khi connect account. Caller chịu trách nhiệm shutdown."""
+    symbol = select_symbol(symbol, account)
+    tick = get_current_price(symbol)
+    side_l = (side or "buy").lower()
+    entry = tick.ask if side_l == "buy" else tick.bid
+    return {
+        "symbol": symbol,
+        "side": side_l,
+        "bid": float(tick.bid),
+        "ask": float(tick.ask),
+        "entry": float(entry),
+    }
+
+
+def list_open_positions_data():
+    """Snapshot lệnh mở (JSON-friendly) — dùng cho UI điền SL/TP từ status."""
+    positions = mt5.positions_get()
+    if not positions:
+        return []
+    rows = []
+    for position in positions:
+        side = "buy" if position.type == mt5.ORDER_TYPE_BUY else "sell"
+        sl = float(getattr(position, "sl", 0) or 0)
+        tp = float(getattr(position, "tp", 0) or 0)
+        rows.append({
+            "ticket": int(position.ticket),
+            "symbol": position.symbol,
+            "side": side,
+            "volume": float(position.volume),
+            "price_open": float(position.price_open),
+            "sl": sl if sl > 0 else None,
+            "tp": tp if tp > 0 else None,
+            "profit": float(getattr(position, "profit", 0) or 0),
+        })
+    return rows
 
 
 def run_action_on_account(account, args, lot):

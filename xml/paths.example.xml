@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    MẪU cấu hình đường dẫn terminal MT5 (an toàn để commit).
+    Copy thành paths.xml nếu chưa có. Account chỉ chọn theo <name>, không nhập full path.
+    - name : tên ngắn dùng trong accounts.xml (vd: exness, ftmo)
+    - exe  : đường dẫn đầy đủ tới terminal64.exe
+-->
+<paths>
+    <path>
+        <name>exness</name>
+        <exe>C:\Program Files\MetaTrader 5 EXNESS\terminal64.exe</exe>
+    </path>
+    <path>
+        <name>ftmo</name>
+        <exe>C:\Program Files\FTMO Global Markets MT5 Terminal\terminal64.exe</exe>
+    </path>
+</paths>

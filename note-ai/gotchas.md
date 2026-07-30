@@ -2,24 +2,25 @@
 
 ## 1. `NameError: DEFAULT_XAUUSD_MAX_LOSS is not defined`
 
-Xảy ra khi xóa hằng mặc định nhưng `load_accounts` vẫn còn nhánh cũ.
-Hiện tại: trống → `None`. Nếu gặp lại: kiểm tra còn sót tên `DEFAULT_XAUUSD_MAX_LOSS` và restart API.
+Xảy ra khi xóa hằng mặc định nhưng `load_accounts` vẫn còn nhánh cũ / process API cũ.
+Hiện tại: trống → `None`. Nếu gặp lại: grep còn sót tên hằng và **restart** `start_api.bat`.
 
-## 2. Sửa `accounts.xml` mà web vẫn hiện config cũ
+## 2. Sửa `accounts.xml` / `paths.xml` mà web vẫn hiện config cũ
 
-- UI cache lúc load trang — cần focus tab / bấm Preview / nút Tải lại danh sách.
-- Process API cũ chưa có watch XML — restart `start_api.bat` một lần sau khi pull/sửa `api.py`.
+- Soft-reload + Flask reloader đã có — xem `auto-reload.md`.
+- UI còn GET cache ~15s → bấm **Tải lại danh sách** hoặc đợi / focus tab.
+- Process API rất cũ (trước khi có watch XML) → restart `start_api.bat` một lần.
 
 ## 3. Không commit secrets
 
 - `xml/accounts.xml` có password thật → gitignore.
-- Chỉ commit `xml/accounts.example.xml`.
-- Không paste login/password vào note-ai hoặc chat commit message.
+- Chỉ commit `*.example.xml`.
+- Không paste login/password vào note-ai hoặc commit message.
 
 ## 4. `--no-ask` / `no_ask`
 
 Không có → chỉ xem trước, **không** gửi lệnh thật (kể cả copy).
-Web: nút Confirm mới gửi `no_ask: true`.
+Web: nút **Xác nhận gửi lệnh thật** mới gửi `no_ask: true`.
 
 ## 5. Symbol suffix
 
@@ -31,4 +32,40 @@ Mọi thao tác MT5 đi qua một lock trong `api.py`. Đừng bỏ lock khi th�
 
 ## 7. Web UI ngoài repo
 
-Sửa `app.js` / `proxy.php` tại `D:\wamp64\www\mt5\` — **không** nằm trong git `trade`. Nhớ đồng bộ tay nếu làm việc máy khác.
+Sửa file tại `D:\wamp64\www\mt5\` — **không** nằm trong git `trade`. Nhớ đồng bộ tay nếu làm việc máy khác.
+
+## 8. `<path>` trong accounts là tên, không phải đường dẫn
+
+Ghi full `C:\...\terminal64.exe` vào accounts → resolve lỗi.
+Đúng: `paths.xml` giữ exe; accounts chỉ ghi `exness` / `ftmo`.
+
+## 9. Không sửa login/password/server trên UI edit
+
+`PUT /api/accounts/<name>` cố ý giữ nguyên credentials. Muốn đổi login → phải sửa XML tay (hoặc xóa+thêm ngoài UI — UI không có xóa).
+
+## 10. Cache CSS/JS — đừng quay lại URL trần hoặc `?t=` mỗi F5
+
+- URL trần sau khi từng dùng `?t=` → trình duyệt lấy bản cache **cũ nhất**.
+- `?t=Date.now()` mỗi lần → không tận dụng cache, dễ làm rối debug.
+- Đúng: `ver.php` + `?v=filemtime` — xem `web-ui.md`.
+- Thêm file JS/CSS mới → cập nhật list trong `ver.php`.
+
+## 11. Trang web “đứng” / overlay busy kẹt
+
+Nguyên nhân đã gặp:
+
+- Load script bằng `createElement` + `onload` (chain gãy nếu lỗi).
+- Busy count / overlay không clear khi API lỗi / timeout.
+
+Hiện tại: `document.write` + busy watchdog ~20s + `markApiError` → `clearBusyHard`.
+Nếu vẫn đứng: kiểm tra `start_api.bat` còn chạy; DevTools Network xem `proxy.php` / `ver.php`.
+
+## 12. History API
+
+`GET /api/history` trả `{ lines, rows }`. UI dùng `rows` (đã parse). Limit max 500.
+
+## 13. Quote / positions cho form ra lệnh
+
+- `GET /api/quote` — cần account + MT5 connect; timeout UI ~30s.
+- `GET /api/positions` — snapshot lệnh mở để điền modify-all.
+- Modify-all **không** validate TP/SL so với giá thị trường (chỉ cặp theo side) — xem `web-ui.md`.

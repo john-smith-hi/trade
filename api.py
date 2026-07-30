@@ -21,12 +21,17 @@
 #     xml/accounts.xml và nạp lại ngay nếu file đổi (không chờ reloader).
 #
 # ENDPOINT
-#   GET  /api/accounts          -> danh sách account (không kèm password; có path)
+#   GET  /api/paths             -> danh sách path (name + exe) từ xml/paths.xml
+#   POST /api/paths             -> thêm path mới
+#   PUT  /api/paths/<name>      -> sửa exe của path (không đổi name)
+#   GET  /api/accounts          -> danh sách account (path = tên path; có path_exe)
 #   POST /api/accounts          -> thêm account mới
 #   PUT  /api/accounts/<name>   -> sửa cấu hình (không đổi login/password/server/name)
 #   POST /api/reload-accounts   -> nạp lại xml/accounts.xml (ép buộc)
 #   POST /api/action            -> thực thi action (status/open/close-all/modify-all)
-#   GET  /api/history?limit=50  -> N dòng gần nhất trong history_mt5.txt
+#   GET  /api/quote?account=&symbol=&side=  -> bid/ask/entry (điền TP/SL khi open)
+#   GET  /api/positions?account=            -> lệnh mở JSON (điền TP/SL khi modify-all)
+#   GET  /api/history?limit=50  -> lịch sử (lines + rows đã parse cho bảng)
 #
 # Kết quả của /api/action trả về đúng nguyên văn các dòng print() của mt5.py
 # (dạng text, giống output khi chạy CLI), để hiển thị trực tiếp trên web.
@@ -60,24 +65,50 @@ def _watch_extra_files():
     """Mọi .py (root) và mọi .xml trong project — đổi là reloader restart process."""
     watched = {p.resolve() for p in ROOT_DIR.glob("*.py") if p.is_file()}
     watched.update(p.resolve() for p in ROOT_DIR.rglob("*.xml") if p.is_file())
-    # Luôn theo dõi accounts.xml kể cả lúc chưa tồn tại (tạo sau khi API đã chạy).
     watched.add((ROOT_DIR / "xml" / "accounts.xml").resolve())
+    watched.add((ROOT_DIR / "xml" / "paths.xml").resolve())
     return [str(p) for p in sorted(watched)]
+
+
+def _resolve_path_exe(path_ref):
+    if not path_ref:
+        return ""
+    try:
+        return mt5app.resolve_terminal_path({"path": path_ref}) or ""
+    except RuntimeError:
+        return ""
 
 
 def _account_public(acc):
     """Thông tin account an toàn để trả cho web, KHÔNG bao gồm password."""
+    path_ref = acc.get("path") or ""
     return {
         "name": acc.get("name"),
         "login": acc.get("login"),
         "server": acc.get("server"),
-        "path": acc.get("path") or "",
+        "path": path_ref,
+        "path_exe": _resolve_path_exe(path_ref),
         "suffix": acc.get("suffix"),
         "multi": acc.get("multi"),
         "xauusd_max_loss": acc.get("xauusd_max_loss"),
         "auto_copy_enabled": acc.get("auto_copy_enabled"),
         "auto_copy_targets": acc.get("auto_copy_targets"),
     }
+
+
+def _validate_path_ref(path_ref):
+    """path trên account phải là tên trong paths.xml (hoặc rỗng)."""
+    if path_ref in (None, ""):
+        return None
+    ref = str(path_ref).strip().lower()
+    if mt5app._looks_like_filesystem_path(ref):
+        raise ValueError(
+            "path của account phải là tên trong paths.xml (vd: exness, ftmo), không nhập full path."
+        )
+    names = {p.get("name") for p in mt5app.PATHS}
+    if ref not in names:
+        raise ValueError(f"Path '{ref}' không tồn tại trong paths.xml. Các path hiện có: {', '.join(sorted(names))}")
+    return ref
 
 
 def _to_float_or_none(value, field_name):
@@ -132,8 +163,7 @@ def _parse_editable_fields(data, *, require_present=False):
 
     fields = {}
     if "path" in data:
-        path = data.get("path")
-        fields["path"] = (str(path).strip() if path not in (None, "") else None)
+        fields["path"] = _validate_path_ref(data.get("path"))
     if "suffix" in data:
         fields["suffix"] = str(data.get("suffix") or "")
     if "multi" in data:
@@ -152,6 +182,71 @@ def _find_account_index(name):
         if acc.get("name") == name:
             return idx
     return None
+
+
+def _find_path_index(name):
+    key = str(name or "").strip().lower()
+    for idx, item in enumerate(mt5app.PATHS):
+        if item.get("name") == key:
+            return idx
+    return None
+
+
+@app.get("/api/paths")
+def get_paths():
+    with _lock:
+        mt5app.ensure_paths_fresh()
+        paths = list(mt5app.PATHS)
+    return jsonify({"paths": paths})
+
+
+@app.post("/api/paths")
+def create_path_endpoint():
+    data = request.get_json(silent=True) or {}
+    name = str(data.get("name") or "").strip().lower()
+    exe = str(data.get("exe") or "").strip()
+    if not name:
+        return jsonify({"error": "Thiếu 'name'"}), 400
+    if not exe:
+        return jsonify({"error": "Thiếu 'exe'"}), 400
+    if mt5app._looks_like_filesystem_path(name):
+        return jsonify({"error": "name path không được là đường dẫn file"}), 400
+
+    with _lock:
+        mt5app.ensure_paths_fresh()
+        if _find_path_index(name) is not None:
+            return jsonify({"error": f"Path '{name}' đã tồn tại"}), 400
+        paths = list(mt5app.PATHS)
+        paths.append({"name": name, "exe": exe})
+        mt5app.save_paths(paths)
+        paths = mt5app.reload_paths()
+    return jsonify({"paths": paths}), 201
+
+
+@app.put("/api/paths/<name>")
+def update_path_endpoint(name):
+    data = request.get_json(silent=True) or {}
+    if "name" in data:
+        return jsonify({"error": "Không được đổi name của path"}), 400
+    if "exe" not in data:
+        return jsonify({"error": "Thiếu 'exe'"}), 400
+    exe = str(data.get("exe") or "").strip()
+    if not exe:
+        return jsonify({"error": "'exe' không được rỗng"}), 400
+
+    with _lock:
+        mt5app.ensure_paths_fresh()
+        idx = _find_path_index(name)
+        if idx is None:
+            return jsonify({"error": f"Không tìm thấy path '{name}'"}), 404
+        paths = list(mt5app.PATHS)
+        updated = dict(paths[idx])
+        updated["exe"] = exe
+        updated["name"] = paths[idx]["name"]
+        paths[idx] = updated
+        mt5app.save_paths(paths)
+        paths = mt5app.reload_paths()
+    return jsonify({"paths": paths})
 
 
 @app.get("/api/accounts")
@@ -193,7 +288,9 @@ def create_account_endpoint():
         if k in data
     }
     try:
-        editable = _parse_editable_fields(editable_raw)
+        with _lock:
+            mt5app.ensure_paths_fresh()
+            editable = _parse_editable_fields(editable_raw)
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
 
@@ -229,8 +326,10 @@ def update_account_endpoint(name):
         return jsonify({"error": "Body JSON không hợp lệ"}), 400
 
     try:
-        # Sửa: bắt buộc gửi đủ các trường editable để form UI đồng bộ.
-        fields = _parse_editable_fields(data, require_present=True)
+        with _lock:
+            mt5app.ensure_paths_fresh()
+            # Sửa: bắt buộc gửi đủ các trường editable để form UI đồng bộ.
+            fields = _parse_editable_fields(data, require_present=True)
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
 
@@ -304,15 +403,120 @@ def action_endpoint():
     return jsonify({"output": buf.getvalue()})
 
 
+@app.get("/api/quote")
+def quote_endpoint():
+    """Lấy bid/ask/entry cho symbol — dùng UI điền TP/SL khi chọn open."""
+    account_name = (request.args.get("account") or "").strip()
+    symbol = (request.args.get("symbol") or "XAUUSD").strip()
+    side = (request.args.get("side") or "buy").strip().lower()
+    if not account_name:
+        return jsonify({"error": "Thiếu 'account'"}), 400
+    if side not in ("buy", "sell"):
+        return jsonify({"error": "'side' phải là buy hoặc sell"}), 400
+
+    buf = io.StringIO()
+    with _lock:
+        mt5app.ensure_accounts_fresh()
+        try:
+            account = mt5app.get_account(account_name)
+        except Exception as exc:
+            return jsonify({"error": str(exc)}), 404
+        try:
+            with contextlib.redirect_stdout(buf):
+                mt5app.connect_mt5(account)
+                quote = mt5app.fetch_quote(account, symbol, side)
+        except Exception as exc:
+            return jsonify({"error": str(exc), "detail": buf.getvalue()}), 500
+        finally:
+            try:
+                mt5app.mt5.shutdown()
+            except Exception:
+                pass
+
+    return jsonify(quote)
+
+
+@app.get("/api/positions")
+def positions_endpoint():
+    """Lệnh đang mở (JSON) — dùng UI điền TP/SL khi chọn modify-all."""
+    account_name = (request.args.get("account") or "").strip()
+    if not account_name:
+        return jsonify({"error": "Thiếu 'account'"}), 400
+
+    buf = io.StringIO()
+    with _lock:
+        mt5app.ensure_accounts_fresh()
+        try:
+            account = mt5app.get_account(account_name)
+        except Exception as exc:
+            return jsonify({"error": str(exc)}), 404
+        try:
+            with contextlib.redirect_stdout(buf):
+                mt5app.connect_mt5(account)
+                positions = mt5app.list_open_positions_data()
+        except Exception as exc:
+            return jsonify({"error": str(exc), "detail": buf.getvalue()}), 500
+        finally:
+            try:
+                mt5app.mt5.shutdown()
+            except Exception:
+                pass
+
+    return jsonify({"positions": positions})
+
+
 @app.get("/api/history")
 def history_endpoint():
     limit = request.args.get("limit", default=50, type=int)
+    if limit is None or limit < 1:
+        limit = 50
+    limit = min(limit, 500)
+
     if not mt5app.HISTORY_FILE.exists():
-        return jsonify({"lines": []})
+        return jsonify({"lines": [], "rows": []})
 
     text = mt5app.HISTORY_FILE.read_text(encoding="utf-8")
     lines = [line for line in text.splitlines() if line.strip()]
-    return jsonify({"lines": lines[:limit]})
+    lines = lines[:limit]
+    rows = [_parse_history_line(line) for line in lines]
+    return jsonify({"lines": lines, "rows": rows})
+
+
+def _parse_history_line(line):
+    """Parse 1 dòng history_mt5.txt thành object bảng."""
+    parts = [p.strip() for p in str(line).split("|")]
+    row = {
+        "time": "",
+        "account": "",
+        "symbol": "",
+        "lot": "",
+        "status": "",
+        "ticket": "",
+        "retcode": "",
+        "comment": "",
+        "detail": "",
+        "raw": line,
+    }
+    if not parts:
+        return row
+
+    # Phần đầu thường là timestamp (không có key=).
+    first = parts[0]
+    if "=" not in first:
+        row["time"] = first
+        parts = parts[1:]
+    else:
+        row["time"] = ""
+
+    for part in parts:
+        if "=" not in part:
+            continue
+        key, value = part.split("=", 1)
+        key = key.strip().lower()
+        value = value.strip()
+        if key in row:
+            row[key] = value
+    return row
 
 
 if __name__ == "__main__":
