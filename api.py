@@ -21,7 +21,9 @@
 #     xml/accounts.xml và nạp lại ngay nếu file đổi (không chờ reloader).
 #
 # ENDPOINT
-#   GET  /api/accounts          -> danh sách account (không kèm password)
+#   GET  /api/accounts          -> danh sách account (không kèm password; có path)
+#   POST /api/accounts          -> thêm account mới
+#   PUT  /api/accounts/<name>   -> sửa cấu hình (không đổi login/password/server/name)
 #   POST /api/reload-accounts   -> nạp lại xml/accounts.xml (ép buộc)
 #   POST /api/action            -> thực thi action (status/open/close-all/modify-all)
 #   GET  /api/history?limit=50  -> N dòng gần nhất trong history_mt5.txt
@@ -69,6 +71,7 @@ def _account_public(acc):
         "name": acc.get("name"),
         "login": acc.get("login"),
         "server": acc.get("server"),
+        "path": acc.get("path") or "",
         "suffix": acc.get("suffix"),
         "multi": acc.get("multi"),
         "xauusd_max_loss": acc.get("xauusd_max_loss"),
@@ -86,12 +89,170 @@ def _to_float_or_none(value, field_name):
         raise ValueError(f"'{field_name}' không hợp lệ: {value!r}")
 
 
+def _to_float(value, field_name, default=None):
+    if value in (None, ""):
+        if default is not None:
+            return default
+        raise ValueError(f"Thiếu '{field_name}'")
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"'{field_name}' không hợp lệ: {value!r}")
+
+
+def _parse_auto_copy_targets(value):
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    return [item.strip() for item in str(value).split(",") if item.strip()]
+
+
+def _parse_editable_fields(data, *, require_present=False):
+    """Parse các trường được phép sửa (không gồm login/password/server/name)."""
+    allowed = {
+        "path", "suffix", "multi", "xauusd_max_loss",
+        "auto_copy_enabled", "auto_copy_targets",
+    }
+    forbidden = {"login", "password", "server", "name"}
+    present_forbidden = sorted(forbidden & set(data.keys()))
+    if present_forbidden:
+        raise ValueError(
+            "Không được thay đổi: " + ", ".join(present_forbidden)
+        )
+
+    unknown = sorted(set(data.keys()) - allowed)
+    if unknown:
+        raise ValueError("Trường không hỗ trợ: " + ", ".join(unknown))
+
+    if require_present:
+        missing = sorted(allowed - set(data.keys()))
+        if missing:
+            raise ValueError("Thiếu trường: " + ", ".join(missing))
+
+    fields = {}
+    if "path" in data:
+        path = data.get("path")
+        fields["path"] = (str(path).strip() if path not in (None, "") else None)
+    if "suffix" in data:
+        fields["suffix"] = str(data.get("suffix") or "")
+    if "multi" in data:
+        fields["multi"] = _to_float(data.get("multi"), "multi", default=1.0)
+    if "xauusd_max_loss" in data:
+        fields["xauusd_max_loss"] = _to_float_or_none(data.get("xauusd_max_loss"), "xauusd_max_loss")
+    if "auto_copy_enabled" in data:
+        fields["auto_copy_enabled"] = bool(data.get("auto_copy_enabled"))
+    if "auto_copy_targets" in data:
+        fields["auto_copy_targets"] = _parse_auto_copy_targets(data.get("auto_copy_targets"))
+    return fields
+
+
+def _find_account_index(name):
+    for idx, acc in enumerate(mt5app.ACCOUNTS):
+        if acc.get("name") == name:
+            return idx
+    return None
+
+
 @app.get("/api/accounts")
 def get_accounts():
     with _lock:
         mt5app.ensure_accounts_fresh()
         accounts = [_account_public(acc) for acc in mt5app.ACCOUNTS]
     return jsonify({"accounts": accounts})
+
+
+@app.post("/api/accounts")
+def create_account_endpoint():
+    data = request.get_json(silent=True) or {}
+    name = str(data.get("name") or "").strip()
+    if not name:
+        return jsonify({"error": "Thiếu 'name'"}), 400
+
+    required = ("login", "password", "server")
+    missing = [k for k in required if data.get(k) in (None, "")]
+    if missing:
+        return jsonify({"error": "Thiếu: " + ", ".join(missing)}), 400
+
+    try:
+        login = int(data.get("login"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "'login' không hợp lệ"}), 400
+
+    password = str(data.get("password"))
+    server = str(data.get("server")).strip()
+    if not server:
+        return jsonify({"error": "Thiếu 'server'"}), 400
+
+    editable_raw = {
+        k: data[k]
+        for k in (
+            "path", "suffix", "multi", "xauusd_max_loss",
+            "auto_copy_enabled", "auto_copy_targets",
+        )
+        if k in data
+    }
+    try:
+        editable = _parse_editable_fields(editable_raw)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    new_account = {
+        "name": name,
+        "login": login,
+        "password": password,
+        "server": server,
+        "path": editable.get("path"),
+        "suffix": editable.get("suffix", ""),
+        "multi": editable.get("multi", 1.0),
+        "xauusd_max_loss": editable.get("xauusd_max_loss"),
+        "auto_copy_enabled": editable.get("auto_copy_enabled", False),
+        "auto_copy_targets": editable.get("auto_copy_targets", []),
+    }
+
+    with _lock:
+        mt5app.ensure_accounts_fresh()
+        if _find_account_index(name) is not None:
+            return jsonify({"error": f"Account '{name}' đã tồn tại"}), 400
+        accounts = list(mt5app.ACCOUNTS)
+        accounts.append(new_account)
+        mt5app.save_accounts(accounts)
+        accounts = mt5app.reload_accounts()
+
+    return jsonify({"accounts": [_account_public(acc) for acc in accounts]}), 201
+
+
+@app.put("/api/accounts/<name>")
+def update_account_endpoint(name):
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"error": "Body JSON không hợp lệ"}), 400
+
+    try:
+        # Sửa: bắt buộc gửi đủ các trường editable để form UI đồng bộ.
+        fields = _parse_editable_fields(data, require_present=True)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    with _lock:
+        mt5app.ensure_accounts_fresh()
+        idx = _find_account_index(name)
+        if idx is None:
+            return jsonify({"error": f"Không tìm thấy account '{name}'"}), 404
+
+        accounts = list(mt5app.ACCOUNTS)
+        updated = dict(accounts[idx])
+        # Giữ nguyên login / password / server / name.
+        updated.update(fields)
+        updated["name"] = accounts[idx]["name"]
+        updated["login"] = accounts[idx]["login"]
+        updated["password"] = accounts[idx]["password"]
+        updated["server"] = accounts[idx]["server"]
+        accounts[idx] = updated
+        mt5app.save_accounts(accounts)
+        accounts = mt5app.reload_accounts()
+
+    return jsonify({"accounts": [_account_public(acc) for acc in accounts]})
 
 
 @app.post("/api/reload-accounts")

@@ -11,7 +11,8 @@ start_api.bat
 Web UI (không nằm trong repo trade):
 
 - Thư mục: `D:\wamp64\www\mt5\`
-- File chính: `index.html`, `app.js`, `proxy.php`, `style.css`
+- Trang ra lệnh: `index.html`, `app.js`, `proxy.php`, `style.css` → `http://localhost/mt5/`
+- Trang quản lý account: `account/index.html`, `account/account.js` → `http://localhost/mt5/account/`
 - Trình duyệt → `proxy.php` → `http://127.0.0.1:5001/...`
 - Lý do có proxy: `api.py` chỉ bind localhost; máy khác / ngrok không gọi thẳng được.
 
