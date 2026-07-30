@@ -16,8 +16,9 @@
 #   ra mạng ngoài vì có thao tác gửi lệnh thật + thông tin tài khoản)
 #
 # AUTO-RELOAD
-#   - Sửa file .py (api.py, mt5.py, ...) → process tự restart, nhận code mới.
-#   - Sửa xml/accounts.xml → nạp lại tự động ở request tiếp theo (không cần restart).
+#   - Sửa file .py hoặc bất kỳ file .xml trong project → process tự restart, nạp lại toàn bộ.
+#   - Thêm lớp an toàn: mỗi request /api/accounts và /api/action vẫn kiểm tra mtime
+#     xml/accounts.xml và nạp lại ngay nếu file đổi (không chờ reloader).
 #
 # ENDPOINT
 #   GET  /api/accounts          -> danh sách account (không kèm password)
@@ -54,8 +55,12 @@ _lock = threading.Lock()
 
 
 def _watch_extra_files():
-    """Mọi file .py ở root project — đổi là reloader restart process."""
-    return [str(p) for p in ROOT_DIR.glob("*.py") if p.is_file()]
+    """Mọi .py (root) và mọi .xml trong project — đổi là reloader restart process."""
+    watched = {p.resolve() for p in ROOT_DIR.glob("*.py") if p.is_file()}
+    watched.update(p.resolve() for p in ROOT_DIR.rglob("*.xml") if p.is_file())
+    # Luôn theo dõi accounts.xml kể cả lúc chưa tồn tại (tạo sau khi API đã chạy).
+    watched.add((ROOT_DIR / "xml" / "accounts.xml").resolve())
+    return [str(p) for p in sorted(watched)]
 
 
 def _account_public(acc):
@@ -153,7 +158,7 @@ if __name__ == "__main__":
     # Process mẹ của reloader có WERKZEUG_RUN_MAIN=false — bỏ qua banner trùng.
     if os.environ.get("WERKZEUG_RUN_MAIN") != "false":
         print(f"Đang chạy MT5 API tại http://{API_HOST}:{API_PORT} (chỉ localhost)")
-        print("Auto-reload: sửa .py → restart; sửa xml/accounts.xml → nạp lại ở request tiếp theo.")
+        print("Auto-reload: sửa .py hoặc .xml → process restart và nạp lại nội dung.")
 
     app.run(
         host=API_HOST,

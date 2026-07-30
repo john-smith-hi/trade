@@ -14,7 +14,8 @@
 #   - suffix : hậu tố symbol theo broker — Exness = "m", FTMO = "".
 #              Ví dụ --symbol XAUUSD → XAUUSDm (Exness) hoặc XAUUSD (FTMO).
 #   - multi  : hệ số nhân lot khi copy lệnh sang tài khoản đó.
-#   - xauusd_max_loss : |ước tính lỗ SL| tối đa cho XAUUSD (mặc định 40 nếu bỏ trống).
+#   - xauusd_max_loss : |ước tính lỗ SL| tối đa cho XAUUSD (bỏ trống = không giới hạn).
+#     Khi copy: account đích bỏ trống thì lấy xauusd_max_loss của account gốc × multi.
 #   - auto_copy_enabled/auto_copy_targets : bật thì account đó sẽ TỰ ĐỘNG copy
 #     lệnh sang các account trong auto_copy_targets mỗi khi chạy (không cần
 #     truyền --copy). Ví dụ: account "real" auto_copy_targets=prop_demo,prop_1.
@@ -91,7 +92,10 @@ NO_ASK = False
 DEFAULT_MAGIC = 234567
 DEFAULT_DEVIATION = 20
 CURRENT_ACCOUNT_NAME = None
-DEFAULT_XAUUSD_MAX_LOSS = 40.0
+# Giới hạn XAUUSD đang áp dụng cho action hiện tại (None = không giới hạn).
+# Dùng object() làm sentinel để phân biệt "chưa set" vs "không giới hạn".
+_UNSET_MAX_LOSS = object()
+_ACTIVE_XAUUSD_MAX_LOSS = _UNSET_MAX_LOSS
 
 
 def _xml_text(node, tag, default=""):
@@ -149,10 +153,13 @@ def load_accounts():
             multi = 1.0
 
         max_loss_text = _xml_text(node, "xauusd_max_loss")
-        try:
-            xauusd_max_loss = float(max_loss_text) if max_loss_text else DEFAULT_XAUUSD_MAX_LOSS
-        except ValueError:
-            xauusd_max_loss = DEFAULT_XAUUSD_MAX_LOSS
+        # Bỏ trống = không giới hạn (None).
+        xauusd_max_loss = None
+        if max_loss_text:
+            try:
+                xauusd_max_loss = float(max_loss_text)
+            except ValueError:
+                xauusd_max_loss = None
 
         accounts.append({
             "name": name,
@@ -182,7 +189,8 @@ def save_accounts(accounts):
         ET.SubElement(node, "path").text = str(acc.get("path") or "")
         ET.SubElement(node, "suffix").text = str(acc.get("suffix", ""))
         ET.SubElement(node, "multi").text = str(acc.get("multi", 1.0))
-        ET.SubElement(node, "xauusd_max_loss").text = str(acc.get("xauusd_max_loss", DEFAULT_XAUUSD_MAX_LOSS))
+        max_loss = acc.get("xauusd_max_loss")
+        ET.SubElement(node, "xauusd_max_loss").text = "" if max_loss is None else str(max_loss)
         ET.SubElement(node, "auto_copy_enabled").text = "true" if acc.get("auto_copy_enabled") else "false"
         ET.SubElement(node, "auto_copy_targets").text = ",".join(acc.get("auto_copy_targets") or [])
 
@@ -234,22 +242,39 @@ def get_account_multi(account):
     return account.get("multi", 1.0)
 
 
-def get_xauusd_max_loss(account=None):
-    """Lấy giới hạn lỗ XAUUSD từ account đang chạy (hoặc account truyền vào)."""
-    if account is None and CURRENT_ACCOUNT_NAME:
-        try:
-            account = get_account(CURRENT_ACCOUNT_NAME)
-        except RuntimeError:
-            account = None
-    if account is None:
-        return DEFAULT_XAUUSD_MAX_LOSS
-    value = account.get("xauusd_max_loss")
-    if value is None:
-        return DEFAULT_XAUUSD_MAX_LOSS
+def _optional_max_loss(value):
+    """None / rỗng = không giới hạn; số hợp lệ = giới hạn."""
+    if value is None or value == "":
+        return None
     try:
         return float(value)
     except (TypeError, ValueError):
-        return DEFAULT_XAUUSD_MAX_LOSS
+        return None
+
+
+def get_xauusd_max_loss(account=None):
+    """Lấy giới hạn lỗ XAUUSD. Trả None nếu không cấu hình (không giới hạn)."""
+    if account is not None:
+        return _optional_max_loss(account.get("xauusd_max_loss"))
+    if _ACTIVE_XAUUSD_MAX_LOSS is not _UNSET_MAX_LOSS:
+        return _optional_max_loss(_ACTIVE_XAUUSD_MAX_LOSS)
+    if CURRENT_ACCOUNT_NAME:
+        try:
+            return _optional_max_loss(get_account(CURRENT_ACCOUNT_NAME).get("xauusd_max_loss"))
+        except RuntimeError:
+            return None
+    return None
+
+
+def resolve_copy_xauusd_max_loss(copy_account, primary_account):
+    """Giới hạn khi copy: dùng của account đích nếu có; không thì gốc × multi; gốc trống → None."""
+    own = _optional_max_loss(copy_account.get("xauusd_max_loss"))
+    if own is not None:
+        return own
+    primary = _optional_max_loss(primary_account.get("xauusd_max_loss"))
+    if primary is None:
+        return None
+    return primary * get_account_multi(copy_account)
 
 
 def get_auto_copy_targets(account):
@@ -412,12 +437,17 @@ def is_xauusd_symbol(symbol):
     return base.upper() == "XAUUSD"
 
 
-def validate_xauusd_max_loss(symbol, side, entry_price, sl_price, volume):
-    """Với XAUUSD: ước tính lỗ tại SL không được lớn hơn xauusd_max_loss của account."""
+def validate_xauusd_max_loss(symbol, side, entry_price, sl_price, volume, account=None):
+    """Với XAUUSD: ước tính lỗ tại SL không được lớn hơn xauusd_max_loss.
+    Không cấu hình xauusd_max_loss → bỏ qua (không giới hạn).
+    """
     if sl_price is None or not is_xauusd_symbol(symbol):
         return
 
-    max_loss = get_xauusd_max_loss()
+    max_loss = get_xauusd_max_loss(account)
+    if max_loss is None:
+        return
+
     contract_size = resolve_contract_size(symbol)
     estimated = estimate_tp_sl_pnl(side, entry_price, None, sl_price, volume, contract_size)
     sl_pnl = estimated.get("sl")
@@ -693,7 +723,7 @@ def open_trade(account, symbol, side, lot, tp_price=None, sl_price=None, comment
     estimated = estimate_tp_sl_pnl(side, entry_price, tp_price, sl_price, lot, contract_size)
     print(f"Ước tính lời TP: {estimated.get('tp', 0):.8f}")
     print(f"Ước tính lỗ SL: {estimated.get('sl', 0):.8f}")
-    validate_xauusd_max_loss(symbol, side, entry_price, sl_price, lot)
+    validate_xauusd_max_loss(symbol, side, entry_price, sl_price, lot, account=account)
 
     if not confirm_action("Bạn có muốn thực hiện hành động này không?"):
         print("Đã hủy mở lệnh.")
@@ -925,19 +955,24 @@ def modify_all_positions_tp_sl(tp_price=None, sl_price=None):
 
 
 def run_action_on_account(account, args, lot):
-    connect_mt5(account)
-    if args.action == "open":
-        open_trade(account, args.symbol, args.side, lot, args.tp_price, args.sl_price, args.comment)
-    elif args.action == "close-all":
-        close_all_positions()
-    elif args.action == "modify-all":
-        if args.tp_price is None and args.sl_price is None:
-            raise RuntimeError("Cần cung cấp ít nhất --tp-price hoặc --sl-price để thay đổi")
-        modify_all_positions_tp_sl(args.tp_price, args.sl_price)
-    else:
-        print_account_info()
-        print_open_positions()
-        print_pending_orders()
+    global _ACTIVE_XAUUSD_MAX_LOSS
+    _ACTIVE_XAUUSD_MAX_LOSS = account.get("xauusd_max_loss")
+    try:
+        connect_mt5(account)
+        if args.action == "open":
+            open_trade(account, args.symbol, args.side, lot, args.tp_price, args.sl_price, args.comment)
+        elif args.action == "close-all":
+            close_all_positions()
+        elif args.action == "modify-all":
+            if args.tp_price is None and args.sl_price is None:
+                raise RuntimeError("Cần cung cấp ít nhất --tp-price hoặc --sl-price để thay đổi")
+            modify_all_positions_tp_sl(args.tp_price, args.sl_price)
+        else:
+            print_account_info()
+            print_open_positions()
+            print_pending_orders()
+    finally:
+        _ACTIVE_XAUUSD_MAX_LOSS = _UNSET_MAX_LOSS
 
 
 def execute_request(account_name, action, symbol="XAUUSD", side="buy", lot=0.01,
@@ -985,12 +1020,25 @@ def execute_request(account_name, action, symbol="XAUUSD", side="buy", lot=0.01,
             for copy_name in copy_names:
                 print(f"\n--- [COPY] Đang thực thi sang tài khoản {copy_name} ---")
                 try:
-                    copy_account = get_account(copy_name)
+                    source_copy = get_account(copy_name)
+                    copy_account = dict(source_copy)
+                    own_max_loss = _optional_max_loss(source_copy.get("xauusd_max_loss"))
+                    inherited_max_loss = resolve_copy_xauusd_max_loss(copy_account, primary_account)
+                    copy_account["xauusd_max_loss"] = inherited_max_loss
                     mt5.shutdown()
                     time.sleep(0.5)
-                    lot_for_copy = lot * get_account_multi(copy_account) if action == "open" else lot
+                    multi = get_account_multi(copy_account)
+                    lot_for_copy = lot * multi if action == "open" else lot
                     if action == "open" and lot_for_copy != lot:
-                        print(f"Lot gốc: {lot} → Lot copy ({copy_name}, MULTI={get_account_multi(copy_account)}): {lot_for_copy}")
+                        print(f"Lot gốc: {lot} → Lot copy ({copy_name}, MULTI={multi}): {lot_for_copy}")
+                    if own_max_loss is None and inherited_max_loss is not None:
+                        primary_loss = _optional_max_loss(primary_account.get("xauusd_max_loss"))
+                        print(
+                            f"[COPY] xauusd_max_loss kế thừa từ '{account_name}': "
+                            f"{primary_loss} × multi {multi} = {inherited_max_loss}"
+                        )
+                    elif inherited_max_loss is None:
+                        print(f"[COPY] xauusd_max_loss: không giới hạn (gốc và đích đều bỏ trống)")
                     run_action_on_account(copy_account, args, lot_for_copy)
                 except Exception as copy_exc:
                     print(f"[COPY LỖI - {copy_name}] {copy_exc}")
