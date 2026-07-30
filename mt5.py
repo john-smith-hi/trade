@@ -14,6 +14,7 @@
 #   - suffix : hậu tố symbol theo broker — Exness = "m", FTMO = "".
 #              Ví dụ --symbol XAUUSD → XAUUSDm (Exness) hoặc XAUUSD (FTMO).
 #   - multi  : hệ số nhân lot khi copy lệnh sang tài khoản đó.
+#   - xauusd_max_loss : |ước tính lỗ SL| tối đa cho XAUUSD (mặc định 40 nếu bỏ trống).
 #   - auto_copy_enabled/auto_copy_targets : bật thì account đó sẽ TỰ ĐỘNG copy
 #     lệnh sang các account trong auto_copy_targets mỗi khi chạy (không cần
 #     truyền --copy). Ví dụ: account "real" auto_copy_targets=prop_demo,prop_1.
@@ -90,6 +91,7 @@ NO_ASK = False
 DEFAULT_MAGIC = 234567
 DEFAULT_DEVIATION = 20
 CURRENT_ACCOUNT_NAME = None
+DEFAULT_XAUUSD_MAX_LOSS = 40.0
 
 
 def _xml_text(node, tag, default=""):
@@ -146,6 +148,12 @@ def load_accounts():
         except ValueError:
             multi = 1.0
 
+        max_loss_text = _xml_text(node, "xauusd_max_loss")
+        try:
+            xauusd_max_loss = float(max_loss_text) if max_loss_text else DEFAULT_XAUUSD_MAX_LOSS
+        except ValueError:
+            xauusd_max_loss = DEFAULT_XAUUSD_MAX_LOSS
+
         accounts.append({
             "name": name,
             "login": login,
@@ -154,6 +162,7 @@ def load_accounts():
             "path": _xml_text(node, "path") or None,
             "suffix": _xml_text(node, "suffix"),
             "multi": multi,
+            "xauusd_max_loss": xauusd_max_loss,
             "auto_copy_enabled": _xml_bool(node, "auto_copy_enabled", False),
             "auto_copy_targets": _xml_list(node, "auto_copy_targets"),
         })
@@ -173,6 +182,7 @@ def save_accounts(accounts):
         ET.SubElement(node, "path").text = str(acc.get("path") or "")
         ET.SubElement(node, "suffix").text = str(acc.get("suffix", ""))
         ET.SubElement(node, "multi").text = str(acc.get("multi", 1.0))
+        ET.SubElement(node, "xauusd_max_loss").text = str(acc.get("xauusd_max_loss", DEFAULT_XAUUSD_MAX_LOSS))
         ET.SubElement(node, "auto_copy_enabled").text = "true" if acc.get("auto_copy_enabled") else "false"
         ET.SubElement(node, "auto_copy_targets").text = ",".join(acc.get("auto_copy_targets") or [])
 
@@ -222,6 +232,24 @@ def get_account(account_name):
 
 def get_account_multi(account):
     return account.get("multi", 1.0)
+
+
+def get_xauusd_max_loss(account=None):
+    """Lấy giới hạn lỗ XAUUSD từ account đang chạy (hoặc account truyền vào)."""
+    if account is None and CURRENT_ACCOUNT_NAME:
+        try:
+            account = get_account(CURRENT_ACCOUNT_NAME)
+        except RuntimeError:
+            account = None
+    if account is None:
+        return DEFAULT_XAUUSD_MAX_LOSS
+    value = account.get("xauusd_max_loss")
+    if value is None:
+        return DEFAULT_XAUUSD_MAX_LOSS
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return DEFAULT_XAUUSD_MAX_LOSS
 
 
 def get_auto_copy_targets(account):
@@ -374,6 +402,34 @@ def estimate_tp_sl_pnl(side, entry_price, tp_price, sl_price, volume, contract_s
         else:
             estimated["sl"] = (float(entry_price) - float(sl_price)) * float(volume) * float(contract_size)
     return estimated
+
+
+def is_xauusd_symbol(symbol):
+    """Nhận XAUUSD và biến thể có hậu tố broker (vd: XAUUSDm)."""
+    if not symbol:
+        return False
+    base = symbol[:-1] if symbol.endswith("m") else symbol
+    return base.upper() == "XAUUSD"
+
+
+def validate_xauusd_max_loss(symbol, side, entry_price, sl_price, volume):
+    """Với XAUUSD: ước tính lỗ tại SL không được lớn hơn xauusd_max_loss của account."""
+    if sl_price is None or not is_xauusd_symbol(symbol):
+        return
+
+    max_loss = get_xauusd_max_loss()
+    contract_size = resolve_contract_size(symbol)
+    estimated = estimate_tp_sl_pnl(side, entry_price, None, sl_price, volume, contract_size)
+    sl_pnl = estimated.get("sl")
+    if sl_pnl is None:
+        return
+
+    loss_amount = abs(sl_pnl) if sl_pnl < 0 else 0.0
+    if loss_amount > max_loss:
+        raise RuntimeError(
+            f"Symbol {symbol}: ước tính lỗ SL={sl_pnl:.8f} vượt giới hạn {max_loss} "
+            f"(|lỗ|={loss_amount:.8f} > {max_loss}, cấu hình xauusd_max_loss trong accounts.xml)"
+        )
 
 
 def resolve_contract_size(symbol):
@@ -637,6 +693,7 @@ def open_trade(account, symbol, side, lot, tp_price=None, sl_price=None, comment
     estimated = estimate_tp_sl_pnl(side, entry_price, tp_price, sl_price, lot, contract_size)
     print(f"Ước tính lời TP: {estimated.get('tp', 0):.8f}")
     print(f"Ước tính lỗ SL: {estimated.get('sl', 0):.8f}")
+    validate_xauusd_max_loss(symbol, side, entry_price, sl_price, lot)
 
     if not confirm_action("Bạn có muốn thực hiện hành động này không?"):
         print("Đã hủy mở lệnh.")
@@ -818,6 +875,8 @@ def modify_all_positions_tp_sl(tp_price=None, sl_price=None):
             print(f"  → SL mới: {sl_price}")
         print_tp_sl_warnings(side, position.price_open, new_tp, new_sl, indent="  ")
         print_open_tp_sl_estimate(position.symbol, side, position.price_open, new_tp, new_sl, position.volume)
+        if new_sl is not None:
+            validate_xauusd_max_loss(position.symbol, side, position.price_open, new_sl, position.volume)
 
     if not confirm_action("Bạn có muốn thay đổi TP/SL cho tất cả các lệnh này không?"):
         print("Đã hủy thay đổi TP/SL cho tất cả lệnh.")
@@ -834,6 +893,8 @@ def modify_all_positions_tp_sl(tp_price=None, sl_price=None):
 
         new_tp = tp_price if tp_price is not None else position.tp
         new_sl = sl_price if sl_price is not None else position.sl
+        if new_sl is not None and new_sl > 0:
+            validate_xauusd_max_loss(position.symbol, side, position.price_open, new_sl, position.volume)
 
         request = {
             "action": mt5.TRADE_ACTION_SLTP,

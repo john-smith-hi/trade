@@ -66,6 +66,7 @@ def _account_public(acc):
         "server": acc.get("server"),
         "suffix": acc.get("suffix"),
         "multi": acc.get("multi"),
+        "xauusd_max_loss": acc.get("xauusd_max_loss"),
         "auto_copy_enabled": acc.get("auto_copy_enabled"),
         "auto_copy_targets": acc.get("auto_copy_targets"),
     }

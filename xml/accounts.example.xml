@@ -11,6 +11,7 @@
     - path              : đường dẫn terminal64.exe tương ứng broker (để trống nếu dùng terminal mặc định).
     - suffix            : hậu tố symbol riêng của broker (Exness = "m", FTMO = "").
     - multi             : hệ số nhân lot khi copy lệnh sang tài khoản này (bỏ trống/1.0 nếu không cần).
+    - xauusd_max_loss   : |ước tính lỗ SL| tối đa cho XAUUSD/XAUUSDm (bỏ trống = 40).
     - auto_copy_enabled : true/false, bật thì khi chạy account này (không truyền tham số copy),
                           sẽ TỰ ĐỘNG copy lệnh sang các account trong auto_copy_targets.
     - auto_copy_targets : danh sách tên account tự động copy sang, phân tách bằng dấu phẩy (vd: prop_demo,prop_1).
@@ -25,6 +26,7 @@
         <path></path>
         <suffix></suffix>
         <multi>1.0</multi>
+        <xauusd_max_loss>40</xauusd_max_loss>
         <auto_copy_enabled>false</auto_copy_enabled>
         <auto_copy_targets></auto_copy_targets>
     </account>
