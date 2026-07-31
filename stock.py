@@ -5,7 +5,7 @@ Cách sử dụng:
   python stock.py "<MÃ>" [SỐ_PHIÊN] [INTERVAL] [-o OUTPUT_FILE]
 
 Tham số:
-  MÃ          Mã cần xem (FPT, VNM, BTC, GOLD, WTI, BRENT, NAS100, ...)
+  MÃ          Mã cần xem (FPT, VNM, VNINDEX, BTC, GOLD, WTI, BRENT, NAS100, ...)
               Nhiều mã: "FPT VNM" hoặc "BTC,ETH,BNB"
               Hậu tố m (chữ thường): lọc phiên Mỹ 20:00-03:00 VN
               (vd: GOLDm, BTCm, NAS100m — áp dụng cho bất kỳ mã nào)
@@ -61,6 +61,12 @@ YF_MAPPING = {
     'ETH': ('ETH-USD', 'Ethereum / USD'),
     'BNB': ('BNB-USD', 'Binance Coin / USD'),
     'NAS100': ('NQ=F', 'Nasdaq 100 Futures')
+}
+
+# Chỉ số VN (dài >= 4) — phải đi vnstock, không fallback Yahoo
+VN_INDICES = {
+    'VNINDEX', 'VN30', 'VN100', 'VNMID', 'VNSML',
+    'HNX', 'HNXINDEX', 'HNX30', 'UPCOM',
 }
 
 def parse_interval(interval_str):
@@ -310,6 +316,8 @@ def fetch_stock_df(sym, limit=20, interval='1D', us_only=False):
         return fetch_tv_df(sym, TV_MAPPING[sym], interval, limit, value, unit, us_only=us_only)
     if sym in YF_MAPPING:
         return fetch_yf_df(sym, YF_MAPPING[sym], interval, limit, value, unit, us_only=us_only)
+    if sym in VN_INDICES:
+        return fetch_vnstock_df(sym, limit, interval, value, unit, us_only=us_only)
     if len(sym) >= 4 or sym in ['AMD', 'IBM', 'INTC', 'KO', 'DIS', 'NKE']:
         return fetch_yf_df(sym, None, interval, limit, value, unit, us_only=us_only)
     return fetch_vnstock_df(sym, limit, interval, value, unit, us_only=us_only)
@@ -374,7 +382,9 @@ def analyze_stock(sym, limit, interval='1D', us_only=False):
             analyze_tv(sym, TV_MAPPING[sym], interval, limit, value, unit, us_only=us_only)
         elif sym in YF_MAPPING:
             analyze_yf(sym, YF_MAPPING[sym], interval, limit, value, unit, us_only=us_only)
-        elif len(sym) >= 4 or sym in ['AMD', 'IBM', 'INTC', 'KO', 'DIS', 'NKE']: # Global stocks fallback
+        elif sym in VN_INDICES:
+            analyze_vnstock(sym, limit, interval, value, unit, us_only=us_only)
+        elif len(sym) >= 4 or sym in ['AMD', 'IBM', 'INTC', 'KO', 'DIS', 'NKE']:  # Global stocks fallback
             analyze_yf(sym, None, interval, limit, value, unit, us_only=us_only)
         else:
             analyze_vnstock(sym, limit, interval, value, unit, us_only=us_only)
