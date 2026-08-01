@@ -1,3 +1,574 @@
+2026-08-01 21:05:35 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778735 | retcode=10009 | comment=Close position | detail=ticket=509778734
+2026-08-01 21:05:33 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463507234 | retcode=10009 | comment=Close position | detail=ticket=4463507172
+2026-08-01 21:05:32 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563828751 | retcode=10009 | comment=Close position | detail=ticket=3563828691
+2026-08-01 21:05:28 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463507172 | retcode=10009 | comment=S5_multi_fake2_and_prop-r10
+2026-08-01 21:05:26 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509778734 | retcode=10009 | comment= | detail=fill=63056.8
+2026-08-01 21:05:26 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563828691 | retcode=10009 | comment=S5_multi_fake2_and_prop-r10
+2026-08-01 21:05:20 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778728 | retcode=10009 | comment=Close position | detail=ticket=509778726
+2026-08-01 21:05:18 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463507028 | retcode=10009 | comment=Close position | detail=ticket=4463506973
+2026-08-01 21:05:16 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563828676 | retcode=10009 | comment=Close position | detail=ticket=3563828668
+2026-08-01 21:05:12 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463506973 | retcode=10009 | comment=S5_multi_fake2_and_prop-r9
+2026-08-01 21:05:11 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509778726 | retcode=10009 | comment= | detail=fill=63056.8
+2026-08-01 21:05:11 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563828668 | retcode=10009 | comment=S5_multi_fake2_and_prop-r9
+2026-08-01 21:05:04 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778725 | retcode=10009 | comment=Close position | detail=ticket=509778724
+2026-08-01 21:05:03 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463506879 | retcode=10009 | comment=Close position | detail=ticket=4463506845
+2026-08-01 21:05:01 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563828660 | retcode=10009 | comment=Close position | detail=ticket=3563828655
+2026-08-01 21:04:57 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463506845 | retcode=10009 | comment=S5_multi_fake2_and_prop-r8
+2026-08-01 21:04:55 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509778724 | retcode=10009 | comment= | detail=fill=63056.8
+2026-08-01 21:04:55 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563828655 | retcode=10009 | comment=S5_multi_fake2_and_prop-r8
+2026-08-01 21:04:50 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778721 | retcode=10009 | comment=Close position | detail=ticket=509778695
+2026-08-01 21:04:48 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463506729 | retcode=10009 | comment=Close position | detail=ticket=4463506614
+2026-08-01 21:04:45 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563828614 | retcode=10009 | comment=Close position | detail=ticket=3563828606
+2026-08-01 21:04:41 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463506614 | retcode=10009 | comment=S5_multi_fake2_and_prop-r7
+2026-08-01 21:04:38 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509778695 | retcode=10009 | comment= | detail=fill=63054.8
+2026-08-01 21:04:38 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563828606 | retcode=10009 | comment=S5_multi_fake2_and_prop-r7
+2026-08-01 21:04:33 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778663 | retcode=10009 | comment=Close position | detail=ticket=509778625
+2026-08-01 21:04:32 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463506452 | retcode=10009 | comment=Close position | detail=ticket=4463506332
+2026-08-01 21:04:30 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563828549 | retcode=10009 | comment=Close position | detail=ticket=3563828507
+2026-08-01 21:04:25 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463506332 | retcode=10009 | comment=S5_multi_fake2_and_prop-r6
+2026-08-01 21:04:23 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509778625 | retcode=10009 | comment= | detail=fill=63053.82
+2026-08-01 21:04:23 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563828507 | retcode=10009 | comment=S5_multi_fake2_and_prop-r6
+2026-08-01 21:04:17 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778620 | retcode=10009 | comment=Close position | detail=ticket=509778577
+2026-08-01 21:04:16 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463506229 | retcode=10009 | comment=Close position | detail=ticket=4463506194
+2026-08-01 21:04:14 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563828449 | retcode=10009 | comment=Close position | detail=ticket=3563828385
+2026-08-01 21:04:06 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463506194 | retcode=10009 | comment=S5_multi_fake2_and_prop-r5
+2026-08-01 21:04:04 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509778577 | retcode=10009 | comment= | detail=fill=63052.4
+2026-08-01 21:04:04 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563828385 | retcode=10009 | comment=S5_multi_fake2_and_prop-r5
+2026-08-01 21:03:56 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778570 | retcode=10009 | comment=Close position | detail=ticket=509778567
+2026-08-01 21:03:55 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463506124 | retcode=10009 | comment=Close position | detail=ticket=4463506072
+2026-08-01 21:03:53 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563828342 | retcode=10009 | comment=Close position | detail=ticket=3563828316
+2026-08-01 21:03:46 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463506072 | retcode=10009 | comment=S5_multi_fake2_and_prop-r4
+2026-08-01 21:03:45 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509778567 | retcode=10009 | comment= | detail=fill=63052.4
+2026-08-01 21:03:45 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563828316 | retcode=10009 | comment=S5_multi_fake2_and_prop-r4
+2026-08-01 21:03:37 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778563 | retcode=10009 | comment=Close position | detail=ticket=509778561
+2026-08-01 21:03:36 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463505762 | retcode=10009 | comment=Close position | detail=ticket=4463505671
+2026-08-01 21:03:34 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563828282 | retcode=10009 | comment=Close position | detail=ticket=3563828242
+2026-08-01 21:03:30 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463505671 | retcode=10009 | comment=S5_multi_fake2_and_prop-r3
+2026-08-01 21:03:28 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509778561 | retcode=10009 | comment= | detail=fill=63052.4
+2026-08-01 21:03:28 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563828242 | retcode=10009 | comment=S5_multi_fake2_and_prop-r3
+2026-08-01 21:03:23 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778559 | retcode=10009 | comment=Close position | detail=ticket=509778547
+2026-08-01 21:03:22 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463505463 | retcode=10009 | comment=Close position | detail=ticket=4463505390
+2026-08-01 21:03:20 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563828194 | retcode=10009 | comment=Close position | detail=ticket=3563828169
+2026-08-01 21:03:16 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463505390 | retcode=10009 | comment=S5_multi_fake2_and_prop-r2
+2026-08-01 21:03:14 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509778547 | retcode=10009 | comment= | detail=fill=63050.19
+2026-08-01 21:03:14 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563828169 | retcode=10009 | comment=S5_multi_fake2_and_prop-r2
+2026-08-01 21:03:07 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778504 | retcode=10009 | comment=Close position | detail=ticket=509778491
+2026-08-01 21:03:06 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463505085 | retcode=10009 | comment=Close position | detail=ticket=4463504708
+2026-08-01 21:03:03 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563828030 | retcode=10009 | comment=Close position | detail=ticket=3563827912
+2026-08-01 21:02:56 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463504708 | retcode=10009 | comment=S5_multi_fake2_and_prop-r1
+2026-08-01 21:02:54 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509778491 | retcode=10009 | comment= | detail=fill=63047.76
+2026-08-01 21:02:54 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563827912 | retcode=10009 | comment=S5_multi_fake2_and_prop-r1
+2026-08-01 21:02:49 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778483 | retcode=10009 | comment=Close position | detail=ticket=509778482
+2026-08-01 21:02:47 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563827543 | retcode=10009 | comment=Close position | detail=ticket=3563827479
+2026-08-01 21:02:45 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509778482 | retcode=10009 | comment= | detail=fill=63047.76
+2026-08-01 21:02:45 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563827479 | retcode=10009 | comment=S4_cross_ftmo_prewarm-r10
+2026-08-01 21:02:40 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778474 | retcode=10009 | comment=Close position | detail=ticket=509778472
+2026-08-01 21:02:38 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563827444 | retcode=10009 | comment=Close position | detail=ticket=3563827431
+2026-08-01 21:02:36 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509778472 | retcode=10009 | comment= | detail=fill=63047.76
+2026-08-01 21:02:36 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563827431 | retcode=10009 | comment=S4_cross_ftmo_prewarm-r9
+2026-08-01 21:02:31 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778470 | retcode=10009 | comment=Close position | detail=ticket=509778459
+2026-08-01 21:02:29 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563827383 | retcode=10009 | comment=Close position | detail=ticket=3563827349
+2026-08-01 21:02:27 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509778459 | retcode=10009 | comment= | detail=fill=63047.68
+2026-08-01 21:02:27 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563827349 | retcode=10009 | comment=S4_cross_ftmo_prewarm-r8
+2026-08-01 21:02:23 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778452 | retcode=10009 | comment=Close position | detail=ticket=509778450
+2026-08-01 21:02:21 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563827315 | retcode=10009 | comment=Close position | detail=ticket=3563827310
+2026-08-01 21:02:19 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509778450 | retcode=10009 | comment= | detail=fill=63047.83
+2026-08-01 21:02:19 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563827310 | retcode=10009 | comment=S4_cross_ftmo_prewarm-r7
+2026-08-01 21:02:15 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778447 | retcode=10009 | comment=Close position | detail=ticket=509778439
+2026-08-01 21:02:13 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563827284 | retcode=10009 | comment=Close position | detail=ticket=3563827281
+2026-08-01 21:02:10 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509778439 | retcode=10009 | comment= | detail=fill=63038.4
+2026-08-01 21:02:10 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563827281 | retcode=10009 | comment=S4_cross_ftmo_prewarm-r6
+2026-08-01 21:02:07 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778435 | retcode=10009 | comment=Close position | detail=ticket=509778432
+2026-08-01 21:02:05 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563827256 | retcode=10009 | comment=Close position | detail=ticket=3563827241
+2026-08-01 21:02:02 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509778432 | retcode=10009 | comment= | detail=fill=63038.4
+2026-08-01 21:02:02 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563827241 | retcode=10009 | comment=S4_cross_ftmo_prewarm-r5
+2026-08-01 21:01:58 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778431 | retcode=10009 | comment=Close position | detail=ticket=509778430
+2026-08-01 21:01:56 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563827217 | retcode=10009 | comment=Close position | detail=ticket=3563827213
+2026-08-01 21:01:54 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509778430 | retcode=10009 | comment= | detail=fill=63037.98
+2026-08-01 21:01:54 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563827213 | retcode=10009 | comment=S4_cross_ftmo_prewarm-r4
+2026-08-01 21:01:49 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778429 | retcode=10009 | comment=Close position | detail=ticket=509778427
+2026-08-01 21:01:47 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563827203 | retcode=10009 | comment=Close position | detail=ticket=3563827189
+2026-08-01 21:01:45 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509778427 | retcode=10009 | comment= | detail=fill=63037.97
+2026-08-01 21:01:45 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563827189 | retcode=10009 | comment=S4_cross_ftmo_prewarm-r3
+2026-08-01 21:01:42 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778425 | retcode=10009 | comment=Close position | detail=ticket=509778424
+2026-08-01 21:01:40 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563827161 | retcode=10009 | comment=Close position | detail=ticket=3563827158
+2026-08-01 21:01:38 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509778424 | retcode=10009 | comment= | detail=fill=63037.97
+2026-08-01 21:01:37 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563827158 | retcode=10009 | comment=S4_cross_ftmo_prewarm-r2
+2026-08-01 21:01:34 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778423 | retcode=10009 | comment=Close position | detail=ticket=509778422
+2026-08-01 21:01:32 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563827156 | retcode=10009 | comment=Close position | detail=ticket=3563827154
+2026-08-01 21:01:30 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509778422 | retcode=10009 | comment= | detail=fill=63040.35
+2026-08-01 21:01:29 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563827154 | retcode=10009 | comment=S4_cross_ftmo_prewarm-r1
+2026-08-01 21:01:26 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778421 | retcode=10009 | comment=Close position | detail=ticket=509778419
+2026-08-01 21:01:24 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563827148 | retcode=10009 | comment=Close position | detail=ticket=3563827143
+2026-08-01 21:01:22 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=SUCCESS | ticket=509778419 | retcode=10009 | comment=S3_cross_ftmo_legacy-r10
+2026-08-01 21:01:20 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563827143 | retcode=10009 | comment=S3_cross_ftmo_legacy-r10
+2026-08-01 21:01:17 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778418 | retcode=10009 | comment=Close position | detail=ticket=509778416
+2026-08-01 21:01:15 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563827141 | retcode=10009 | comment=Close position | detail=ticket=3563827102
+2026-08-01 21:01:08 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=SUCCESS | ticket=509778416 | retcode=10009 | comment=S3_cross_ftmo_legacy-r9
+2026-08-01 21:01:06 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563827102 | retcode=10009 | comment=S3_cross_ftmo_legacy-r9
+2026-08-01 21:01:03 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778414 | retcode=10009 | comment=Close position | detail=ticket=509778413
+2026-08-01 21:01:01 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563827090 | retcode=10009 | comment=Close position | detail=ticket=3563827064
+2026-08-01 21:00:58 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=SUCCESS | ticket=509778413 | retcode=10009 | comment=S3_cross_ftmo_legacy-r8
+2026-08-01 21:00:57 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563827064 | retcode=10009 | comment=S3_cross_ftmo_legacy-r8
+2026-08-01 21:00:52 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778411 | retcode=10009 | comment=Close position | detail=ticket=509778401
+2026-08-01 21:00:50 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563827039 | retcode=10009 | comment=Close position | detail=ticket=3563827014
+2026-08-01 21:00:48 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=SUCCESS | ticket=509778401 | retcode=10009 | comment=S3_cross_ftmo_legacy-r7
+2026-08-01 21:00:46 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563827014 | retcode=10009 | comment=S3_cross_ftmo_legacy-r7
+2026-08-01 21:00:39 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778344 | retcode=10009 | comment=Close position | detail=ticket=509778336
+2026-08-01 21:00:37 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563827004 | retcode=10009 | comment=Close position | detail=ticket=3563826993
+2026-08-01 21:00:34 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=SUCCESS | ticket=509778336 | retcode=10009 | comment=S3_cross_ftmo_legacy-r6
+2026-08-01 21:00:33 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563826993 | retcode=10009 | comment=S3_cross_ftmo_legacy-r6
+2026-08-01 21:00:29 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778324 | retcode=10009 | comment=Close position | detail=ticket=509778323
+2026-08-01 21:00:27 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563826954 | retcode=10009 | comment=Close position | detail=ticket=3563826920
+2026-08-01 21:00:24 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=SUCCESS | ticket=509778323 | retcode=10009 | comment=S3_cross_ftmo_legacy-r5
+2026-08-01 21:00:23 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563826920 | retcode=10009 | comment=S3_cross_ftmo_legacy-r5
+2026-08-01 21:00:19 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778322 | retcode=10009 | comment=Close position | detail=ticket=509778311
+2026-08-01 21:00:17 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563826888 | retcode=10009 | comment=Close position | detail=ticket=3563826879
+2026-08-01 21:00:15 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=SUCCESS | ticket=509778311 | retcode=10009 | comment=S3_cross_ftmo_legacy-r4
+2026-08-01 21:00:13 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563826879 | retcode=10009 | comment=S3_cross_ftmo_legacy-r4
+2026-08-01 21:00:09 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778283 | retcode=10009 | comment=Close position | detail=ticket=509778282
+2026-08-01 21:00:06 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563826840 | retcode=10009 | comment=Close position | detail=ticket=3563826801
+2026-08-01 21:00:04 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=SUCCESS | ticket=509778282 | retcode=10009 | comment=S3_cross_ftmo_legacy-r3
+2026-08-01 21:00:03 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563826801 | retcode=10009 | comment=S3_cross_ftmo_legacy-r3
+2026-08-01 20:59:59 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778272 | retcode=10009 | comment=Close position | detail=ticket=509778270
+2026-08-01 20:59:57 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563826726 | retcode=10009 | comment=Close position | detail=ticket=3563826709
+2026-08-01 20:59:55 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=SUCCESS | ticket=509778270 | retcode=10009 | comment=S3_cross_ftmo_legacy-r2
+2026-08-01 20:59:54 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563826709 | retcode=10009 | comment=S3_cross_ftmo_legacy-r2
+2026-08-01 20:59:49 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778247 | retcode=10009 | comment=Close position | detail=ticket=509778231
+2026-08-01 20:59:46 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563826616 | retcode=10009 | comment=Close position | detail=ticket=3563826600
+2026-08-01 20:59:43 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=SUCCESS | ticket=509778231 | retcode=10009 | comment=S3_cross_ftmo_legacy-r1
+2026-08-01 20:59:42 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563826600 | retcode=10009 | comment=S3_cross_ftmo_legacy-r1
+2026-08-01 20:59:36 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463502273 | retcode=10009 | comment=Close position | detail=ticket=4463502246
+2026-08-01 20:59:33 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563826578 | retcode=10009 | comment=Close position | detail=ticket=3563826529
+2026-08-01 20:59:29 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463502246 | retcode=10009 | comment=S2_same_exness_fast-r10
+2026-08-01 20:59:28 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563826529 | retcode=10009 | comment=S2_same_exness_fast-r10
+2026-08-01 20:59:22 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463502223 | retcode=10009 | comment=Close position | detail=ticket=4463502199
+2026-08-01 20:59:19 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563826440 | retcode=10009 | comment=Close position | detail=ticket=3563826437
+2026-08-01 20:59:15 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463502199 | retcode=10009 | comment=S2_same_exness_fast-r9
+2026-08-01 20:59:14 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563826437 | retcode=10009 | comment=S2_same_exness_fast-r9
+2026-08-01 20:59:05 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463502181 | retcode=10009 | comment=Close position | detail=ticket=4463502148
+2026-08-01 20:59:03 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563826430 | retcode=10009 | comment=Close position | detail=ticket=3563826421
+2026-08-01 20:58:59 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463502148 | retcode=10009 | comment=S2_same_exness_fast-r8
+2026-08-01 20:58:57 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563826421 | retcode=10009 | comment=S2_same_exness_fast-r8
+2026-08-01 20:58:52 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463502121 | retcode=10009 | comment=Close position | detail=ticket=4463502105
+2026-08-01 20:58:50 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563826402 | retcode=10009 | comment=Close position | detail=ticket=3563826397
+2026-08-01 20:58:45 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463502105 | retcode=10009 | comment=S2_same_exness_fast-r7
+2026-08-01 20:58:44 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563826397 | retcode=10009 | comment=S2_same_exness_fast-r7
+2026-08-01 20:58:39 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463502096 | retcode=10009 | comment=Close position | detail=ticket=4463502056
+2026-08-01 20:58:37 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563826358 | retcode=10009 | comment=Close position | detail=ticket=3563826320
+2026-08-01 20:58:32 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463502056 | retcode=10009 | comment=S2_same_exness_fast-r6
+2026-08-01 20:58:30 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563826320 | retcode=10009 | comment=S2_same_exness_fast-r6
+2026-08-01 20:58:25 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463502023 | retcode=10009 | comment=Close position | detail=ticket=4463501980
+2026-08-01 20:58:22 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563826296 | retcode=10009 | comment=Close position | detail=ticket=3563826286
+2026-08-01 20:58:18 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463501980 | retcode=10009 | comment=S2_same_exness_fast-r5
+2026-08-01 20:58:17 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563826286 | retcode=10009 | comment=S2_same_exness_fast-r5
+2026-08-01 20:58:12 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463501927 | retcode=10009 | comment=Close position | detail=ticket=4463501895
+2026-08-01 20:58:10 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563826274 | retcode=10009 | comment=Close position | detail=ticket=3563826268
+2026-08-01 20:58:06 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463501895 | retcode=10009 | comment=S2_same_exness_fast-r4
+2026-08-01 20:58:04 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563826268 | retcode=10009 | comment=S2_same_exness_fast-r4
+2026-08-01 20:57:59 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463501838 | retcode=10009 | comment=Close position | detail=ticket=4463501817
+2026-08-01 20:57:57 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563826261 | retcode=10009 | comment=Close position | detail=ticket=3563826253
+2026-08-01 20:57:50 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463501817 | retcode=10009 | comment=S2_same_exness_fast-r3
+2026-08-01 20:57:49 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563826253 | retcode=10009 | comment=S2_same_exness_fast-r3
+2026-08-01 20:57:43 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463501744 | retcode=10009 | comment=Close position | detail=ticket=4463501591
+2026-08-01 20:57:41 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563826243 | retcode=10009 | comment=Close position | detail=ticket=3563826237
+2026-08-01 20:57:36 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463501591 | retcode=10009 | comment=S2_same_exness_fast-r2
+2026-08-01 20:57:34 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563826237 | retcode=10009 | comment=S2_same_exness_fast-r2
+2026-08-01 20:57:27 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463501472 | retcode=10009 | comment=Close position | detail=ticket=4463501377
+2026-08-01 20:57:25 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563826229 | retcode=10009 | comment=Close position | detail=ticket=3563826125
+2026-08-01 20:57:18 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463501377 | retcode=10009 | comment=S2_same_exness_fast-r1
+2026-08-01 20:57:16 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563826125 | retcode=10009 | comment=S2_same_exness_fast-r1
+2026-08-01 20:57:02 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463501187 | retcode=10009 | comment=Close position | detail=ticket=4463501161
+2026-08-01 20:57:00 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563826070 | retcode=10009 | comment=Close position | detail=ticket=3563826013
+2026-08-01 20:56:55 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463501161 | retcode=10009 | comment=S1_same_exness_legacy-r10
+2026-08-01 20:56:53 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563826013 | retcode=10009 | comment=S1_same_exness_legacy-r10
+2026-08-01 20:56:47 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463501103 | retcode=10009 | comment=Close position | detail=ticket=4463501077
+2026-08-01 20:56:45 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563825957 | retcode=10009 | comment=Close position | detail=ticket=3563825928
+2026-08-01 20:56:40 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463501077 | retcode=10009 | comment=S1_same_exness_legacy-r9
+2026-08-01 20:56:38 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563825928 | retcode=10009 | comment=S1_same_exness_legacy-r9
+2026-08-01 20:56:30 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463501016 | retcode=10009 | comment=Close position | detail=ticket=4463500989
+2026-08-01 20:56:28 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563825909 | retcode=10009 | comment=Close position | detail=ticket=3563825881
+2026-08-01 20:56:23 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463500989 | retcode=10009 | comment=S1_same_exness_legacy-r8
+2026-08-01 20:56:20 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563825881 | retcode=10009 | comment=S1_same_exness_legacy-r8
+2026-08-01 20:56:15 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463500927 | retcode=10009 | comment=Close position | detail=ticket=4463500866
+2026-08-01 20:56:14 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563825849 | retcode=10009 | comment=Close position | detail=ticket=3563825811
+2026-08-01 20:56:09 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463500866 | retcode=10009 | comment=S1_same_exness_legacy-r7
+2026-08-01 20:56:06 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563825811 | retcode=10009 | comment=S1_same_exness_legacy-r7
+2026-08-01 20:56:00 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463500794 | retcode=10009 | comment=Close position | detail=ticket=4463500707
+2026-08-01 20:55:58 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563825758 | retcode=10009 | comment=Close position | detail=ticket=3563825750
+2026-08-01 20:55:53 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463500707 | retcode=10009 | comment=S1_same_exness_legacy-r6
+2026-08-01 20:55:51 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563825750 | retcode=10009 | comment=S1_same_exness_legacy-r6
+2026-08-01 20:55:46 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463500610 | retcode=10009 | comment=Close position | detail=ticket=4463500525
+2026-08-01 20:55:44 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563825725 | retcode=10009 | comment=Close position | detail=ticket=3563825703
+2026-08-01 20:55:38 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463500525 | retcode=10009 | comment=S1_same_exness_legacy-r5
+2026-08-01 20:55:35 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563825703 | retcode=10009 | comment=S1_same_exness_legacy-r5
+2026-08-01 20:55:26 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463500453 | retcode=10009 | comment=Close position | detail=ticket=4463500411
+2026-08-01 20:55:24 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563825671 | retcode=10009 | comment=Close position | detail=ticket=3563825645
+2026-08-01 20:55:19 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463500411 | retcode=10009 | comment=S1_same_exness_legacy-r4
+2026-08-01 20:55:16 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563825645 | retcode=10009 | comment=S1_same_exness_legacy-r4
+2026-08-01 20:55:07 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463500350 | retcode=10009 | comment=Close position | detail=ticket=4463500320
+2026-08-01 20:55:05 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563825604 | retcode=10009 | comment=Close position | detail=ticket=3563825587
+2026-08-01 20:54:59 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463500320 | retcode=10009 | comment=S1_same_exness_legacy-r3
+2026-08-01 20:54:57 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563825587 | retcode=10009 | comment=S1_same_exness_legacy-r3
+2026-08-01 20:54:50 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463500242 | retcode=10009 | comment=Close position | detail=ticket=4463500196
+2026-08-01 20:54:47 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563825561 | retcode=10009 | comment=Close position | detail=ticket=3563825540
+2026-08-01 20:54:44 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463500196 | retcode=10009 | comment=S1_same_exness_legacy-r2
+2026-08-01 20:54:42 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563825540 | retcode=10009 | comment=S1_same_exness_legacy-r2
+2026-08-01 20:54:36 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463500142 | retcode=10009 | comment=Close position | detail=ticket=4463500098
+2026-08-01 20:54:34 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563825524 | retcode=10009 | comment=Close position | detail=ticket=3563825480
+2026-08-01 20:54:30 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463500098 | retcode=10009 | comment=S1_same_exness_legacy-r1
+2026-08-01 20:54:27 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563825480 | retcode=10009 | comment=S1_same_exness_legacy-r1
+2026-08-01 20:46:49 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463493026 | retcode=10009 | comment=Close position | detail=ticket=4463492942
+2026-08-01 20:46:45 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563821666 | retcode=10009 | comment=Close position | detail=ticket=3563821545
+2026-08-01 20:46:41 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463492942 | retcode=10009 | comment=prewarm-r10
+2026-08-01 20:46:39 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563821545 | retcode=10009 | comment=prewarm-r10
+2026-08-01 20:46:33 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463492819 | retcode=10009 | comment=Close position | detail=ticket=4463492531
+2026-08-01 20:46:30 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563821441 | retcode=10009 | comment=Close position | detail=ticket=3563821049
+2026-08-01 20:46:25 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463492531 | retcode=10009 | comment=prewarm-r9
+2026-08-01 20:46:23 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563821049 | retcode=10009 | comment=prewarm-r9
+2026-08-01 20:46:18 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463492343 | retcode=10009 | comment=Close position | detail=ticket=4463492268
+2026-08-01 20:46:16 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563821006 | retcode=10009 | comment=Close position | detail=ticket=3563820994
+2026-08-01 20:46:11 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463492268 | retcode=10009 | comment=prewarm-r8
+2026-08-01 20:46:10 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563820994 | retcode=10009 | comment=prewarm-r8
+2026-08-01 20:46:05 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463492132 | retcode=10009 | comment=Close position | detail=ticket=4463492033
+2026-08-01 20:46:02 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563820878 | retcode=10009 | comment=Close position | detail=ticket=3563820683
+2026-08-01 20:45:56 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463492033 | retcode=10009 | comment=prewarm-r7
+2026-08-01 20:45:54 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563820683 | retcode=10009 | comment=prewarm-r7
+2026-08-01 20:45:41 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463491773 | retcode=10009 | comment=Close position | detail=ticket=4463491739
+2026-08-01 20:45:38 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563820644 | retcode=10009 | comment=Close position | detail=ticket=3563820587
+2026-08-01 20:45:33 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463491739 | retcode=10009 | comment=prewarm-r6
+2026-08-01 20:45:31 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563820587 | retcode=10009 | comment=prewarm-r6
+2026-08-01 20:45:26 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463491705 | retcode=10009 | comment=Close position | detail=ticket=4463491639
+2026-08-01 20:45:23 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563820515 | retcode=10009 | comment=Close position | detail=ticket=3563820478
+2026-08-01 20:45:18 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463491639 | retcode=10009 | comment=prewarm-r5
+2026-08-01 20:45:17 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563820478 | retcode=10009 | comment=prewarm-r5
+2026-08-01 20:45:11 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463491616 | retcode=10009 | comment=Close position | detail=ticket=4463491591
+2026-08-01 20:45:09 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563820422 | retcode=10009 | comment=Close position | detail=ticket=3563820393
+2026-08-01 20:45:05 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463491591 | retcode=10009 | comment=prewarm-r4
+2026-08-01 20:45:03 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563820393 | retcode=10009 | comment=prewarm-r4
+2026-08-01 20:44:56 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463491542 | retcode=10009 | comment=Close position | detail=ticket=4463491475
+2026-08-01 20:44:54 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563820271 | retcode=10009 | comment=Close position | detail=ticket=3563820227
+2026-08-01 20:44:50 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463491475 | retcode=10009 | comment=prewarm-r3
+2026-08-01 20:44:48 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563820227 | retcode=10009 | comment=prewarm-r3
+2026-08-01 20:44:42 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463491445 | retcode=10009 | comment=Close position | detail=ticket=4463491378
+2026-08-01 20:44:40 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563820181 | retcode=10009 | comment=Close position | detail=ticket=3563820148
+2026-08-01 20:44:33 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463491378 | retcode=10009 | comment=prewarm-r2
+2026-08-01 20:44:32 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563820148 | retcode=10009 | comment=prewarm-r2
+2026-08-01 20:44:26 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463491315 | retcode=10009 | comment=Close position | detail=ticket=4463491248
+2026-08-01 20:44:24 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563820113 | retcode=10009 | comment=Close position | detail=ticket=3563820085
+2026-08-01 20:44:19 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463491248 | retcode=10009 | comment=prewarm-r1
+2026-08-01 20:44:17 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563820085 | retcode=10009 | comment=prewarm-r1
+2026-08-01 20:44:12 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463491188 | retcode=10009 | comment=Close position | detail=ticket=4463491010
+2026-08-01 20:44:10 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563820056 | retcode=10009 | comment=Close position | detail=ticket=3563820015
+2026-08-01 20:44:04 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463491010 | retcode=10009 | comment=legacy-r10
+2026-08-01 20:44:01 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563820015 | retcode=10009 | comment=legacy-r10
+2026-08-01 20:43:54 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463490852 | retcode=10009 | comment=Close position | detail=ticket=4463490819
+2026-08-01 20:43:52 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563819957 | retcode=10009 | comment=Close position | detail=ticket=3563819926
+2026-08-01 20:43:47 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463490819 | retcode=10009 | comment=legacy-r9
+2026-08-01 20:43:45 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563819926 | retcode=10009 | comment=legacy-r9
+2026-08-01 20:43:39 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463490790 | retcode=10009 | comment=Close position | detail=ticket=4463490724
+2026-08-01 20:43:37 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563819904 | retcode=10009 | comment=Close position | detail=ticket=3563819841
+2026-08-01 20:43:30 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463490724 | retcode=10009 | comment=legacy-r8
+2026-08-01 20:43:27 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563819841 | retcode=10009 | comment=legacy-r8
+2026-08-01 20:43:21 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463490676 | retcode=10009 | comment=Close position | detail=ticket=4463490600
+2026-08-01 20:43:19 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563819816 | retcode=10009 | comment=Close position | detail=ticket=3563819777
+2026-08-01 20:43:14 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463490600 | retcode=10009 | comment=legacy-r7
+2026-08-01 20:43:11 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563819777 | retcode=10009 | comment=legacy-r7
+2026-08-01 20:43:03 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463490456 | retcode=10009 | comment=Close position | detail=ticket=4463490268
+2026-08-01 20:43:00 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563819688 | retcode=10009 | comment=Close position | detail=ticket=3563819503
+2026-08-01 20:42:53 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463490268 | retcode=10009 | comment=legacy-r6
+2026-08-01 20:42:51 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563819503 | retcode=10009 | comment=legacy-r6
+2026-08-01 20:42:43 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463490060 | retcode=10009 | comment=Close position | detail=ticket=4463489986
+2026-08-01 20:42:41 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563819445 | retcode=10009 | comment=Close position | detail=ticket=3563819342
+2026-08-01 20:42:36 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463489986 | retcode=10009 | comment=legacy-r5
+2026-08-01 20:42:34 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563819342 | retcode=10009 | comment=legacy-r5
+2026-08-01 20:42:27 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463489936 | retcode=10009 | comment=Close position | detail=ticket=4463489896
+2026-08-01 20:42:25 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563819312 | retcode=10009 | comment=Close position | detail=ticket=3563819264
+2026-08-01 20:42:17 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463489896 | retcode=10009 | comment=legacy-r4
+2026-08-01 20:42:15 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563819264 | retcode=10009 | comment=legacy-r4
+2026-08-01 20:42:10 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463489871 | retcode=10009 | comment=Close position | detail=ticket=4463489849
+2026-08-01 20:42:07 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563819216 | retcode=10009 | comment=Close position | detail=ticket=3563819204
+2026-08-01 20:42:03 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463489849 | retcode=10009 | comment=legacy-r3
+2026-08-01 20:42:01 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563819204 | retcode=10009 | comment=legacy-r3
+2026-08-01 20:41:53 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463489794 | retcode=10009 | comment=Close position | detail=ticket=4463489728
+2026-08-01 20:41:51 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563819126 | retcode=10009 | comment=Close position | detail=ticket=3563819072
+2026-08-01 20:41:45 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463489728 | retcode=10009 | comment=legacy-r2
+2026-08-01 20:41:43 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563819072 | retcode=10009 | comment=legacy-r2
+2026-08-01 20:41:34 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463489698 | retcode=10009 | comment=Close position | detail=ticket=4463489633
+2026-08-01 20:41:33 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463489695 | retcode=10009 | comment=Close position | detail=ticket=4463489614
+2026-08-01 20:41:30 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563818907 | retcode=10009 | comment=Close position | detail=ticket=3563818737
+2026-08-01 20:41:26 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463489633 | retcode=10009 | comment=legacy-r1
+2026-08-01 20:41:25 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463489614 | retcode=10009 | comment=legacy-r1
+2026-08-01 20:41:21 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_FAILED | ticket=0 | retcode=10013 | comment=Close position | detail=ticket=3563818737 | Invalid request
+2026-08-01 20:41:18 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463489580 | retcode=10009 | comment=Close position | detail=ticket=4463489493
+2026-08-01 20:41:09 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463489493 | retcode=10009 | comment=prewarm-r3
+2026-08-01 20:41:07 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563818737 | retcode=10009 | comment=prewarm-r3
+2026-08-01 20:41:01 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463489406 | retcode=10009 | comment=Close position | detail=ticket=4463489381
+2026-08-01 20:40:59 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563818715 | retcode=10009 | comment=Close position | detail=ticket=3563818685
+2026-08-01 20:40:55 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463489381 | retcode=10009 | comment=prewarm-r2
+2026-08-01 20:40:53 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563818685 | retcode=10009 | comment=prewarm-r2
+2026-08-01 20:40:48 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463489337 | retcode=10009 | comment=Close position | detail=ticket=4463489315
+2026-08-01 20:40:46 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563818639 | retcode=10009 | comment=Close position | detail=ticket=3563818565
+2026-08-01 20:40:41 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463489315 | retcode=10009 | comment=prewarm-r1
+2026-08-01 20:40:38 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563818565 | retcode=10009 | comment=prewarm-r1
+2026-08-01 20:40:30 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463489265 | retcode=10009 | comment=Close position | detail=ticket=4463489229
+2026-08-01 20:40:26 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563818373 | retcode=10009 | comment=Close position | detail=ticket=3563818197
+2026-08-01 20:40:18 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463489229 | retcode=10009 | comment=legacy-r10
+2026-08-01 20:40:16 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563818197 | retcode=10009 | comment=legacy-r10
+2026-08-01 20:39:59 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463489143 | retcode=10009 | comment=Close position | detail=ticket=4463489102
+2026-08-01 20:39:56 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563817914 | retcode=10009 | comment=Close position | detail=ticket=3563817880
+2026-08-01 20:39:51 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463489102 | retcode=10009 | comment=legacy-r9
+2026-08-01 20:39:49 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563817880 | retcode=10009 | comment=legacy-r9
+2026-08-01 20:39:42 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463489021 | retcode=10009 | comment=Close position | detail=ticket=4463488978
+2026-08-01 20:39:40 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563817817 | retcode=10009 | comment=Close position | detail=ticket=3563817782
+2026-08-01 20:39:35 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463488978 | retcode=10009 | comment=legacy-r8
+2026-08-01 20:39:33 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563817782 | retcode=10009 | comment=legacy-r8
+2026-08-01 20:39:27 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463488926 | retcode=10009 | comment=Close position | detail=ticket=4463488881
+2026-08-01 20:39:25 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563817761 | retcode=10009 | comment=Close position | detail=ticket=3563817723
+2026-08-01 20:39:20 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463488881 | retcode=10009 | comment=legacy-r7
+2026-08-01 20:39:17 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563817723 | retcode=10009 | comment=legacy-r7
+2026-08-01 20:39:10 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463488801 | retcode=10009 | comment=Close position | detail=ticket=4463488540
+2026-08-01 20:39:07 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563817624 | retcode=10009 | comment=Close position | detail=ticket=3563817578
+2026-08-01 20:38:59 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463488540 | retcode=10009 | comment=legacy-r6
+2026-08-01 20:38:56 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563817578 | retcode=10009 | comment=legacy-r6
+2026-08-01 20:38:51 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463488450 | retcode=10009 | comment=Close position | detail=ticket=4463488345
+2026-08-01 20:38:49 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563817504 | retcode=10009 | comment=Close position | detail=ticket=3563817314
+2026-08-01 20:38:45 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463488345 | retcode=10009 | comment=legacy-r5
+2026-08-01 20:38:41 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563817314 | retcode=10009 | comment=legacy-r5
+2026-08-01 20:38:23 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463488028 | retcode=10009 | comment=Close position | detail=ticket=4463487986
+2026-08-01 20:38:21 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563817241 | retcode=10009 | comment=Close position | detail=ticket=3563817197
+2026-08-01 20:38:14 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463487986 | retcode=10009 | comment=legacy-r4
+2026-08-01 20:38:04 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563817197 | retcode=10009 | comment=legacy-r4
+2026-08-01 20:37:52 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463487894 | retcode=10009 | comment=Close position | detail=ticket=4463487830
+2026-08-01 20:37:50 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563817137 | retcode=10009 | comment=Close position | detail=ticket=3563817114
+2026-08-01 20:37:44 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463487830 | retcode=10009 | comment=legacy-r3
+2026-08-01 20:37:40 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563817114 | retcode=10009 | comment=legacy-r3
+2026-08-01 20:37:33 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463487792 | retcode=10009 | comment=Close position | detail=ticket=4463487726
+2026-08-01 20:37:29 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563817074 | retcode=10009 | comment=Close position | detail=ticket=3563817047
+2026-08-01 20:37:22 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463487726 | retcode=10009 | comment=legacy-r2
+2026-08-01 20:37:19 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563817047 | retcode=10009 | comment=legacy-r2
+2026-08-01 20:37:12 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463487531 | retcode=10009 | comment=Close position | detail=ticket=4463487508
+2026-08-01 20:37:09 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563817035 | retcode=10009 | comment=Close position | detail=ticket=3563817032
+2026-08-01 20:37:05 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463487508 | retcode=10009 | comment=legacy-r1
+2026-08-01 20:37:03 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563817032 | retcode=10009 | comment=legacy-r1
+2026-08-01 20:35:10 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563816606 | retcode=10009 | comment=Close position | detail=ticket=3563816577
+2026-08-01 20:35:10 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563816603 | retcode=10009 | comment=Close position | detail=ticket=3563816576
+2026-08-01 20:35:05 | account=fake | symbol=BTCUSDm | lot=0.01 | status=COPY_SUCCESS | ticket=3563816577 | retcode=10009 | comment= | detail=fill=63035.630000000005
+2026-08-01 20:35:04 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563816576 | retcode=10009 | comment=prewarm-r10
+2026-08-01 20:34:57 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563816550 | retcode=10009 | comment=Close position | detail=ticket=3563816530
+2026-08-01 20:34:56 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563816545 | retcode=10009 | comment=Close position | detail=ticket=3563816526
+2026-08-01 20:34:52 | account=fake | symbol=BTCUSDm | lot=0.01 | status=COPY_SUCCESS | ticket=3563816530 | retcode=10009 | comment= | detail=fill=63033.36
+2026-08-01 20:34:52 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563816526 | retcode=10009 | comment=prewarm-r9
+2026-08-01 20:34:42 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563816473 | retcode=10009 | comment=Close position | detail=ticket=3563816440
+2026-08-01 20:34:41 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563816456 | retcode=10009 | comment=Close position | detail=ticket=3563816438
+2026-08-01 20:34:37 | account=fake | symbol=BTCUSDm | lot=0.01 | status=COPY_SUCCESS | ticket=3563816440 | retcode=10009 | comment= | detail=fill=63037.03
+2026-08-01 20:34:36 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563816438 | retcode=10009 | comment=prewarm-r8
+2026-08-01 20:34:30 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563816397 | retcode=10009 | comment=Close position | detail=ticket=3563816375
+2026-08-01 20:34:29 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563816392 | retcode=10009 | comment=Close position | detail=ticket=3563816374
+2026-08-01 20:34:25 | account=fake | symbol=BTCUSDm | lot=0.01 | status=COPY_SUCCESS | ticket=3563816375 | retcode=10009 | comment= | detail=fill=63037.12
+2026-08-01 20:34:25 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563816374 | retcode=10009 | comment=prewarm-r7
+2026-08-01 20:34:14 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563816340 | retcode=10009 | comment=Close position | detail=ticket=3563816305
+2026-08-01 20:34:13 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563816334 | retcode=10009 | comment=Close position | detail=ticket=3563816302
+2026-08-01 20:34:06 | account=fake | symbol=BTCUSDm | lot=0.01 | status=COPY_SUCCESS | ticket=3563816305 | retcode=10009 | comment= | detail=fill=63038.99
+2026-08-01 20:34:06 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563816302 | retcode=10009 | comment=prewarm-r6
+2026-08-01 20:33:58 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563816278 | retcode=10009 | comment=Close position | detail=ticket=3563816254
+2026-08-01 20:33:57 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563816274 | retcode=10009 | comment=Close position | detail=ticket=3563816250
+2026-08-01 20:33:52 | account=fake | symbol=BTCUSDm | lot=0.01 | status=COPY_SUCCESS | ticket=3563816254 | retcode=10009 | comment= | detail=fill=63040.96
+2026-08-01 20:33:52 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563816250 | retcode=10009 | comment=prewarm-r5
+2026-08-01 20:33:43 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563816218 | retcode=10009 | comment=Close position | detail=ticket=3563816181
+2026-08-01 20:33:42 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563816211 | retcode=10009 | comment=Close position | detail=ticket=3563816179
+2026-08-01 20:33:34 | account=fake | symbol=BTCUSDm | lot=0.01 | status=COPY_SUCCESS | ticket=3563816181 | retcode=10009 | comment= | detail=fill=63039.4
+2026-08-01 20:33:33 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563816179 | retcode=10009 | comment=prewarm-r4
+2026-08-01 20:33:22 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563816122 | retcode=10009 | comment=Close position | detail=ticket=3563816091
+2026-08-01 20:33:21 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563816111 | retcode=10009 | comment=Close position | detail=ticket=3563816084
+2026-08-01 20:33:18 | account=fake | symbol=BTCUSDm | lot=0.01 | status=COPY_SUCCESS | ticket=3563816091 | retcode=10009 | comment= | detail=fill=63037.54
+2026-08-01 20:33:16 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563816084 | retcode=10009 | comment=prewarm-r3
+2026-08-01 20:33:09 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563816051 | retcode=10009 | comment=Close position | detail=ticket=3563816039
+2026-08-01 20:33:08 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563816047 | retcode=10009 | comment=Close position | detail=ticket=3563816038
+2026-08-01 20:33:03 | account=fake | symbol=BTCUSDm | lot=0.01 | status=COPY_SUCCESS | ticket=3563816039 | retcode=10009 | comment= | detail=fill=63034.68
+2026-08-01 20:33:03 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563816038 | retcode=10009 | comment=prewarm-r2
+2026-08-01 20:32:52 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563816005 | retcode=10009 | comment=Close position | detail=ticket=3563815971
+2026-08-01 20:32:51 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563815999 | retcode=10009 | comment=Close position | detail=ticket=3563815966
+2026-08-01 20:32:46 | account=fake | symbol=BTCUSDm | lot=0.01 | status=COPY_SUCCESS | ticket=3563815971 | retcode=10009 | comment= | detail=fill=63037.89
+2026-08-01 20:32:45 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563815966 | retcode=10009 | comment=prewarm-r1
+2026-08-01 20:32:41 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463486053 | retcode=10009 | comment=Close position | detail=ticket=4463486014
+2026-08-01 20:32:38 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563815919 | retcode=10009 | comment=Close position | detail=ticket=3563815883
+2026-08-01 20:32:35 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463486014 | retcode=10009 | comment=legacy-r10
+2026-08-01 20:32:31 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563815883 | retcode=10009 | comment=legacy-r10
+2026-08-01 20:32:26 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463485967 | retcode=10009 | comment=Close position | detail=ticket=4463485851
+2026-08-01 20:32:22 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563815831 | retcode=10009 | comment=Close position | detail=ticket=3563815793
+2026-08-01 20:32:17 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463485851 | retcode=10009 | comment=legacy-r9
+2026-08-01 20:32:13 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563815793 | retcode=10009 | comment=legacy-r9
+2026-08-01 20:32:04 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463485805 | retcode=10009 | comment=Close position | detail=ticket=4463485672
+2026-08-01 20:32:02 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563815755 | retcode=10009 | comment=Close position | detail=ticket=3563815680
+2026-08-01 20:31:56 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463485672 | retcode=10009 | comment=legacy-r8
+2026-08-01 20:31:54 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563815680 | retcode=10009 | comment=legacy-r8
+2026-08-01 20:31:48 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463485644 | retcode=10009 | comment=Close position | detail=ticket=4463485626
+2026-08-01 20:31:45 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563815579 | retcode=10009 | comment=Close position | detail=ticket=3563815515
+2026-08-01 20:31:41 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463485626 | retcode=10009 | comment=legacy-r7
+2026-08-01 20:31:39 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563815515 | retcode=10009 | comment=legacy-r7
+2026-08-01 20:31:31 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463485567 | retcode=10009 | comment=Close position | detail=ticket=4463485553
+2026-08-01 20:31:28 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563815456 | retcode=10009 | comment=Close position | detail=ticket=3563815417
+2026-08-01 20:31:24 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463485553 | retcode=10009 | comment=legacy-r6
+2026-08-01 20:31:21 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563815417 | retcode=10009 | comment=legacy-r6
+2026-08-01 20:31:11 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463485529 | retcode=10009 | comment=Close position | detail=ticket=4463485464
+2026-08-01 20:31:09 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563815114 | retcode=10009 | comment=Close position | detail=ticket=3563815094
+2026-08-01 20:31:05 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463485464 | retcode=10009 | comment=legacy-r5
+2026-08-01 20:31:02 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563815094 | retcode=10009 | comment=legacy-r5
+2026-08-01 20:30:57 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463485351 | retcode=10009 | comment=Close position | detail=ticket=4463485268
+2026-08-01 20:30:55 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563815047 | retcode=10009 | comment=Close position | detail=ticket=3563814835
+2026-08-01 20:30:48 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463485268 | retcode=10009 | comment=legacy-r4
+2026-08-01 20:30:46 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563814835 | retcode=10009 | comment=legacy-r4
+2026-08-01 20:30:37 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463485132 | retcode=10009 | comment=Close position | detail=ticket=4463485019
+2026-08-01 20:30:35 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563814688 | retcode=10009 | comment=Close position | detail=ticket=3563814636
+2026-08-01 20:30:30 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463485019 | retcode=10009 | comment=legacy-r3
+2026-08-01 20:30:28 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563814636 | retcode=10009 | comment=legacy-r3
+2026-08-01 20:30:19 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463484883 | retcode=10009 | comment=Close position | detail=ticket=4463484823
+2026-08-01 20:30:17 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563814405 | retcode=10009 | comment=Close position | detail=ticket=3563814229
+2026-08-01 20:30:12 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463484823 | retcode=10009 | comment=legacy-r2
+2026-08-01 20:30:10 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563814229 | retcode=10009 | comment=legacy-r2
+2026-08-01 20:30:05 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463484790 | retcode=10009 | comment=Close position | detail=ticket=4463484775
+2026-08-01 20:30:03 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563814207 | retcode=10009 | comment=Close position | detail=ticket=3563814113
+2026-08-01 20:29:59 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=4463484775 | retcode=10009 | comment=legacy-r1
+2026-08-01 20:29:57 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563814113 | retcode=10009 | comment=legacy-r1
+2026-08-01 20:20:07 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776884 | retcode=10009 | comment=Close position | detail=ticket=509776882
+2026-08-01 20:20:06 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563809762 | retcode=10009 | comment=Close position | detail=ticket=3563809757
+2026-08-01 20:20:03 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509776882 | retcode=10009 | comment= | detail=fill=63063.71
+2026-08-01 20:20:03 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563809757 | retcode=10009 | comment=prewarm-r10
+2026-08-01 20:20:01 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776880 | retcode=10009 | comment=Close position | detail=ticket=509776878
+2026-08-01 20:20:00 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563809745 | retcode=10009 | comment=Close position | detail=ticket=3563809737
+2026-08-01 20:19:58 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509776878 | retcode=10009 | comment= | detail=fill=63063.71
+2026-08-01 20:19:58 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563809737 | retcode=10009 | comment=prewarm-r9
+2026-08-01 20:19:56 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776874 | retcode=10009 | comment=Close position | detail=ticket=509776873
+2026-08-01 20:19:55 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563809729 | retcode=10009 | comment=Close position | detail=ticket=3563809728
+2026-08-01 20:19:53 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509776873 | retcode=10009 | comment= | detail=fill=63063.69
+2026-08-01 20:19:53 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563809728 | retcode=10009 | comment=prewarm-r8
+2026-08-01 20:19:51 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776871 | retcode=10009 | comment=Close position | detail=ticket=509776869
+2026-08-01 20:19:50 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563809716 | retcode=10009 | comment=Close position | detail=ticket=3563809715
+2026-08-01 20:19:47 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509776869 | retcode=10009 | comment= | detail=fill=63063.69
+2026-08-01 20:19:47 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563809715 | retcode=10009 | comment=prewarm-r7
+2026-08-01 20:19:46 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776868 | retcode=10009 | comment=Close position | detail=ticket=509776866
+2026-08-01 20:19:44 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563809713 | retcode=10009 | comment=Close position | detail=ticket=3563809709
+2026-08-01 20:19:41 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509776866 | retcode=10009 | comment= | detail=fill=63063.69
+2026-08-01 20:19:41 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563809709 | retcode=10009 | comment=prewarm-r6
+2026-08-01 20:19:39 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776864 | retcode=10009 | comment=Close position | detail=ticket=509776862
+2026-08-01 20:19:38 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563809701 | retcode=10009 | comment=Close position | detail=ticket=3563809699
+2026-08-01 20:19:36 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509776862 | retcode=10009 | comment= | detail=fill=63063.75
+2026-08-01 20:19:36 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563809699 | retcode=10009 | comment=prewarm-r5
+2026-08-01 20:19:34 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776861 | retcode=10009 | comment=Close position | detail=ticket=509776860
+2026-08-01 20:19:33 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563809698 | retcode=10009 | comment=Close position | detail=ticket=3563809695
+2026-08-01 20:19:31 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509776860 | retcode=10009 | comment= | detail=fill=63063.69
+2026-08-01 20:19:31 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563809695 | retcode=10009 | comment=prewarm-r4
+2026-08-01 20:19:30 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776859 | retcode=10009 | comment=Close position | detail=ticket=509776858
+2026-08-01 20:19:28 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563809693 | retcode=10009 | comment=Close position | detail=ticket=3563809686
+2026-08-01 20:19:26 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509776858 | retcode=10009 | comment= | detail=fill=63063.69
+2026-08-01 20:19:26 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563809686 | retcode=10009 | comment=prewarm-r3
+2026-08-01 20:19:24 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_FAILED | ticket=0 | retcode=10013 | comment=Close position | detail=ticket=509776855 | Invalid request
+2026-08-01 20:19:23 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776857 | retcode=10009 | comment=Close position | detail=ticket=509776855
+2026-08-01 20:19:22 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563809681 | retcode=10009 | comment=Close position | detail=ticket=3563809679
+2026-08-01 20:19:20 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509776855 | retcode=10009 | comment= | detail=fill=63063.69
+2026-08-01 20:19:20 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563809679 | retcode=10009 | comment=prewarm-r2
+2026-08-01 20:19:18 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776854 | retcode=10009 | comment=Close position | detail=ticket=509776853
+2026-08-01 20:19:17 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563809675 | retcode=10009 | comment=Close position | detail=ticket=3563809673
+2026-08-01 20:19:15 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509776853 | retcode=10009 | comment= | detail=fill=63063.75
+2026-08-01 20:19:15 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563809673 | retcode=10009 | comment=prewarm-r1
+2026-08-01 20:19:13 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776852 | retcode=10009 | comment=Close position | detail=ticket=509776851
+2026-08-01 20:19:11 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563809667 | retcode=10009 | comment=Close position | detail=ticket=3563809656
+2026-08-01 20:19:09 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=SUCCESS | ticket=509776851 | retcode=10009 | comment=legacy-r10
+2026-08-01 20:19:08 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563809656 | retcode=10009 | comment=legacy-r10
+2026-08-01 20:19:06 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776849 | retcode=10009 | comment=Close position | detail=ticket=509776846
+2026-08-01 20:19:05 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563809643 | retcode=10009 | comment=Close position | detail=ticket=3563809627
+2026-08-01 20:19:03 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=SUCCESS | ticket=509776846 | retcode=10009 | comment=legacy-r9
+2026-08-01 20:19:01 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563809627 | retcode=10009 | comment=legacy-r9
+2026-08-01 20:18:59 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776844 | retcode=10009 | comment=Close position | detail=ticket=509776843
+2026-08-01 20:18:58 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563809622 | retcode=10009 | comment=Close position | detail=ticket=3563809615
+2026-08-01 20:18:56 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=SUCCESS | ticket=509776843 | retcode=10009 | comment=legacy-r8
+2026-08-01 20:18:55 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563809615 | retcode=10009 | comment=legacy-r8
+2026-08-01 20:18:53 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776842 | retcode=10009 | comment=Close position | detail=ticket=509776840
+2026-08-01 20:18:52 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563809613 | retcode=10009 | comment=Close position | detail=ticket=3563809586
+2026-08-01 20:18:50 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=SUCCESS | ticket=509776840 | retcode=10009 | comment=legacy-r7
+2026-08-01 20:18:48 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563809586 | retcode=10009 | comment=legacy-r7
+2026-08-01 20:18:46 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776839 | retcode=10009 | comment=Close position | detail=ticket=509776837
+2026-08-01 20:18:45 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563809583 | retcode=10009 | comment=Close position | detail=ticket=3563809572
+2026-08-01 20:18:43 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=SUCCESS | ticket=509776837 | retcode=10009 | comment=legacy-r6
+2026-08-01 20:18:42 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563809572 | retcode=10009 | comment=legacy-r6
+2026-08-01 20:18:40 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776836 | retcode=10009 | comment=Close position | detail=ticket=509776833
+2026-08-01 20:18:39 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563809567 | retcode=10009 | comment=Close position | detail=ticket=3563809501
+2026-08-01 20:18:37 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=SUCCESS | ticket=509776833 | retcode=10009 | comment=legacy-r5
+2026-08-01 20:18:35 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563809501 | retcode=10009 | comment=legacy-r5
+2026-08-01 20:18:34 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776832 | retcode=10009 | comment=Close position | detail=ticket=509776829
+2026-08-01 20:18:32 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563809488 | retcode=10009 | comment=Close position | detail=ticket=3563809483
+2026-08-01 20:18:30 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=SUCCESS | ticket=509776829 | retcode=10009 | comment=legacy-r4
+2026-08-01 20:18:29 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563809483 | retcode=10009 | comment=legacy-r4
+2026-08-01 20:18:27 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776828 | retcode=10009 | comment=Close position | detail=ticket=509776827
+2026-08-01 20:18:26 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563809457 | retcode=10009 | comment=Close position | detail=ticket=3563809450
+2026-08-01 20:18:24 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=SUCCESS | ticket=509776827 | retcode=10009 | comment=legacy-r3
+2026-08-01 20:18:22 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563809450 | retcode=10009 | comment=legacy-r3
+2026-08-01 20:18:21 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776825 | retcode=10009 | comment=Close position | detail=ticket=509776824
+2026-08-01 20:18:19 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563809437 | retcode=10009 | comment=Close position | detail=ticket=3563809422
+2026-08-01 20:18:17 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=SUCCESS | ticket=509776824 | retcode=10009 | comment=legacy-r2
+2026-08-01 20:18:15 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563809422 | retcode=10009 | comment=legacy-r2
+2026-08-01 20:18:14 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776822 | retcode=10009 | comment=Close position | detail=ticket=509776821
+2026-08-01 20:18:12 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563809420 | retcode=10009 | comment=Close position | detail=ticket=3563809396
+2026-08-01 20:18:10 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=SUCCESS | ticket=509776821 | retcode=10009 | comment=legacy-r1
+2026-08-01 20:18:08 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563809396 | retcode=10009 | comment=legacy-r1
+2026-08-01 20:15:31 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776691 | retcode=10009 | comment=Close position | detail=ticket=509776690
+2026-08-01 20:15:29 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563808785 | retcode=10009 | comment=Close position | detail=ticket=3563808766
+2026-08-01 20:15:27 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509776690 | retcode=10009 | comment= | detail=fill=63056.34
+2026-08-01 20:15:27 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563808766 | retcode=10009 | comment=copy-fast-r10
+2026-08-01 20:15:25 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776688 | retcode=10009 | comment=Close position | detail=ticket=509776687
+2026-08-01 20:15:24 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563808732 | retcode=10009 | comment=Close position | detail=ticket=3563808705
+2026-08-01 20:15:22 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509776687 | retcode=10009 | comment= | detail=fill=63056.34
+2026-08-01 20:15:22 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563808705 | retcode=10009 | comment=copy-fast-r9
+2026-08-01 20:15:20 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776686 | retcode=10009 | comment=Close position | detail=ticket=509776685
+2026-08-01 20:15:19 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563808668 | retcode=10009 | comment=Close position | detail=ticket=3563808614
+2026-08-01 20:15:17 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509776685 | retcode=10009 | comment= | detail=fill=63056.27
+2026-08-01 20:15:17 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563808614 | retcode=10009 | comment=copy-fast-r8
+2026-08-01 20:15:15 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776684 | retcode=10009 | comment=Close position | detail=ticket=509776682
+2026-08-01 20:15:14 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563808582 | retcode=10009 | comment=Close position | detail=ticket=3563808544
+2026-08-01 20:15:11 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509776682 | retcode=10009 | comment= | detail=fill=63056.18
+2026-08-01 20:15:11 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563808544 | retcode=10009 | comment=copy-fast-r7
+2026-08-01 20:15:10 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776675 | retcode=10009 | comment=Close position | detail=ticket=509776662
+2026-08-01 20:15:08 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563808497 | retcode=10009 | comment=Close position | detail=ticket=3563808430
+2026-08-01 20:15:06 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509776662 | retcode=10009 | comment= | detail=fill=63060.16
+2026-08-01 20:15:06 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563808430 | retcode=10009 | comment=copy-fast-r6
+2026-08-01 20:15:04 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776651 | retcode=10009 | comment=Close position | detail=ticket=509776641
+2026-08-01 20:15:03 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563808387 | retcode=10009 | comment=Close position | detail=ticket=3563808368
+2026-08-01 20:15:01 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509776641 | retcode=10009 | comment= | detail=fill=63066.3
+2026-08-01 20:15:01 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563808368 | retcode=10009 | comment=copy-fast-r5
+2026-08-01 20:14:59 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776640 | retcode=10009 | comment=Close position | detail=ticket=509776639
+2026-08-01 20:14:58 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563808273 | retcode=10009 | comment=Close position | detail=ticket=3563808244
+2026-08-01 20:14:56 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509776639 | retcode=10009 | comment= | detail=fill=63066.33
+2026-08-01 20:14:56 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563808244 | retcode=10009 | comment=copy-fast-r4
+2026-08-01 20:14:54 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776637 | retcode=10009 | comment=Close position | detail=ticket=509776633
+2026-08-01 20:14:53 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563808201 | retcode=10009 | comment=Close position | detail=ticket=3563808168
+2026-08-01 20:14:51 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509776633 | retcode=10009 | comment= | detail=fill=63072.22
+2026-08-01 20:14:51 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563808168 | retcode=10009 | comment=copy-fast-r3
+2026-08-01 20:14:49 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776632 | retcode=10009 | comment=Close position | detail=ticket=509776631
+2026-08-01 20:14:48 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563808114 | retcode=10009 | comment=Close position | detail=ticket=3563808085
+2026-08-01 20:14:46 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509776631 | retcode=10009 | comment= | detail=fill=63072.23
+2026-08-01 20:14:46 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563808085 | retcode=10009 | comment=copy-fast-r2
+2026-08-01 20:14:44 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776630 | retcode=10009 | comment=Close position | detail=ticket=509776629
+2026-08-01 20:14:43 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563808041 | retcode=10009 | comment=Close position | detail=ticket=3563808015
+2026-08-01 20:14:41 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509776629 | retcode=10009 | comment= | detail=fill=63072.23
+2026-08-01 20:14:41 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563808015 | retcode=10009 | comment=copy-fast-r1
+2026-08-01 20:12:20 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_FAILED | ticket=0 | retcode=10013 | comment=Close position | detail=ticket=509776480 | Invalid request
+2026-08-01 20:12:19 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776483 | retcode=10009 | comment=Close position | detail=ticket=509776480
+2026-08-01 20:12:17 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563807392 | retcode=10009 | comment=Close position | detail=ticket=3563807391
+2026-08-01 20:12:15 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509776480 | retcode=10009 | comment= | detail=fill=63076.51
+2026-08-01 20:12:15 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563807391 | retcode=10009 | comment=copy-fast-r3
+2026-08-01 20:12:14 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776478 | retcode=10009 | comment=Close position | detail=ticket=509776476
+2026-08-01 20:12:13 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563807389 | retcode=10009 | comment=Close position | detail=ticket=3563807383
+2026-08-01 20:12:10 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509776476 | retcode=10009 | comment= | detail=fill=63076.51
+2026-08-01 20:12:10 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563807383 | retcode=10009 | comment=copy-fast-r2
+2026-08-01 20:12:09 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776474 | retcode=10009 | comment=Close position | detail=ticket=509776472
+2026-08-01 20:12:07 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563807380 | retcode=10009 | comment=Close position | detail=ticket=3563807378
+2026-08-01 20:12:05 | account=fake | symbol=BTCUSD | lot=0.05 | status=COPY_SUCCESS | ticket=509776472 | retcode=10009 | comment= | detail=fill=63076.51
+2026-08-01 20:12:05 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563807378 | retcode=10009 | comment=copy-fast-r1
+2026-08-01 20:05:50 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509776358 | retcode=10009 | comment=Close position | detail=ticket=509776356
+2026-08-01 20:05:48 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563804094 | retcode=10009 | comment=Close position | detail=ticket=3563804074
+2026-08-01 20:05:46 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=SUCCESS | ticket=509776356 | retcode=10009 | comment=copy-latency-test
+2026-08-01 20:05:44 | account=fake | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=3563804074 | retcode=10009 | comment=copy-latency-test
 2026-07-30 11:11:14 | account=real | symbol=XAUUSDm | lot=0.02 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=916117375
 2026-07-30 11:03:37 | account=real | symbol=XAUUSDm | lot=0.02 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=916117375
 2026-07-30 09:30:54 | account=real | symbol=XAUUSDm | lot=0.02 | status=SUCCESS | ticket=916117375 | retcode=10009 | comment=Python trader test
@@ -240,3 +811,4 @@
 2026-06-30 09:20:55 | symbol=XAUUSDm | lot=0.01 | status=FAILED | ticket=0 | retcode=10027 | comment=Python trader test | detail=retcode=10027 | AutoTrading disabled by client
 2026-06-28 19:36:09 | symbol=BTCUSDm | lot=0.01 | status=SUCCESS | ticket=2144951082 | retcode=10009 | comment=Python trader test
 2026-06-28 19:35:25 | symbol=BTCUSDm | lot=0.01 | status=FAILED | ticket=0 | retcode=10027 | comment=Python trader test | detail=retcode=10027 | AutoTrading disabled by client
+client

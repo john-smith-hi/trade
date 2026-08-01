@@ -69,3 +69,9 @@ Nếu vẫn đứng: kiểm tra `start_api.bat` còn chạy; DevTools Network xe
 - `GET /api/quote` — cần account + MT5 connect; timeout UI ~30s.
 - `GET /api/positions` — snapshot lệnh mở để điền modify-all.
 - Modify-all **không** validate TP/SL so với giá thị trường (chỉ cặp theo side) — xem `web-ui.md`.
+
+## 14. Copy — đã thử prewarm, đã bỏ
+
+Benchmark BTCUSD: lệch **cùng Exness ~$1**, **Exness↔FTMO ~$25–30** (sàn broker). Prewarm multiprocess chỉ cắt wall ~1s trên khác terminal, **gần như không cải thiện Δfill** — với day trade không đáng phức tạp.
+
+Hiện tại: copy **tuần tự** sau `mt5.shutdown()` rồi connect account tiếp. Không cần `sleep(0.5)` giữa hai lần (đã thử bỏ — reconnect vẫn ổn). Không còn `copy_worker.py` / suite prewarm.

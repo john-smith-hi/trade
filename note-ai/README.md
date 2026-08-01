@@ -13,3 +13,5 @@ Thư mục này tóm tắt kiến trúc và quy ước đã thống nhất.
 **Không** ghi mật khẩu / login thật vào đây. `xml/accounts.xml` nằm trong `.gitignore`.
 
 Web UI nằm ngoài repo: `D:\wamp64\www\mt5\` (không git cùng `trade`).
+
+Copy: tuần tự đủ dùng cho day trade (xem `gotchas.md` §14 — đã bỏ prewarm).

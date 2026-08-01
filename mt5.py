@@ -1230,7 +1230,6 @@ def execute_request(account_name, action, symbol="XAUUSD", side="buy", lot=0.01,
                     inherited_max_loss = resolve_copy_xauusd_max_loss(copy_account, primary_account)
                     copy_account["xauusd_max_loss"] = inherited_max_loss
                     mt5.shutdown()
-                    time.sleep(0.5)
                     multi = get_account_multi(copy_account)
                     lot_for_copy = lot * multi if action == "open" else lot
                     if action == "open" and lot_for_copy != lot:
