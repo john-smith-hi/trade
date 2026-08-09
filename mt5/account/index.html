@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>MT5 — Quản lý account</title>
+<script src="../ver.php"></script>
+<script>
+(function () {
+  var v = window.MT5_ASSET_VER || "0";
+  document.write('<link rel="stylesheet" href="../style.css?v=' + v + '" />');
+})();
+</script>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <nav class="nav">
+      <a href="../">Ra lệnh</a>
+      <a href="./" class="active">Accounts</a>
+      <a href="../path/">Path</a>
+      <a href="../history/">Lịch sử</a>
+    </nav>
+    <p class="api-status" id="apiStatus">Đang kiểm tra kết nối API...</p>
+  </div>
+  <button type="button" id="themeToggle" class="btn btn-secondary theme-toggle">Chế độ tối</button>
+</header>
+
+<main>
+  <section class="card">
+    <h2>Chọn account</h2>
+    <div class="field">
+      <label for="account">Account</label>
+      <div class="row">
+        <select id="account"></select>
+        <button type="button" id="btnReloadAccounts" class="btn btn-secondary">Tải lại danh sách</button>
+      </div>
+      <p class="hint" id="accountInfo"></p>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Sửa account đang chọn</h2>
+    <p class="hint">Path chỉ chọn từ trang Path. Không đổi login / password / server. Không xóa. Cấu hình exe tại <a href="../path/">Path</a>.</p>
+    <div class="grid">
+      <div class="field">
+        <label for="editLogin">Login (chỉ xem)</label>
+        <input type="text" id="editLogin" readonly class="readonly" />
+      </div>
+      <div class="field">
+        <label for="editServer">Server (chỉ xem)</label>
+        <input type="text" id="editServer" readonly class="readonly" />
+      </div>
+      <div class="field field-wide">
+        <label for="editPath">Path</label>
+        <select id="editPath"></select>
+      </div>
+      <div class="field">
+        <label for="editSuffix">Suffix</label>
+        <input type="text" id="editSuffix" placeholder="vd: m hoặc để trống" />
+      </div>
+      <div class="field">
+        <label for="editMulti">Multi</label>
+        <input type="number" id="editMulti" step="any" min="0" value="1" />
+      </div>
+      <div class="field">
+        <label for="editMaxLoss">xauusd_max_loss</label>
+        <input type="number" id="editMaxLoss" step="any" min="0" placeholder="để trống = không giới hạn" />
+      </div>
+      <div class="field">
+        <label for="editAutoCopyEnabled">auto_copy_enabled</label>
+        <select id="editAutoCopyEnabled">
+          <option value="false">false</option>
+          <option value="true">true</option>
+        </select>
+      </div>
+      <div class="field field-wide">
+        <label for="editAutoCopyTargets">auto_copy_targets (phân tách bằng dấu phẩy)</label>
+        <input type="text" id="editAutoCopyTargets" placeholder="vd: prop_1,prop_demo" />
+      </div>
+    </div>
+    <div class="row">
+      <button type="button" id="btnSaveAccount" class="btn btn-primary">Lưu thay đổi</button>
+      <span class="hint" id="editAccountStatus"></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Thêm account mới</h2>
+    <div class="grid">
+      <div class="field">
+        <label for="newName">Name *</label>
+        <input type="text" id="newName" placeholder="vd: prop_2" />
+      </div>
+      <div class="field">
+        <label for="newLogin">Login *</label>
+        <input type="number" id="newLogin" />
+      </div>
+      <div class="field">
+        <label for="newPassword">Password *</label>
+        <input type="password" id="newPassword" autocomplete="new-password" />
+      </div>
+      <div class="field">
+        <label for="newServer">Server *</label>
+        <input type="text" id="newServer" />
+      </div>
+      <div class="field field-wide">
+        <label for="newPath">Path</label>
+        <select id="newPath"></select>
+      </div>
+      <div class="field">
+        <label for="newSuffix">Suffix</label>
+        <input type="text" id="newSuffix" />
+      </div>
+      <div class="field">
+        <label for="newMulti">Multi</label>
+        <input type="number" id="newMulti" step="any" min="0" value="1" />
+      </div>
+      <div class="field">
+        <label for="newMaxLoss">xauusd_max_loss</label>
+        <input type="number" id="newMaxLoss" step="any" min="0" placeholder="để trống = không giới hạn" />
+      </div>
+      <div class="field">
+        <label for="newAutoCopyEnabled">auto_copy_enabled</label>
+        <select id="newAutoCopyEnabled">
+          <option value="false">false</option>
+          <option value="true">true</option>
+        </select>
+      </div>
+      <div class="field field-wide">
+        <label for="newAutoCopyTargets">auto_copy_targets</label>
+        <input type="text" id="newAutoCopyTargets" />
+      </div>
+    </div>
+    <div class="row">
+      <button type="button" id="btnAddAccount" class="btn btn-primary">Thêm account</button>
+      <span class="hint" id="addAccountStatus"></span>
+    </div>
+  </section>
+</main>
+
+<script>window.MT5_PROXY = "../proxy.php";</script>
+<script>
+(function () {
+  var v = window.MT5_ASSET_VER || "0";
+  document.write('<script src="../common.js?v=' + v + '"><\/script>');
+  document.write('<script src="account.js?v=' + v + '"><\/script>');
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>MT5 — Path terminal</title>
+<script src="../ver.php"></script>
+<script>
+(function () {
+  var v = window.MT5_ASSET_VER || "0";
+  document.write('<link rel="stylesheet" href="../style.css?v=' + v + '" />');
+})();
+</script>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <nav class="nav">
+      <a href="../">Ra lệnh</a>
+      <a href="../account/">Accounts</a>
+      <a href="./" class="active">Path</a>
+      <a href="../history/">Lịch sử</a>
+    </nav>
+    <p class="api-status" id="apiStatus">Đang kiểm tra kết nối API...</p>
+  </div>
+  <button type="button" id="themeToggle" class="btn btn-secondary theme-toggle">Chế độ tối</button>
+</header>
+
+<main>
+  <section class="card">
+    <h2>Cấu hình path (terminal)</h2>
+    <p class="hint">Khai báo đường dẫn terminal64.exe theo tên (exness, ftmo, …). Trang Accounts chỉ chọn theo tên này.</p>
+    <div id="pathsList" class="paths-list"></div>
+  </section>
+
+  <section class="card">
+    <h2>Thêm path mới</h2>
+    <div class="grid">
+      <div class="field">
+        <label for="newPathName">Name *</label>
+        <input type="text" id="newPathName" placeholder="vd: exness, ftmo" />
+      </div>
+      <div class="field field-wide">
+        <label for="newPathExe">Exe (terminal64.exe) *</label>
+        <input type="text" id="newPathExe" placeholder="C:\Program Files\...\terminal64.exe" />
+      </div>
+    </div>
+    <div class="row">
+      <button type="button" id="btnAddPath" class="btn btn-primary">Thêm path</button>
+      <button type="button" id="btnReloadPaths" class="btn btn-secondary">Tải lại</button>
+      <span class="hint" id="addPathStatus"></span>
+    </div>
+  </section>
+</main>
+
+<script>window.MT5_PROXY = "../proxy.php";</script>
+<script>
+(function () {
+  var v = window.MT5_ASSET_VER || "0";
+  document.write('<script src="../common.js?v=' + v + '"><\/script>');
+  document.write('<script src="path.js?v=' + v + '"><\/script>');
+})();
+</script>
+</body>
+</html>

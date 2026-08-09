@@ -1,3 +1,119 @@
+2026-08-07 23:11:36 | account=prop_1 | symbol=XAUUSD | lot=0.15 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=282926145
+2026-08-07 23:11:35 | account=real | symbol=XAUUSDm | lot=0.03 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=921811554
+2026-08-07 23:10:20 | account=prop_1 | symbol=XAUUSD | lot=0.15 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=282926145
+2026-08-07 23:10:20 | account=real | symbol=XAUUSDm | lot=0.03 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=921811554
+2026-08-07 23:09:21 | account=prop_1 | symbol=XAUUSD | lot=0.15 | status=SUCCESS | ticket=282926145 | retcode=10009 | comment=Python trader test
+2026-08-07 23:09:20 | account=real | symbol=XAUUSDm | lot=0.03 | status=SUCCESS | ticket=921811554 | retcode=10009 | comment=Python trader test
+2026-08-07 19:49:29 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=CLOSE_SUCCESS | ticket=282831347 | retcode=10009 | comment=Close position | detail=ticket=282830735
+2026-08-07 19:49:28 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=CLOSE_SUCCESS | ticket=282831340 | retcode=10009 | comment=Close position | detail=ticket=282829295
+2026-08-07 19:49:27 | account=real | symbol=XAUUSDm | lot=0.02 | status=CLOSE_SUCCESS | ticket=921583884 | retcode=10009 | comment=Close position | detail=ticket=921582209
+2026-08-07 19:49:26 | account=real | symbol=XAUUSDm | lot=0.02 | status=CLOSE_SUCCESS | ticket=921583848 | retcode=10009 | comment=Close position | detail=ticket=921577945
+2026-08-07 19:48:52 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=MODIFY_FAILED | ticket=0 | retcode=10025 | comment=Modified TP/SL | detail=ticket=282830735 | No changes
+2026-08-07 19:48:52 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=282829295
+2026-08-07 19:48:52 | account=real | symbol=XAUUSDm | lot=0.02 | status=MODIFY_FAILED | ticket=0 | retcode=10025 | comment=Modified TP/SL | detail=ticket=921582209 | No changes
+2026-08-07 19:48:52 | account=real | symbol=XAUUSDm | lot=0.02 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=921577945
+2026-08-07 19:48:26 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=SUCCESS | ticket=282830735 | retcode=10009 | comment=Python trader test
+2026-08-07 19:48:25 | account=real | symbol=XAUUSDm | lot=0.02 | status=SUCCESS | ticket=921582209 | retcode=10009 | comment=Python trader test
+2026-08-07 19:45:58 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=SUCCESS | ticket=282829295 | retcode=10009 | comment=Python trader test
+2026-08-07 19:45:57 | account=real | symbol=XAUUSDm | lot=0.02 | status=SUCCESS | ticket=921577945 | retcode=10009 | comment=Python trader test
+2026-08-07 19:38:19 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=CLOSE_SUCCESS | ticket=282823318 | retcode=10009 | comment=Close position | detail=ticket=282789638
+2026-08-07 19:38:18 | account=real | symbol=XAUUSDm | lot=0.02 | status=CLOSE_SUCCESS | ticket=921560211 | retcode=10009 | comment=Close position | detail=ticket=921422766
+2026-08-07 19:37:10 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=282789638
+2026-08-07 19:37:09 | account=real | symbol=XAUUSDm | lot=0.02 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=921422766
+2026-08-07 19:35:27 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=282789638
+2026-08-07 19:35:26 | account=real | symbol=XAUUSDm | lot=0.02 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=921422766
+2026-08-07 19:33:57 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=282789638
+2026-08-07 19:33:57 | account=real | symbol=XAUUSDm | lot=0.02 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=921422766
+2026-08-07 19:33:34 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=282789638
+2026-08-07 19:33:34 | account=real | symbol=XAUUSDm | lot=0.02 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=921422766
+2026-08-07 19:33:11 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=282789638
+2026-08-07 19:33:10 | account=real | symbol=XAUUSDm | lot=0.02 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=921422766
+2026-08-07 19:20:52 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=282789638
+2026-08-07 18:34:31 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=282789638
+2026-08-07 18:22:24 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=282789638
+2026-08-07 18:22:24 | account=real | symbol=XAUUSDm | lot=0.02 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=921422766
+2026-08-07 18:22:04 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=SUCCESS | ticket=282789638 | retcode=10009 | comment=Python trader test
+2026-08-07 18:22:03 | account=real | symbol=XAUUSDm | lot=0.02 | status=SUCCESS | ticket=921422766 | retcode=10009 | comment=Python trader test
+2026-08-06 23:57:34 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=CLOSE_SUCCESS | ticket=282606962 | retcode=10009 | comment=Close position | detail=ticket=282596873
+2026-08-06 23:57:33 | account=real | symbol=XAUUSDm | lot=0.02 | status=CLOSE_SUCCESS | ticket=920916250 | retcode=10009 | comment=Close position | detail=ticket=920891046
+2026-08-06 23:35:57 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=282596873
+2026-08-06 23:35:56 | account=real | symbol=XAUUSDm | lot=0.02 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=920891046
+2026-08-06 23:17:36 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=SUCCESS | ticket=282596873 | retcode=10009 | comment=Python trader test
+2026-08-06 23:17:35 | account=real | symbol=XAUUSDm | lot=0.02 | status=SUCCESS | ticket=920891046 | retcode=10009 | comment=Python trader test
+2026-08-06 16:31:12 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=282361675
+2026-08-06 16:31:12 | account=real | symbol=XAUUSDm | lot=0.02 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=920366133
+2026-08-06 16:04:43 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=282361675
+2026-08-06 16:04:42 | account=real | symbol=XAUUSDm | lot=0.02 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=920366133
+2026-08-06 13:22:04 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=282361675
+2026-08-06 13:22:04 | account=real | symbol=XAUUSDm | lot=0.02 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=920366133
+2026-08-06 13:01:24 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=SUCCESS | ticket=282361675 | retcode=10009 | comment=Python trader test
+2026-08-06 13:01:23 | account=real | symbol=XAUUSDm | lot=0.02 | status=SUCCESS | ticket=920366133 | retcode=10009 | comment=Python trader test
+2026-08-06 10:01:09 | account=prop_1 | symbol=XAUUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=282333819 | retcode=10009 | comment=Close position | detail=ticket=282296111
+2026-08-06 10:01:08 | account=prop_1 | symbol=XAUUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=282333817 | retcode=10009 | comment=Close position | detail=ticket=282295931
+2026-08-06 10:01:07 | account=real | symbol=XAUUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=920255171 | retcode=10009 | comment=Close position | detail=ticket=920144694
+2026-08-06 10:01:06 | account=real | symbol=XAUUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=920255165 | retcode=10009 | comment=Close position | detail=ticket=920144281
+2026-08-06 09:23:17 | account=prop_1 | symbol=XAUUSD | lot=0.05 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=282296111
+2026-08-06 09:23:16 | account=prop_1 | symbol=XAUUSD | lot=0.05 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=282295931
+2026-08-06 09:23:16 | account=real | symbol=XAUUSDm | lot=0.01 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=920144694
+2026-08-06 09:23:16 | account=real | symbol=XAUUSDm | lot=0.01 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=920144281
+2026-08-06 07:10:49 | account=prop_1 | symbol=XAUUSD | lot=0.05 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=282296111
+2026-08-06 07:10:49 | account=prop_1 | symbol=XAUUSD | lot=0.05 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=282295931
+2026-08-06 07:10:49 | account=real | symbol=XAUUSDm | lot=0.01 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=920144694
+2026-08-06 07:10:48 | account=real | symbol=XAUUSDm | lot=0.01 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=920144281
+2026-08-06 07:09:48 | account=prop_1 | symbol=XAUUSD | lot=0.05 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=282296111
+2026-08-06 07:09:48 | account=prop_1 | symbol=XAUUSD | lot=0.05 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=282295931
+2026-08-06 07:09:48 | account=real | symbol=XAUUSDm | lot=0.01 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=920144694
+2026-08-06 07:09:48 | account=real | symbol=XAUUSDm | lot=0.01 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=920144281
+2026-08-06 07:09:18 | account=prop_1 | symbol=XAUUSD | lot=0.05 | status=SUCCESS | ticket=282296111 | retcode=10009 | comment=Python trader test
+2026-08-06 07:09:17 | account=real | symbol=XAUUSDm | lot=0.01 | status=SUCCESS | ticket=920144694 | retcode=10009 | comment=Python trader test
+2026-08-06 07:08:51 | account=prop_1 | symbol=XAUUSD | lot=0.05 | status=SUCCESS | ticket=282295931 | retcode=10009 | comment=Python trader test
+2026-08-06 07:08:50 | account=real | symbol=XAUUSDm | lot=0.01 | status=SUCCESS | ticket=920144281 | retcode=10009 | comment=Python trader test
+2026-08-06 07:02:02 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=CLOSE_SUCCESS | ticket=282294479 | retcode=10009 | comment=Close position | detail=ticket=282260629
+2026-08-06 07:02:00 | account=real | symbol=XAUUSDm | lot=0.02 | status=CLOSE_SUCCESS | ticket=920140510 | retcode=10009 | comment=Close position | detail=ticket=920090376
+2026-08-06 06:29:27 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=282260629
+2026-08-06 06:29:27 | account=real | symbol=XAUUSDm | lot=0.02 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=920090376
+2026-08-06 03:31:42 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=282260629
+2026-08-06 03:31:41 | account=real | symbol=XAUUSDm | lot=0.02 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=920090376
+2026-08-06 02:02:06 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=282260629
+2026-08-06 02:02:06 | account=real | symbol=XAUUSDm | lot=0.02 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=920090376
+2026-08-06 01:59:30 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=SUCCESS | ticket=282260629 | retcode=10009 | comment=Python trader test
+2026-08-06 01:59:28 | account=real | symbol=XAUUSDm | lot=0.02 | status=SUCCESS | ticket=920090376 | retcode=10009 | comment=Python trader test
+2026-08-05 23:22:56 | account=prop_1 | symbol=XAUUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=282229404 | retcode=10009 | comment=Close position | detail=ticket=282223896
+2026-08-05 23:22:55 | account=real | symbol=XAUUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=920020250 | retcode=10009 | comment=Close position | detail=ticket=920002752
+2026-08-05 23:04:51 | account=prop_1 | symbol=XAUUSD | lot=0.05 | status=SUCCESS | ticket=282223896 | retcode=10009 | comment=Python trader test
+2026-08-05 23:04:50 | account=real | symbol=XAUUSDm | lot=0.01 | status=SUCCESS | ticket=920002752 | retcode=10009 | comment=Python trader test
+2026-08-05 20:00:52 | account=prop_1 | symbol=XAUUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=282109763 | retcode=10009 | comment=Close position | detail=ticket=282106691
+2026-08-05 20:00:51 | account=real | symbol=XAUUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=919755421 | retcode=10009 | comment=Close position | detail=ticket=919748305
+2026-08-05 19:57:15 | account=prop_1 | symbol=XAUUSD | lot=0.05 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=282106691
+2026-08-05 19:57:15 | account=real | symbol=XAUUSDm | lot=0.01 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=919748305
+2026-08-05 19:56:03 | account=prop_1 | symbol=XAUUSD | lot=0.05 | status=SUCCESS | ticket=282106691 | retcode=10009 | comment=Python trader test
+2026-08-05 19:56:02 | account=real | symbol=XAUUSDm | lot=0.01 | status=SUCCESS | ticket=919748305 | retcode=10009 | comment=Python trader test
+2026-08-05 00:58:55 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=CLOSE_SUCCESS | ticket=281861315 | retcode=10009 | comment=Close position | detail=ticket=281835818
+2026-08-05 00:58:54 | account=real | symbol=XAUUSDm | lot=0.02 | status=CLOSE_SUCCESS | ticket=919088592 | retcode=10009 | comment=Close position | detail=ticket=919035134
+2026-08-05 00:16:09 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=281835818
+2026-08-05 00:16:09 | account=real | symbol=XAUUSDm | lot=0.02 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=919035134
+2026-08-05 00:07:15 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=281835818
+2026-08-05 00:07:14 | account=real | symbol=XAUUSDm | lot=0.02 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=919035134
+2026-08-05 00:05:35 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=281835818
+2026-08-05 00:05:34 | account=real | symbol=XAUUSDm | lot=0.02 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=919035134
+2026-08-04 23:24:56 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=SUCCESS | ticket=281835818 | retcode=10009 | comment=Python trader test
+2026-08-04 23:24:55 | account=real | symbol=XAUUSDm | lot=0.02 | status=SUCCESS | ticket=919035134 | retcode=10009 | comment=Python trader test
+2026-08-04 11:31:12 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=281576804
+2026-08-04 11:31:12 | account=real | symbol=XAUUSDm | lot=0.02 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=918494984
+2026-08-04 11:31:03 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=MODIFY_FAILED | ticket=0 | retcode=10025 | comment=Modified TP/SL | detail=ticket=281576804 | No changes
+2026-08-04 11:31:03 | account=real | symbol=XAUUSDm | lot=0.02 | status=MODIFY_FAILED | ticket=0 | retcode=10025 | comment=Modified TP/SL | detail=ticket=918494984 | No changes
+2026-08-04 10:46:11 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=SUCCESS | ticket=281576804 | retcode=10009 | comment=Python trader test
+2026-08-04 10:46:10 | account=real | symbol=XAUUSDm | lot=0.02 | status=SUCCESS | ticket=918494984 | retcode=10009 | comment=Python trader test
+2026-08-04 03:02:34 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=CLOSE_SUCCESS | ticket=281513806 | retcode=10009 | comment=Close position | detail=ticket=281451343
+2026-08-04 03:02:32 | account=real | symbol=XAUUSDm | lot=0.02 | status=CLOSE_SUCCESS | ticket=918357549 | retcode=10009 | comment=Close position | detail=ticket=918241898
+2026-08-04 02:40:11 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=281451343
+2026-08-04 02:40:11 | account=real | symbol=XAUUSDm | lot=0.02 | status=MODIFY_SUCCESS | ticket=0 | retcode=10009 | comment=Modified TP/SL | detail=ticket=918241898
+2026-08-04 02:39:25 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=MODIFY_FAILED | ticket=0 | retcode=10025 | comment=Modified TP/SL | detail=ticket=281451343 | No changes
+2026-08-04 02:39:25 | account=real | symbol=XAUUSDm | lot=0.02 | status=MODIFY_FAILED | ticket=0 | retcode=10025 | comment=Modified TP/SL | detail=ticket=918241898 | No changes
+2026-08-03 21:57:16 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=SUCCESS | ticket=281451343 | retcode=10009 | comment=Python trader test
+2026-08-03 21:57:15 | account=real | symbol=XAUUSDm | lot=0.02 | status=SUCCESS | ticket=918241898 | retcode=10009 | comment=Python trader test
+2026-08-03 08:16:19 | account=prop_1 | symbol=XAUUSD | lot=0.1 | status=SUCCESS | ticket=281219156 | retcode=10009 | comment=Python trader test
+2026-08-03 08:16:18 | account=real | symbol=XAUUSDm | lot=0.02 | status=SUCCESS | ticket=917664336 | retcode=10009 | comment=Python trader test
 2026-08-01 21:05:35 | account=prop_demo | symbol=BTCUSD | lot=0.05 | status=CLOSE_SUCCESS | ticket=509778735 | retcode=10009 | comment=Close position | detail=ticket=509778734
 2026-08-01 21:05:33 | account=fake2 | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=4463507234 | retcode=10009 | comment=Close position | detail=ticket=4463507172
 2026-08-01 21:05:32 | account=fake | symbol=BTCUSDm | lot=0.01 | status=CLOSE_SUCCESS | ticket=3563828751 | retcode=10009 | comment=Close position | detail=ticket=3563828691

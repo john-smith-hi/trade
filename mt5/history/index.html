@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>MT5 — Lịch sử lệnh</title>
+<script src="../ver.php"></script>
+<script>
+(function () {
+  var v = window.MT5_ASSET_VER || "0";
+  document.write('<link rel="stylesheet" href="../style.css?v=' + v + '" />');
+})();
+</script>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <nav class="nav">
+      <a href="../">Ra lệnh</a>
+      <a href="../account/">Accounts</a>
+      <a href="../path/">Path</a>
+      <a href="./" class="active">Lịch sử</a>
+    </nav>
+    <p class="api-status" id="apiStatus">Đang kiểm tra kết nối API...</p>
+  </div>
+  <button type="button" id="themeToggle" class="btn btn-secondary theme-toggle">Chế độ tối</button>
+</header>
+
+<main class="main-wide">
+  <section class="card">
+    <h2>Lịch sử lệnh</h2>
+    <p class="hint">Nguồn: history_mt5.txt — các lệnh gần nhất.</p>
+    <div class="row history-toolbar">
+      <label for="historyLimit">Số dòng</label>
+      <input type="number" id="historyLimit" value="50" min="1" max="500" step="1" style="width: 100px" />
+      <button type="button" id="btnHistory" class="btn btn-primary">Tải lại</button>
+      <span class="hint" id="historyCount"></span>
+    </div>
+
+    <div class="table-wrap">
+      <table class="data-table" id="historyTable">
+        <thead>
+          <tr>
+            <th>Thời gian</th>
+            <th>Account</th>
+            <th>Symbol</th>
+            <th>Lot</th>
+            <th>Status</th>
+            <th>Ticket</th>
+            <th>Retcode</th>
+            <th>Comment</th>
+            <th>Detail</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody">
+          <tr class="empty-row">
+            <td colspan="9">Chưa tải lịch sử.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script>window.MT5_PROXY = "../proxy.php";</script>
+<script>
+(function () {
+  var v = window.MT5_ASSET_VER || "0";
+  document.write('<script src="../common.js?v=' + v + '"><\/script>');
+  document.write('<script src="history.js?v=' + v + '"><\/script>');
+})();
+</script>
+</body>
+</html>
