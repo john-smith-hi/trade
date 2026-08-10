@@ -25,15 +25,18 @@
 #
 # THAM SỐ BẮT BUỘC
 #   --account   tên account khai báo trong xml/accounts.xml (vd: fake, real, prop_demo)
-#   --action    status | open | close-all | modify-all
+#   --action    status | open | pending | cancel-pending | close-all | modify-all
 #
 # THAM SỐ KHÁC
-#   --symbol --side --lot --tp-price --sl-price --comment --copy --no-ask
+#   --symbol --side --lot --tp-price --sl-price --price --pending-type --comment --copy --no-ask
 #   (Không có --no-ask → chỉ xem trước, KHÔNG gửi lệnh thật.)
 #   TP/SL là mức giá cụ thể (không phải số điểm).
 #   action=open BẮT BUỘC có cả --tp-price và --sl-price.
 #     BUY : SL < giá mở < TP
 #     SELL: TP < giá mở < SL
+#   action=pending BẮT BUỘC --price (giá chờ) + TP + SL; --pending-type = limit | stop.
+#     BUY  LIMIT: giá chờ < ask | BUY  STOP: giá chờ > ask
+#     SELL LIMIT: giá chờ > bid | SELL STOP: giá chờ < bid
 #   Không truyền --copy → tự dùng auto_copy_enabled/auto_copy_targets của account (nếu có).
 #   Truyền --copy "tên1,tên2" → copy đúng danh sách này (override auto-copy).
 #   Truyền --copy "" → tắt hẳn copy cho lần chạy đó (bỏ qua cả auto-copy).
@@ -47,6 +50,15 @@
 #
 #   # Mở lệnh thật
 #   python mt5.py --account fake --action open --symbol XAUUSD --side buy --lot 0.01 --tp-price 60000 --sl-price 58000 --no-ask
+#
+#   # Đặt lệnh chờ mua (Buy Limit) tại giá
+#   python mt5.py --account fake --action pending --symbol XAUUSD --side buy --pending-type limit --price 2500 --lot 0.01 --tp-price 2550 --sl-price 2480 --no-ask
+#
+#   # Đặt lệnh chờ mua (Buy Stop) khi giá phá lên
+#   python mt5.py --account fake --action pending --symbol XAUUSD --side buy --pending-type stop --price 2600 --lot 0.01 --tp-price 2650 --sl-price 2580 --no-ask
+#
+#   # Hủy toàn bộ lệnh chờ
+#   python mt5.py --account fake --action cancel-pending --no-ask
 #
 #   # Sửa TP/SL tất cả lệnh đang mở (hiện ước tính lời/lỗ so giá mở)
 #   python mt5.py --account fake --action modify-all --tp-price 60000 --sl-price 58000 --no-ask
@@ -90,7 +102,18 @@ ACCOUNTS_EXAMPLE_FILE = XML_DIR / "accounts.example.xml"
 PATHS_FILE = XML_DIR / "paths.xml"
 PATHS_EXAMPLE_FILE = XML_DIR / "paths.example.xml"
 
-COPYABLE_ACTIONS = {"open", "close-all", "modify-all"}
+COPYABLE_ACTIONS = {"open", "pending", "cancel-pending", "close-all", "modify-all"}
+PENDING_TYPES = {"limit", "stop"}
+ORDER_TYPE_LABELS = {
+    0: "BUY",
+    1: "SELL",
+    2: "BUY_LIMIT",
+    3: "SELL_LIMIT",
+    4: "BUY_STOP",
+    5: "SELL_STOP",
+    6: "BUY_STOP_LIMIT",
+    7: "SELL_STOP_LIMIT",
+}
 NO_ASK = False
 DEFAULT_MAGIC = 234567
 DEFAULT_DEVIATION = 20
@@ -909,6 +932,243 @@ def open_trade(account, symbol, side, lot, tp_price=None, sl_price=None, comment
     return result
 
 
+def pending_order_type_label(order_type):
+    return ORDER_TYPE_LABELS.get(int(order_type), f"TYPE_{order_type}")
+
+
+def resolve_pending_order_type(side, pending_type):
+    side_l = (side or "").lower()
+    kind = (pending_type or "").lower()
+    if side_l not in ("buy", "sell"):
+        raise RuntimeError("side phải là buy hoặc sell")
+    if kind not in PENDING_TYPES:
+        raise RuntimeError("pending-type phải là limit hoặc stop")
+
+    mapping = {
+        ("buy", "limit"): (mt5.ORDER_TYPE_BUY_LIMIT, "BUY_LIMIT"),
+        ("buy", "stop"): (mt5.ORDER_TYPE_BUY_STOP, "BUY_STOP"),
+        ("sell", "limit"): (mt5.ORDER_TYPE_SELL_LIMIT, "SELL_LIMIT"),
+        ("sell", "stop"): (mt5.ORDER_TYPE_SELL_STOP, "SELL_STOP"),
+    }
+    return mapping[(side_l, kind)]
+
+
+def normalize_price(symbol, price):
+    symbol_info = mt5.symbol_info(symbol)
+    if symbol_info is None:
+        return float(price)
+    digits = int(getattr(symbol_info, "digits", 0) or 0)
+    return round(float(price), digits)
+
+
+def validate_pending_price(symbol, side, pending_type, price):
+    """Kiểm tra giá chờ so với thị trường + khoảng stops_level của symbol."""
+    tick = get_current_price(symbol)
+    symbol_info = mt5.symbol_info(symbol)
+    if symbol_info is None:
+        raise RuntimeError(f"Không lấy được thông tin symbol {symbol}")
+
+    side_l = (side or "").lower()
+    kind = (pending_type or "").lower()
+    price = float(price)
+    ask = float(tick.ask)
+    bid = float(tick.bid)
+    point = float(getattr(symbol_info, "point", 0) or 0) or 0.0
+    stops_level = int(getattr(symbol_info, "trade_stops_level", 0) or 0)
+    min_distance = stops_level * point
+
+    if side_l == "buy" and kind == "limit":
+        if price >= ask:
+            raise RuntimeError(f"BUY LIMIT: giá chờ {price} phải nhỏ hơn ask hiện tại {ask}")
+        if min_distance and (ask - price) < min_distance:
+            raise RuntimeError(
+                f"BUY LIMIT: giá chờ cách ask tối thiểu {min_distance} (stops_level={stops_level}), "
+                f"hiện ask-price={ask - price}"
+            )
+    elif side_l == "buy" and kind == "stop":
+        if price <= ask:
+            raise RuntimeError(f"BUY STOP: giá chờ {price} phải lớn hơn ask hiện tại {ask}")
+        if min_distance and (price - ask) < min_distance:
+            raise RuntimeError(
+                f"BUY STOP: giá chờ cách ask tối thiểu {min_distance} (stops_level={stops_level}), "
+                f"hiện price-ask={price - ask}"
+            )
+    elif side_l == "sell" and kind == "limit":
+        if price <= bid:
+            raise RuntimeError(f"SELL LIMIT: giá chờ {price} phải lớn hơn bid hiện tại {bid}")
+        if min_distance and (price - bid) < min_distance:
+            raise RuntimeError(
+                f"SELL LIMIT: giá chờ cách bid tối thiểu {min_distance} (stops_level={stops_level}), "
+                f"hiện price-bid={price - bid}"
+            )
+    elif side_l == "sell" and kind == "stop":
+        if price >= bid:
+            raise RuntimeError(f"SELL STOP: giá chờ {price} phải nhỏ hơn bid hiện tại {bid}")
+        if min_distance and (bid - price) < min_distance:
+            raise RuntimeError(
+                f"SELL STOP: giá chờ cách bid tối thiểu {min_distance} (stops_level={stops_level}), "
+                f"hiện bid-price={bid - price}"
+            )
+    else:
+        raise RuntimeError("pending-type phải là limit hoặc stop")
+
+    return {"bid": bid, "ask": ask, "min_distance": min_distance}
+
+
+def is_order_send_success(result):
+    if result is None:
+        return False
+    ok_codes = {mt5.TRADE_RETCODE_DONE}
+    placed = getattr(mt5, "TRADE_RETCODE_PLACED", None)
+    if placed is not None:
+        ok_codes.add(placed)
+    return result.retcode in ok_codes
+
+
+def build_pending_request(symbol, side, pending_type, price, lot, tp_price=None, sl_price=None,
+                          comment="Python pending"):
+    order_type, _label = resolve_pending_order_type(side, pending_type)
+    price = normalize_price(symbol, price)
+    validate_pending_price(symbol, side, pending_type, price)
+    validate_tp_sl(side, price, tp_price, sl_price)
+
+    filling_policy = get_filling_mode(symbol)
+    request = {
+        "action": mt5.TRADE_ACTION_PENDING,
+        "symbol": symbol,
+        "volume": float(lot),
+        "type": order_type,
+        "price": price,
+        "deviation": DEFAULT_DEVIATION,
+        "magic": DEFAULT_MAGIC,
+        "comment": comment,
+        "type_time": mt5.ORDER_TIME_GTC,
+        "type_filling": filling_policy,
+    }
+    if tp_price is not None:
+        request["tp"] = normalize_price(symbol, tp_price)
+    if sl_price is not None:
+        request["sl"] = normalize_price(symbol, sl_price)
+    return request
+
+
+def open_pending_trade(account, symbol, side, pending_type, price, lot,
+                       tp_price=None, sl_price=None, comment="Python pending"):
+    if price is None:
+        raise RuntimeError("Lệnh pending bắt buộc phải có --price (giá chờ)")
+    if tp_price is None or sl_price is None:
+        raise RuntimeError("Lệnh pending bắt buộc phải có cả --tp-price và --sl-price")
+
+    symbol = select_symbol(symbol, account)
+    price = normalize_price(symbol, price)
+    _order_type, type_label = resolve_pending_order_type(side, pending_type)
+    market = validate_pending_price(symbol, side, pending_type, price)
+    validate_tp_sl(side, price, tp_price, sl_price)
+
+    print(f"Sẽ đặt lệnh chờ {type_label} trên {symbol} với khối lượng {lot} lot")
+    print(f"Giá chờ: {price} | bid={market['bid']} ask={market['ask']}")
+    if market["min_distance"]:
+        print(f"Khoảng cách tối thiểu (stops_level): {market['min_distance']}")
+    print(f"TP: {tp_price} | SL: {sl_price}")
+
+    contract_size = resolve_contract_size(symbol)
+    estimated = estimate_tp_sl_pnl(side, price, tp_price, sl_price, lot, contract_size)
+    print(f"Ước tính lời TP: {estimated.get('tp', 0):.8f}")
+    print(f"Ước tính lỗ SL: {estimated.get('sl', 0):.8f}")
+    validate_xauusd_max_loss(symbol, side, price, sl_price, lot, account=account)
+
+    if not confirm_action("Bạn có muốn đặt lệnh chờ này không?"):
+        print("Đã hủy đặt lệnh chờ.")
+        return None
+
+    request = build_pending_request(
+        symbol, side, pending_type, price, lot, tp_price, sl_price, comment,
+    )
+    result = mt5.order_send(request)
+
+    if result is None:
+        print(f"Đặt lệnh chờ thất bại nặng! Không nhận được phản hồi từ terminal. Lỗi hệ thống: {mt5.last_error()}")
+        return None
+
+    if not is_order_send_success(result):
+        print(f"Đặt lệnh chờ thất bại! Mã lỗi: {result.retcode} ({result.comment})")
+        save_trade_history(
+            symbol, lot, result, request, "PENDING_FAILED",
+            f"retcode={result.retcode} | {result.comment} | type={type_label} | price={price}",
+        )
+        return None
+
+    print(f"Đặt lệnh chờ thành công! Ticket ID: {result.order} | {type_label} @ {price}")
+    save_trade_history(
+        symbol, lot, result, request, "PENDING_SUCCESS",
+        f"type={type_label} | price={price}",
+    )
+    return result
+
+
+def cancel_pending_order(order, confirm=True):
+    type_label = pending_order_type_label(order.type)
+    print(
+        f"Lệnh chờ: ticket={order.ticket} | symbol={order.symbol} | "
+        f"Type={type_label} | Price={order.price_open} | Vol={order.volume_current}"
+    )
+
+    if confirm and not confirm_action(f"Bạn có muốn hủy lệnh chờ {order.ticket} này không?"):
+        print("Đã hủy thao tác hủy lệnh chờ.")
+        return None
+
+    request = {
+        "action": mt5.TRADE_ACTION_REMOVE,
+        "order": order.ticket,
+        "symbol": order.symbol,
+        "magic": DEFAULT_MAGIC,
+        "comment": "Cancel pending",
+    }
+    result = mt5.order_send(request)
+    if result is None:
+        print(f"Hủy lệnh chờ {order.ticket} thất bại! Không nhận được phản hồi.")
+        return None
+
+    if not is_order_send_success(result):
+        print(f"Hủy lệnh chờ {order.ticket} thất bại! Mã lỗi: {result.retcode} ({result.comment})")
+        save_trade_history(
+            order.symbol, order.volume_current, result, request, "CANCEL_PENDING_FAILED",
+            f"ticket={order.ticket} | {result.comment}",
+        )
+        return None
+
+    print(f"Hủy lệnh chờ thành công! Ticket ID: {order.ticket}")
+    save_trade_history(
+        order.symbol, order.volume_current, result, request, "CANCEL_PENDING_SUCCESS",
+        f"ticket={order.ticket}",
+    )
+    return result
+
+
+def cancel_all_pending_orders():
+    orders = mt5.orders_get()
+    if not orders:
+        print("Không có lệnh chờ nào để hủy.")
+        return []
+
+    print(f"Tìm thấy {len(orders)} lệnh chờ. Đang chuẩn bị hủy toàn bộ...")
+    for order in orders:
+        type_label = pending_order_type_label(order.type)
+        print(
+            f"- Ticket: {order.ticket} | Symbol: {order.symbol} | "
+            f"Type: {type_label} | Price: {order.price_open} | Vol: {order.volume_current}"
+        )
+
+    if not confirm_action("Bạn có muốn hủy toàn bộ các lệnh chờ này không?"):
+        print("Đã hủy thao tác hủy toàn bộ lệnh chờ.")
+        return []
+
+    results = []
+    for order in orders:
+        results.append(cancel_pending_order(order, confirm=False))
+    return results
+
+
 def build_close_request(position):
     symbol = position.symbol
     tick = get_current_price(symbol)
@@ -1043,7 +1303,20 @@ def print_pending_orders():
         return
 
     for order in orders:
-        print(f"- Ticket: {order.ticket} | Symbol: {order.symbol} | Type: {order.type} | Price: {order.price}")
+        type_label = pending_order_type_label(order.type)
+        price = getattr(order, "price_open", None)
+        if price is None:
+            price = getattr(order, "price", 0)
+        sl = getattr(order, "sl", 0) or 0
+        tp = getattr(order, "tp", 0) or 0
+        vol = getattr(order, "volume_current", None)
+        if vol is None:
+            vol = getattr(order, "volume_initial", 0)
+        print(
+            f"- Ticket: {order.ticket} | Symbol: {order.symbol} | Type: {type_label} | "
+            f"Price: {price} | Vol: {vol} | SL: {sl if sl > 0 else 'chưa đặt'} | "
+            f"TP: {tp if tp > 0 else 'chưa đặt'}"
+        )
 
 
 
@@ -1158,6 +1431,40 @@ def list_open_positions_data():
     return rows
 
 
+def list_pending_orders_data():
+    """Snapshot lệnh chờ (JSON-friendly) — dùng cho UI cancel-pending."""
+    orders = mt5.orders_get()
+    if not orders:
+        return []
+    rows = []
+    for order in orders:
+        type_label = pending_order_type_label(order.type)
+        price = getattr(order, "price_open", None)
+        if price is None:
+            price = getattr(order, "price", 0)
+        vol = getattr(order, "volume_current", None)
+        if vol is None:
+            vol = getattr(order, "volume_initial", 0)
+        sl = float(getattr(order, "sl", 0) or 0)
+        tp = float(getattr(order, "tp", 0) or 0)
+        type_i = int(order.type)
+        if type_i in (mt5.ORDER_TYPE_BUY_LIMIT, mt5.ORDER_TYPE_BUY_STOP, mt5.ORDER_TYPE_BUY_STOP_LIMIT):
+            side = "buy"
+        else:
+            side = "sell"
+        rows.append({
+            "ticket": int(order.ticket),
+            "symbol": order.symbol,
+            "side": side,
+            "type": type_label,
+            "volume": float(vol),
+            "price": float(price),
+            "sl": sl if sl > 0 else None,
+            "tp": tp if tp > 0 else None,
+        })
+    return rows
+
+
 def run_action_on_account(account, args, lot):
     global _ACTIVE_XAUUSD_MAX_LOSS
     _ACTIVE_XAUUSD_MAX_LOSS = account.get("xauusd_max_loss")
@@ -1165,6 +1472,13 @@ def run_action_on_account(account, args, lot):
         connect_mt5(account)
         if args.action == "open":
             open_trade(account, args.symbol, args.side, lot, args.tp_price, args.sl_price, args.comment)
+        elif args.action == "pending":
+            open_pending_trade(
+                account, args.symbol, args.side, args.pending_type, args.price, lot,
+                args.tp_price, args.sl_price, args.comment,
+            )
+        elif args.action == "cancel-pending":
+            cancel_all_pending_orders()
         elif args.action == "close-all":
             close_all_positions()
         elif args.action == "modify-all":
@@ -1181,8 +1495,8 @@ def run_action_on_account(account, args, lot):
 
 def execute_request(account_name, action, symbol="XAUUSD", side="buy", lot=0.01,
                      tp_price=None, sl_price=None, comment="Python trader test",
-                     no_ask=False, copy_names=None):
-    """Thực thi 1 hành động (status/open/close-all/modify-all) cho account_name,
+                     no_ask=False, copy_names=None, price=None, pending_type="limit"):
+    """Thực thi 1 hành động cho account_name,
     kèm copy sang các account trong copy_names nếu action cho phép.
 
     copy_names=None (không truyền gì) -> tự lấy theo cấu hình auto_copy_enabled/
@@ -1211,6 +1525,10 @@ def execute_request(account_name, action, symbol="XAUUSD", side="buy", lot=0.01,
     args.tp_price = tp_price
     args.sl_price = sl_price
     args.comment = comment
+    args.price = price
+    args.pending_type = (pending_type or "limit").lower()
+
+    lot_scale_actions = {"open", "pending"}
 
     try:
         run_action_on_account(primary_account, args, lot)
@@ -1219,7 +1537,10 @@ def execute_request(account_name, action, symbol="XAUUSD", side="buy", lot=0.01,
             print(f"[AUTO-COPY] Tài khoản '{account_name}' được cấu hình tự động copy sang: {', '.join(copy_names)}")
 
         if copy_names and action not in COPYABLE_ACTIONS:
-            print(f"Lưu ý: copy chỉ áp dụng cho action open/close-all/modify-all, bỏ qua sao chép cho action '{action}'.")
+            print(
+                f"Lưu ý: copy chỉ áp dụng cho action open/pending/cancel-pending/close-all/modify-all, "
+                f"bỏ qua sao chép cho action '{action}'."
+            )
         elif copy_names:
             for copy_name in copy_names:
                 print(f"\n--- [COPY] Đang thực thi sang tài khoản {copy_name} ---")
@@ -1231,8 +1552,8 @@ def execute_request(account_name, action, symbol="XAUUSD", side="buy", lot=0.01,
                     copy_account["xauusd_max_loss"] = inherited_max_loss
                     mt5.shutdown()
                     multi = get_account_multi(copy_account)
-                    lot_for_copy = lot * multi if action == "open" else lot
-                    if action == "open" and lot_for_copy != lot:
+                    lot_for_copy = lot * multi if action in lot_scale_actions else lot
+                    if action in lot_scale_actions and lot_for_copy != lot:
                         print(f"Lot gốc: {lot} → Lot copy ({copy_name}, MULTI={multi}): {lot_for_copy}")
                     if own_max_loss is None and inherited_max_loss is not None:
                         primary_loss = _optional_max_loss(primary_account.get("xauusd_max_loss"))
@@ -1259,14 +1580,26 @@ def main():
         required=True,
         help="Bắt buộc: chọn tài khoản chính theo name khai báo trong accounts.xml (vd: prop_demo, prop_1, real, fake)",
     )
-    parser.add_argument("--action", choices=["open", "close-all", "modify-all", "status"], required=True)
+    parser.add_argument(
+        "--action",
+        choices=["open", "pending", "cancel-pending", "close-all", "modify-all", "status"],
+        required=True,
+    )
     parser.add_argument("--symbol", default="XAUUSD")
     parser.add_argument("--side", choices=["buy", "sell"], default="buy")
     parser.add_argument("--lot", type=float, default=0.01)
     parser.add_argument("--tp-price", type=float, default=None)
     parser.add_argument("--sl-price", type=float, default=None)
+    parser.add_argument("--price", type=float, default=None, help="Giá chờ cho action=pending")
+    parser.add_argument(
+        "--pending-type", choices=["limit", "stop"], default="limit",
+        help="Loại lệnh chờ: limit hoặc stop (mặc định limit)",
+    )
     parser.add_argument("--comment", default="Python trader test")
-    parser.add_argument("--no-ask", action="store_true", help="Bắt buộc phải có để thực thi lệnh thật (open/close-all/modify-all). Nếu không truyền, chương trình chỉ in thông báo xem trước và không gửi lệnh nào, kể cả copy.")
+    parser.add_argument(
+        "--no-ask", action="store_true",
+        help="Bắt buộc phải có để thực thi lệnh thật. Nếu không truyền, chương trình chỉ in thông báo xem trước và không gửi lệnh nào, kể cả copy.",
+    )
     parser.add_argument(
         "--copy", default=None,
         help="Danh sách account name cần copy lệnh sang, phân tách bằng dấu phẩy, ví dụ: prop_demo,prop_1. "
@@ -1278,6 +1611,11 @@ def main():
 
     if args.action == "open" and (args.tp_price is None or args.sl_price is None):
         parser.error("action=open bắt buộc phải có cả --tp-price và --sl-price")
+    if args.action == "pending":
+        if args.price is None:
+            parser.error("action=pending bắt buộc phải có --price (giá chờ)")
+        if args.tp_price is None or args.sl_price is None:
+            parser.error("action=pending bắt buộc phải có cả --tp-price và --sl-price")
 
     copy_names = None
     if args.copy is not None:
@@ -1286,6 +1624,7 @@ def main():
     execute_request(
         args.account, args.action, args.symbol, args.side, args.lot,
         args.tp_price, args.sl_price, args.comment, args.no_ask, copy_names,
+        price=args.price, pending_type=args.pending_type,
     )
 
 

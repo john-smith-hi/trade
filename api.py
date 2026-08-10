@@ -28,9 +28,10 @@
 #   POST /api/accounts          -> thêm account mới
 #   PUT  /api/accounts/<name>   -> sửa cấu hình (không đổi login/password/server/name)
 #   POST /api/reload-accounts   -> nạp lại xml/accounts.xml (ép buộc)
-#   POST /api/action            -> thực thi action (status/open/close-all/modify-all)
-#   GET  /api/quote?account=&symbol=&side=  -> bid/ask/entry (điền TP/SL khi open)
+#   POST /api/action            -> thực thi action (status/open/pending/cancel-pending/close-all/modify-all)
+#   GET  /api/quote?account=&symbol=&side=  -> bid/ask/entry (điền TP/SL khi open/pending)
 #   GET  /api/positions?account=            -> lệnh mở JSON (điền TP/SL khi modify-all)
+#   GET  /api/orders?account=               -> lệnh chờ JSON (cancel-pending)
 #   GET  /api/history?limit=50  -> lịch sử (lines + rows đã parse cho bảng)
 #
 # Kết quả của /api/action trả về đúng nguyên văn các dòng print() của mt5.py
@@ -379,8 +380,13 @@ def action_endpoint():
         lot = float(data.get("lot", 0.01))
         tp_price = _to_float_or_none(data.get("tp_price"), "tp_price")
         sl_price = _to_float_or_none(data.get("sl_price"), "sl_price")
+        price = _to_float_or_none(data.get("price"), "price")
     except (TypeError, ValueError) as exc:
         return jsonify({"error": str(exc)}), 400
+
+    pending_type = (data.get("pending_type") or "limit").strip().lower()
+    if pending_type not in ("limit", "stop"):
+        return jsonify({"error": "'pending_type' phải là limit hoặc stop"}), 400
 
     copy_raw = data.get("copy", None)
     if copy_raw is None:
@@ -396,6 +402,7 @@ def action_endpoint():
                 mt5app.execute_request(
                     account, action, symbol, side, lot,
                     tp_price, sl_price, comment, no_ask, copy_names,
+                    price=price, pending_type=pending_type,
                 )
         except Exception as exc:
             print(f"Lỗi: {exc}", file=buf)
@@ -463,6 +470,35 @@ def positions_endpoint():
                 pass
 
     return jsonify({"positions": positions})
+
+
+@app.get("/api/orders")
+def orders_endpoint():
+    """Lệnh chờ (JSON) — dùng UI khi chọn cancel-pending."""
+    account_name = (request.args.get("account") or "").strip()
+    if not account_name:
+        return jsonify({"error": "Thiếu 'account'"}), 400
+
+    buf = io.StringIO()
+    with _lock:
+        mt5app.ensure_accounts_fresh()
+        try:
+            account = mt5app.get_account(account_name)
+        except Exception as exc:
+            return jsonify({"error": str(exc)}), 404
+        try:
+            with contextlib.redirect_stdout(buf):
+                mt5app.connect_mt5(account)
+                orders = mt5app.list_pending_orders_data()
+        except Exception as exc:
+            return jsonify({"error": str(exc), "detail": buf.getvalue()}), 500
+        finally:
+            try:
+                mt5app.mt5.shutdown()
+            except Exception:
+                pass
+
+    return jsonify({"orders": orders})
 
 
 @app.get("/api/history")

@@ -70,11 +70,20 @@ function updateAccountInfo(accounts) {
 
 let lastAccounts = [];
 let fillSeq = 0;
-/** null = không áp dụng; false = close-all/modify-all nhưng không có lệnh mở */
+/** null = không áp dụng; false = action cần lệnh nhưng không có */
 let actionHasPositions = null;
+let actionHasOrders = null;
 
 function actionNeedsOpenPositions(action = el("action").value) {
   return action === "modify-all" || action === "close-all";
+}
+
+function actionNeedsPendingOrders(action = el("action").value) {
+  return action === "cancel-pending";
+}
+
+function actionUsesQuote(action = el("action").value) {
+  return action === "open" || action === "pending";
 }
 
 function setExecuteEnabled(enabled) {
@@ -87,8 +96,11 @@ function setExecuteEnabled(enabled) {
 function syncExecuteForAction() {
   if (actionNeedsOpenPositions()) {
     setExecuteEnabled(actionHasPositions === true);
+  } else if (actionNeedsPendingOrders()) {
+    setExecuteEnabled(actionHasOrders === true);
   } else {
     actionHasPositions = null;
+    actionHasOrders = null;
     setExecuteEnabled(true);
   }
 }
@@ -108,10 +120,12 @@ function setTpSl(tp, sl) {
 
 async function autofillFromQuote() {
   actionHasPositions = null;
+  actionHasOrders = null;
   syncExecuteForAction();
   const account = el("account").value;
   const symbol = el("symbol").value.trim();
   const side = el("side").value;
+  const action = el("action").value;
   if (!account || !symbol) {
     setPriceHint("Chọn account và nhập symbol để lấy giá.");
     return;
@@ -125,9 +139,26 @@ async function autofillFromQuote() {
     if (seq !== fillSeq) return;
     const price = data.entry;
     setTpSl(price, price);
-    setPriceHint(
-      `Đã điền từ quote ${data.symbol}: bid=${data.bid} ask=${data.ask} → entry ${side}=${price}. Hãy chỉnh TP/SL cho đúng hướng.`,
-    );
+    if (action === "pending") {
+      const pendingType = el("pendingType").value;
+      let tip;
+      if (side === "buy" && pendingType === "limit") {
+        tip = `Buy Limit: nhập giá chờ < ask ${data.ask}`;
+      } else if (side === "buy" && pendingType === "stop") {
+        tip = `Buy Stop: nhập giá chờ > ask ${data.ask}`;
+      } else if (side === "sell" && pendingType === "limit") {
+        tip = `Sell Limit: nhập giá chờ > bid ${data.bid}`;
+      } else {
+        tip = `Sell Stop: nhập giá chờ < bid ${data.bid}`;
+      }
+      setPriceHint(
+        `Quote ${data.symbol}: bid=${data.bid} ask=${data.ask}. ${tip}. Đã điền TP/SL tạm = entry — hãy chỉnh lại.`,
+      );
+    } else {
+      setPriceHint(
+        `Đã điền từ quote ${data.symbol}: bid=${data.bid} ask=${data.ask} → entry ${side}=${price}. Hãy chỉnh TP/SL cho đúng hướng.`,
+      );
+    }
     markApiOk("Đã lấy giá thị trường");
   } catch (err) {
     if (seq !== fillSeq) return;
@@ -196,14 +227,63 @@ async function checkOpenPositionsForAction() {
   }
 }
 
+async function checkPendingOrdersForAction() {
+  const account = el("account").value;
+  if (!account) {
+    actionHasOrders = false;
+    syncExecuteForAction();
+    setPriceHint("Chọn account để kiểm tra lệnh chờ.", { asError: true });
+    return;
+  }
+
+  const seq = ++fillSeq;
+  setPriceHint("Đang lấy lệnh chờ...");
+  setExecuteEnabled(false);
+  try {
+    const q = new URLSearchParams({ account });
+    const data = await apiGet(`/api/orders?${q}`, { useCache: false, timeoutMs: 30000 });
+    if (seq !== fillSeq) return;
+    const orders = data.orders || [];
+
+    if (!orders.length) {
+      actionHasOrders = false;
+      setPriceHint(
+        "Không có lệnh chờ — cancel-pending không làm gì được. Chọn pending để đặt lệnh chờ trước.",
+        { asError: true },
+      );
+      markApiOk("Không có lệnh chờ");
+      syncExecuteForAction();
+      return;
+    }
+
+    actionHasOrders = true;
+    const summary = orders
+      .slice(0, 3)
+      .map((o) => `#${o.ticket} ${o.type} ${o.symbol} @ ${o.price}`)
+      .join("; ");
+    const more = orders.length > 3 ? ` … (+${orders.length - 3})` : "";
+    setPriceHint(`Có ${orders.length} lệnh chờ sẽ bị hủy: ${summary}${more}`);
+    markApiOk(`Có ${orders.length} lệnh chờ`);
+    syncExecuteForAction();
+  } catch (err) {
+    if (seq !== fillSeq) return;
+    actionHasOrders = false;
+    setPriceHint(`Không lấy được lệnh chờ: ${err.message || err}`, { asError: true });
+    syncExecuteForAction();
+  }
+}
+
 async function autofillTpSl() {
   const action = el("action").value;
-  if (action === "open") {
+  if (actionUsesQuote(action)) {
     await withBusy(() => autofillFromQuote(), "Đang lấy giá...", { block: false });
   } else if (actionNeedsOpenPositions(action)) {
     await withBusy(() => checkOpenPositionsForAction(), "Đang lấy lệnh mở...", { block: false });
+  } else if (actionNeedsPendingOrders(action)) {
+    await withBusy(() => checkPendingOrdersForAction(), "Đang lấy lệnh chờ...", { block: false });
   } else {
     actionHasPositions = null;
+    actionHasOrders = null;
     setPriceHint("");
     syncExecuteForAction();
   }
@@ -265,6 +345,8 @@ function buildPayload(noAsk) {
     action,
     symbol: isVisible("symbol") ? el("symbol").value : undefined,
     side: isVisible("side") ? el("side").value : undefined,
+    pending_type: isVisible("pendingType") ? el("pendingType").value : undefined,
+    price: isVisible("price") ? el("price").value : undefined,
     lot: isVisible("lot") ? el("lot").value : undefined,
     tp_price: isVisible("tpPrice") ? el("tpPrice").value : "",
     sl_price: isVisible("slPrice") ? el("slPrice").value : "",
@@ -289,6 +371,14 @@ async function submitAction(noAsk, triggerBtn) {
     alert(`Không có lệnh đang mở — ${action} không làm gì được. Hãy chọn status hoặc mở lệnh trước.`);
     return;
   }
+  if (actionNeedsPendingOrders() && actionHasOrders !== true) {
+    alert("Không có lệnh chờ — cancel-pending không làm gì được. Hãy đặt lệnh chờ trước.");
+    return;
+  }
+  if (el("action").value === "pending" && !el("price").value) {
+    alert("Lệnh pending cần nhập Giá chờ.");
+    return;
+  }
   if (noAsk) {
     const ok = await showConfirmModal(
       "Bạn chắc chắn muốn GỬI LỆNH THẬT (hoặc thực thi thật) không? Hành động này không thể xem trước lại.",
@@ -307,6 +397,8 @@ async function submitAction(noAsk, triggerBtn) {
     output.textContent = data.output || "(không có output)";
     if (actionNeedsOpenPositions()) {
       await checkOpenPositionsForAction();
+    } else if (actionNeedsPendingOrders()) {
+      await checkPendingOrdersForAction();
     }
   } catch (err) {
     output.textContent = `Lỗi: ${err.message}`;
@@ -326,13 +418,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     autofillTpSl();
   });
   el("symbol").addEventListener("change", () => {
-    if (el("action").value === "open") autofillTpSl();
+    if (actionUsesQuote()) autofillTpSl();
   });
   el("symbol").addEventListener("blur", () => {
-    if (el("action").value === "open") autofillTpSl();
+    if (actionUsesQuote()) autofillTpSl();
   });
   el("side").addEventListener("change", () => {
-    if (el("action").value === "open") autofillTpSl();
+    if (actionUsesQuote()) autofillTpSl();
+  });
+  el("pendingType").addEventListener("change", () => {
+    if (el("action").value === "pending") autofillTpSl();
   });
   el("btnReloadAccounts").addEventListener("click", reloadAccounts);
   el("btnPreview").addEventListener("click", (e) => submitAction(false, e.target));
