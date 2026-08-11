@@ -694,10 +694,10 @@ def print_tp_sl_warnings(side, entry_price, tp_price=None, sl_price=None, indent
     return warnings
 
 
-def print_open_tp_sl_estimate(symbol, side, entry_price, tp_price, sl_price, lot):
+def print_open_tp_sl_estimate(symbol, side, entry_price, tp_price, sl_price, lot, indent=""):
     """In ước tính lời/lỗ tại TP/SL. Luôn chạy ở chế độ xem trước (kể cả khi chưa --no-ask)."""
     if tp_price is None and sl_price is None:
-        print("Không có TP/SL để ước tính lời/lỗ.", flush=True)
+        print(f"{indent}Không có TP/SL để ước tính lời/lỗ.", flush=True)
         return
 
     try:
@@ -705,22 +705,22 @@ def print_open_tp_sl_estimate(symbol, side, entry_price, tp_price, sl_price, lot
         estimated = estimate_tp_sl_pnl(side, entry_price, tp_price, sl_price, lot, contract_size)
         # Luôn in rõ — không phụ thuộc --no-ask (confirm_action chỉ chặn gửi lệnh thật).
         if "tp" in estimated:
-            print(f"Ước tính lời TP: {estimated['tp']:.8f}", flush=True)
+            print(f"{indent}Ước tính lời TP: {estimated['tp']:.8f}", flush=True)
         if "sl" in estimated:
-            print(f"Ước tính lỗ SL: {estimated['sl']:.8f}", flush=True)
+            print(f"{indent}Ước tính lỗ SL: {estimated['sl']:.8f}", flush=True)
         if not estimated:
-            print("Không ước tính được lời/lỗ (thiếu TP/SL).", flush=True)
+            print(f"{indent}Không ước tính được lời/lỗ (thiếu TP/SL).", flush=True)
     except Exception as exc:
         # Fallback tính thô nếu lấy contract_size từ MT5 lỗi
         try:
             estimated = estimate_tp_sl_pnl(side, entry_price, tp_price, sl_price, lot, 1.0)
-            print(f"(fallback contract_size=1) Không lấy được contract size: {exc}", flush=True)
+            print(f"{indent}(fallback contract_size=1) Không lấy được contract size: {exc}", flush=True)
             if "tp" in estimated:
-                print(f"Ước tính lời TP: {estimated['tp']:.8f}", flush=True)
+                print(f"{indent}Ước tính lời TP: {estimated['tp']:.8f}", flush=True)
             if "sl" in estimated:
-                print(f"Ước tính lỗ SL: {estimated['sl']:.8f}", flush=True)
+                print(f"{indent}Ước tính lỗ SL: {estimated['sl']:.8f}", flush=True)
         except Exception as exc2:
-            print(f"Không ước tính được lời/lỗ: {exc2}", flush=True)
+            print(f"{indent}Không ước tính được lời/lỗ: {exc2}", flush=True)
 
 
 def get_filling_mode(symbol):
@@ -1280,15 +1280,27 @@ def print_open_positions():
 
     total_mt5 = 0.0
     for position in positions:
+        side = "buy" if position.type == mt5.ORDER_TYPE_BUY else "sell"
         sl = getattr(position, "sl", 0) or 0
         tp = getattr(position, "tp", 0) or 0
+        tp_price = tp if tp > 0 else None
+        sl_price = sl if sl > 0 else None
         print(f"- Ticket: {position.ticket} | Symbol: {position.symbol}")
-        print(f"  Type: {'BUY' if position.type == mt5.ORDER_TYPE_BUY else 'SELL'}")
+        print(f"  Type: {side.upper()}")
         print(f"  Volume: {position.volume}")
         print(f"  Giá mở cửa: {position.price_open}")
         print(f"  Stop Loss: {sl if sl > 0 else 'chưa đặt'}")
         print(f"  Take Profit: {tp if tp > 0 else 'chưa đặt'}")
         info = print_position_pnl_lines(position)
+        print_open_tp_sl_estimate(
+            position.symbol,
+            side,
+            position.price_open,
+            tp_price,
+            sl_price,
+            position.volume,
+            indent="  ",
+        )
         total_mt5 += info["mt5_profit"]
 
     if len(positions) > 1:
