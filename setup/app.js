@@ -18,6 +18,7 @@ const WEEKDAY_LABELS = {
 };
 
 const ACCOUNT_KEY = "setup-quote-account";
+const DEFAULT_QUOTE_ACCOUNT = "real";
 
 const state = {
   week: null,
@@ -144,9 +145,20 @@ async function loadAccounts() {
     opt.textContent = acc.name + (acc.server ? ` (${acc.server})` : "");
     select.appendChild(opt);
   });
-  if (saved && accounts.some((a) => a.name === saved)) {
-    select.value = saved;
+  // Mặc định lấy giá bằng account "real" (fake thường Authorization failed).
+  // Bỏ qua localStorage nếu đang nhớ "fake".
+  let chosen = "";
+  if (accounts.some((a) => a.name === DEFAULT_QUOTE_ACCOUNT)) {
+    chosen = DEFAULT_QUOTE_ACCOUNT;
   }
+  if (saved && saved !== "fake" && accounts.some((a) => a.name === saved)) {
+    chosen = saved;
+  }
+  if (!chosen) {
+    chosen = accounts[0].name;
+  }
+  select.value = chosen;
+  localStorage.setItem(ACCOUNT_KEY, chosen);
 }
 
 async function fetchEntryQuote() {
