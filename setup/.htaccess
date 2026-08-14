@@ -1,0 +1,5 @@
+DirectorySlash On
+RewriteEngine On
+
+# /setup → /setup/
+RewriteRule ^$ index.html [L]

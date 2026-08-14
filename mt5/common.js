@@ -144,7 +144,11 @@
 
     const options = {
       method,
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        // ngrok free: tránh trang interstitial HTML làm hỏng JSON
+        "ngrok-skip-browser-warning": "1",
+      },
       signal: controller.signal,
     };
     if (body !== undefined) {

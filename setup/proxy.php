@@ -1,28 +1,42 @@
 <?php
 /**
- * Reverse proxy đơn giản: chuyển tiếp request từ trang web (kể cả truy cập
- * qua ngrok / từ máy khác) sang api.py đang chạy cục bộ trên CHÍNH máy chủ
- * WampServer này (127.0.0.1:5001).
+ * Reverse proxy: chuyển request sang api.py (127.0.0.1:5001).
  *
- * Lý do cần file này:
- * - api.py chỉ bind 127.0.0.1 (an toàn, không expose trực tiếp ra internet)
- *   nên máy khác/ngrok không gọi thẳng tới http://localhost:5001 được.
- * - Trang web và proxy.php này cùng nằm trên 1 origin (dù truy cập qua
- *   ngrok https hay LAN), nên không bị chặn mixed-content / CORS.
+ * Hai cách gọi:
+ * 1) UI:  proxy.php?path=/api/accounts
+ *         proxy.php?path=/api/quote%3Faccount%3Dx%26symbol%3DY
+ * 2) Ngrok/Apache rewrite tới /api/... → dùng REQUEST_URI (xem api/gateway.php)
  *
- * Cách dùng từ JS: fetch("proxy.php?path=" + encodeURIComponent("/api/accounts"))
+ * Lý do: api.py chỉ bind localhost; ngrok/máy khác không gọi thẳng :5001 được.
  */
 
 $API_HOST = "127.0.0.1";
 $API_PORT = 5001;
 
-$path = isset($_GET["path"]) ? $_GET["path"] : "/api/accounts";
-if ($path === "" || $path[0] !== "/") {
-    $path = "/" . $path;
+function build_target_url($host, $port) {
+    // Ưu tiên path= từ UI (common.js).
+    if (isset($_GET["path"]) && $_GET["path"] !== "") {
+        $path = $_GET["path"];
+        if ($path[0] !== "/") {
+            $path = "/" . $path;
+        }
+        return "http://{$host}:{$port}{$path}";
+    }
+
+    // Fallback: forward nguyên REQUEST_URI nếu path bắt đầu bằng /api/
+    $uri = $_SERVER["REQUEST_URI"] ?? "/api/accounts";
+    $parts = parse_url($uri);
+    $path = $parts["path"] ?? "/api/accounts";
+    $query = $parts["query"] ?? "";
+    if (strpos($path, "/api/") !== 0 && $path !== "/api") {
+        $path = "/api/accounts";
+        $query = "";
+    }
+    return "http://{$host}:{$port}{$path}" . ($query !== "" ? "?{$query}" : "");
 }
 
-$target_url = "http://{$API_HOST}:{$API_PORT}{$path}";
-$method = $_SERVER["REQUEST_METHOD"];
+$target_url = build_target_url($API_HOST, $API_PORT);
+$method = $_SERVER["REQUEST_METHOD"] ?? "GET";
 $body = file_get_contents("php://input");
 
 function forward_request($url, $method, $body, &$http_code, &$error) {
@@ -32,9 +46,13 @@ function forward_request($url, $method, $body, &$http_code, &$error) {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2);
         curl_setopt($ch, CURLOPT_TIMEOUT, 60);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ["Content-Type: application/json", "Connection: keep-alive"]);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            "Content-Type: application/json",
+            "Connection: keep-alive",
+            "ngrok-skip-browser-warning: 1",
+        ]);
         curl_setopt($ch, CURLOPT_TCP_NODELAY, true);
-        if ($body !== "") {
+        if ($body !== false && $body !== "") {
             curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
         }
         $response = curl_exec($ch);
@@ -44,7 +62,6 @@ function forward_request($url, $method, $body, &$http_code, &$error) {
         return $response;
     }
 
-    // Máy không có ext-curl -> dùng file_get_contents làm phương án dự phòng.
     $context = stream_context_create([
         "http" => [
             "method" => $method,
@@ -71,13 +88,21 @@ function forward_request($url, $method, $body, &$http_code, &$error) {
 $response = forward_request($target_url, $method, $body, $http_code, $error);
 
 header("Content-Type: application/json; charset=utf-8");
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Headers: Content-Type, ngrok-skip-browser-warning");
+header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
+
+if (($_SERVER["REQUEST_METHOD"] ?? "") === "OPTIONS") {
+    http_response_code(204);
+    exit;
+}
 
 if ($response === false) {
     http_response_code(502);
     echo json_encode([
         "error" => "Không gọi được tới api.py tại {$target_url}. Hãy chắc chắn đã chạy start_api.bat "
             . "trên máy chủ WampServer này. Chi tiết lỗi: {$error}",
-    ]);
+    ], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
