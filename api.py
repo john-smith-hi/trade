@@ -37,6 +37,16 @@
 # Kết quả của /api/action trả về đúng nguyên văn các dòng print() của mt5.py
 # (dạng text, giống output khi chạy CLI), để hiển thị trực tiếp trên web.
 #
+# CHECKLIST SETUP (day_trade.py)
+#   UI: thư mục setup/ trong repo (http://127.0.0.1:5001/setup/)
+#       và bản copy WAMP tại D:\wamp64\www\setup (http://localhost/setup/)
+#   GET    /api/setup/week              -> tuần hiện tại (auto đóng/tạo) + weekday + can_trade
+#   PUT    /api/setup/week/<week_id>    -> lưu quan sát ① (H/L, tin) + xu hướng ②
+#   POST   /api/setup/setups            -> chấm điểm + lưu 1 setup mới
+#   PUT    /api/setup/setups/<id>       -> chấm điểm lại + sửa 1 setup (tuần active)
+#   DELETE /api/setup/setups/<id>?week_id=  -> xóa 1 setup (tuần active)
+#   GET    /setup/, /setup/<file>       -> serve trang tĩnh trong thư mục setup/
+#
 # =============================================================================
 
 import contextlib
@@ -45,14 +55,16 @@ import os
 import threading
 from pathlib import Path
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
+import day_trade
 import mt5 as mt5app
 
 API_HOST = "127.0.0.1"
 API_PORT = 5001
 ROOT_DIR = Path(__file__).resolve().parent
+SETUP_DIR = ROOT_DIR / "setup"
 
 app = Flask(__name__)
 CORS(app)
@@ -63,11 +75,20 @@ _lock = threading.Lock()
 
 
 def _watch_extra_files():
-    """Mọi .py (root) và mọi .xml trong project — đổi là reloader restart process."""
+    """Mọi .py (root) và mọi .xml trong project — đổi là reloader restart process.
+
+    Ngoại lệ: day_trade_week.xml đổi liên tục mỗi lần lưu checklist trên trang
+    setup/, không nên coi là "đổi code" -> loại khỏi danh sách theo dõi.
+    """
+    skip = {day_trade.WEEK_FILE.resolve()}
     watched = {p.resolve() for p in ROOT_DIR.glob("*.py") if p.is_file()}
-    watched.update(p.resolve() for p in ROOT_DIR.rglob("*.xml") if p.is_file())
+    watched.update(
+        p.resolve() for p in ROOT_DIR.rglob("*.xml")
+        if p.is_file() and p.resolve() not in skip
+    )
     watched.add((ROOT_DIR / "xml" / "accounts.xml").resolve())
     watched.add((ROOT_DIR / "xml" / "paths.xml").resolve())
+    watched -= skip
     return [str(p) for p in sorted(watched)]
 
 
@@ -553,6 +574,105 @@ def _parse_history_line(line):
         if key in row:
             row[key] = value
     return row
+
+
+@app.get("/setup/")
+@app.get("/setup/<path:filename>")
+def setup_static(filename="index.html"):
+    return send_from_directory(SETUP_DIR, filename)
+
+
+@app.get("/api/setup/week")
+def setup_week_endpoint():
+    with _lock:
+        week, weekday, is_weekend = day_trade.ensure_current_week()
+    return jsonify({
+        "week": week,
+        "weekday": weekday,
+        "is_weekend": is_weekend,
+        "can_trade": bool(week) and week.get("status") == "active" and weekday != 1,
+    })
+
+
+@app.put("/api/setup/week/<week_id>")
+def setup_week_update_endpoint(week_id):
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"error": "Body JSON không hợp lệ"}), 400
+
+    try:
+        with _lock:
+            week = day_trade.update_week_observations(week_id, data)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    return jsonify({"week": week})
+
+
+@app.post("/api/setup/setups")
+def setup_create_endpoint():
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"error": "Body JSON không hợp lệ"}), 400
+
+    week_id = str(data.get("week_id") or "").strip()
+    if not week_id:
+        return jsonify({"error": "Thiếu 'week_id'"}), 400
+    symbol = data.get("symbol") or "XAUUSD"
+    trade_range = bool(data.get("trade_range"))
+
+    try:
+        with _lock:
+            week, weekday, _ = day_trade.ensure_current_week()
+            if week is None or week.get("id") != week_id:
+                return jsonify({"error": "week_id không khớp tuần đang active — tải lại trang."}), 400
+            evaluated = day_trade.evaluate_setup(week, data, weekday)
+            week, setup = day_trade.add_setup(week_id, symbol, evaluated["side"], trade_range, evaluated)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    return jsonify({"week": week, "setup": setup}), 201
+
+
+@app.put("/api/setup/setups/<setup_id>")
+def setup_update_endpoint(setup_id):
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"error": "Body JSON không hợp lệ"}), 400
+
+    week_id = str(data.get("week_id") or "").strip()
+    if not week_id:
+        return jsonify({"error": "Thiếu 'week_id'"}), 400
+    symbol = data.get("symbol") or "XAUUSD"
+    trade_range = bool(data.get("trade_range"))
+
+    try:
+        with _lock:
+            week = day_trade.get_week(week_id)
+            if week is None:
+                return jsonify({"error": f"Không tìm thấy tuần '{week_id}'"}), 404
+            _, weekday, _ = day_trade.ensure_current_week()
+            evaluated = day_trade.evaluate_setup(week, data, weekday)
+            week, setup = day_trade.update_setup(week_id, setup_id, symbol, evaluated["side"], trade_range, evaluated)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    return jsonify({"week": week, "setup": setup})
+
+
+@app.delete("/api/setup/setups/<setup_id>")
+def setup_delete_endpoint(setup_id):
+    week_id = str(request.args.get("week_id") or "").strip()
+    if not week_id:
+        return jsonify({"error": "Thiếu 'week_id'"}), 400
+
+    try:
+        with _lock:
+            week = day_trade.delete_setup(week_id, setup_id)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    return jsonify({"week": week})
 
 
 if __name__ == "__main__":

@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Checklist vào lệnh</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <h1>Checklist vào lệnh</h1>
+    <p class="hint" id="apiStatus">Đang kiểm tra kết nối API...</p>
+  </div>
+  <button type="button" id="themeToggle" class="btn btn-secondary theme-toggle">Chế độ tối</button>
+</header>
+
+<main>
+  <div class="week-banner" id="weekBanner">Đang tải tuần...</div>
+
+  <section class="card hidden" id="weekendCard">
+    <h2>Cuối tuần</h2>
+    <p class="hint">Chưa có dữ liệu cho tuần mới. Theo quy tắc, Thứ 2 chỉ quan sát — tuần mới sẽ tự bắt đầu khi bạn mở lại trang vào Thứ 2.</p>
+  </section>
+
+  <section class="card hidden" id="mainCard">
+    <div class="notice notice-warn hidden" id="mondayNotice">
+      ① Hôm nay là Thứ 2 — theo quy tắc <strong>chỉ quan sát, không vào lệnh</strong>. Vẫn có thể lưu quan sát tuần bên dưới.
+    </div>
+    <div class="notice notice-muted hidden" id="closedNotice">
+      Tuần này đã đóng (đã qua Thứ 6) — chỉ xem lại, không sửa được nữa. Tuần mới sẽ bắt đầu vào Thứ 2.
+    </div>
+
+    <div class="two-col">
+      <section class="card">
+        <h2>① Quan sát đầu tuần</h2>
+        <div class="grid">
+          <div class="field">
+            <label for="mondayHigh">Monday High</label>
+            <input type="number" id="mondayHigh" step="any" />
+          </div>
+          <div class="field">
+            <label for="mondayLow">Monday Low</label>
+            <input type="number" id="mondayLow" step="any" />
+          </div>
+          <div class="field">
+            <label for="prevHigh">Previous Week High</label>
+            <input type="number" id="prevHigh" step="any" />
+          </div>
+          <div class="field">
+            <label for="prevLow">Previous Week Low</label>
+            <input type="number" id="prevLow" step="any" />
+          </div>
+        </div>
+
+        <h2>② Xu hướng D1 / H4</h2>
+        <div class="grid">
+          <div class="field">
+            <label for="trendD1">Xu hướng D1</label>
+            <select id="trendD1">
+              <option value="">-- chưa chọn --</option>
+              <option value="uptrend">Uptrend → ưu tiên BUY</option>
+              <option value="downtrend">Downtrend → ưu tiên SELL</option>
+              <option value="sideway">Sideway → trade biên / đứng ngoài</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="trendH4">Xu hướng H4</label>
+            <select id="trendH4">
+              <option value="">-- chưa chọn --</option>
+              <option value="uptrend">Uptrend</option>
+              <option value="downtrend">Downtrend</option>
+              <option value="sideway">Sideway</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="newsNotes">⑧ Lịch tin trong tuần</label>
+          <input type="text" id="newsNotes" placeholder="VD: NFP Thứ 6 20:30" />
+        </div>
+
+        <button type="button" id="btnSaveWeek" class="btn btn-primary">Lưu quan sát tuần</button>
+        <p class="hint" id="weekSaveHint"></p>
+      </section>
+
+      <section class="card">
+        <h2 id="setupFormTitle">Chấm điểm setup trước khi vào lệnh</h2>
+
+        <div class="grid">
+          <div class="field">
+            <label for="account">Account (lấy giá)</label>
+            <select id="account"></select>
+          </div>
+          <div class="field">
+            <label for="symbol">Symbol</label>
+            <input type="text" id="symbol" value="XAUUSD" />
+          </div>
+          <div class="field">
+            <label for="side">Side</label>
+            <select id="side">
+              <option value="buy">BUY</option>
+              <option value="sell">SELL</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field checkbox-field hidden" id="tradeRangeField">
+          <label><input type="checkbox" id="tradeRange" /> Xu hướng sideway — chấp nhận trade biên</label>
+        </div>
+
+        <div class="subheading">③–④ Vùng giá quan trọng</div>
+        <div class="field checkbox-field">
+          <label><input type="checkbox" id="zoneConfirmed" /> ③ Đã xác định vùng giá quan trọng (S/R D1-H4, đỉnh/đáy tuần trước, đỉnh/đáy Thứ 2)</label>
+        </div>
+        <div class="field checkbox-field">
+          <label><input type="checkbox" id="noChase" /> ④ Giá đã về đúng vùng — không đuổi giá, không vào giữa sideway</label>
+        </div>
+
+        <div class="subheading">⑤–⑥ Phản ứng &amp; xác nhận</div>
+        <div class="field">
+          <label>⑤ Phản ứng tại vùng giá</label>
+          <div class="checkbox-row">
+            <label><input type="checkbox" class="reaction" value="rejection" /> Rejection</label>
+            <label><input type="checkbox" class="reaction" value="pinbar" /> Pin bar</label>
+            <label><input type="checkbox" class="reaction" value="engulfing" /> Engulfing</label>
+            <label><input type="checkbox" class="reaction" value="false_breakout" /> False breakout</label>
+          </div>
+        </div>
+        <div class="field checkbox-field">
+          <label><input type="checkbox" id="structureBreak" /> ⑥ Đã break cấu trúc M15/H1</label>
+        </div>
+        <p class="hint" id="structurePatternHint"></p>
+
+        <div class="subheading">⑦ Kiểm tra RR</div>
+        <div class="field-pair">
+          <div class="field">
+            <label for="entry">Entry</label>
+            <div class="row entry-row">
+              <input type="number" id="entry" step="any" />
+              <button type="button" id="btnFetchEntry" class="btn btn-secondary">Lấy giá</button>
+            </div>
+            <p class="hint" id="entryHint"></p>
+          </div>
+          <div class="field">
+            <label for="sl">SL</label>
+            <input type="number" id="sl" step="any" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="tp">TP</label>
+          <input type="number" id="tp" step="any" />
+        </div>
+        <p class="hint" id="rrHint">RR: --</p>
+
+        <div class="subheading">⑧ Tin tức &amp; ⑩ Vào lệnh</div>
+        <div class="field checkbox-field">
+          <label><input type="checkbox" id="newsOk" /> ⑧ Không có tin Tier-1 sắp ra / không giữ lệnh vào thời điểm tin mạnh</label>
+        </div>
+        <div class="field checkbox-field">
+          <label><input type="checkbox" id="commitClose" /> ⑩ Sẽ đặt đủ SL/TP, đóng lệnh trước cuối tuần nếu cần</label>
+        </div>
+
+        <div class="row">
+          <button type="button" id="btnCheck" class="btn btn-primary">Chấm điểm &amp; lưu setup</button>
+          <button type="button" id="btnReset" class="btn btn-secondary">Làm mới form</button>
+        </div>
+
+        <div class="result-box hidden" id="resultBox">
+          <p class="result-title" id="resultTitle"></p>
+          <ul class="result-fails" id="resultFails"></ul>
+        </div>
+      </section>
+    </div>
+
+    <section class="card">
+      <h2>Setup tuần này</h2>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Giờ</th>
+              <th>Symbol</th>
+              <th>Side</th>
+              <th>RR</th>
+              <th>Kết quả</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="setupTableBody">
+            <tr class="empty-row"><td colspan="6">Chưa có setup nào trong tuần này</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

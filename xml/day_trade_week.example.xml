@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    MẪU file lưu checklist vào lệnh theo tuần giao dịch (Thứ 2 - Thứ 6),
+    dùng bởi day_trade.py + trang web setup/ (chấm điểm theo day_trade_mindset.txt).
+
+    Copy file này thành "day_trade_week.xml" (cùng thư mục xml/) — day_trade.py
+    tự làm việc này khi chạy lần đầu, giống cách accounts.xml được tạo từ
+    accounts.example.xml. Tuần mẫu bên dưới chỉ để tham khảo cấu trúc.
+
+    week@id           : mã tuần ISO, vd 2026-W33.
+    week@week_start    : ngày Thứ 2 (YYYY-MM-DD).
+    week@week_end      : ngày Thứ 6 (YYYY-MM-DD).
+    week@status        : active (đang trong tuần T2-T6) | closed (đã qua Thứ 6).
+
+    monday_levels      : đỉnh/đáy hình thành trong ngày Thứ 2 (bước ①).
+    prev_week          : đỉnh/đáy tuần trước (bước ①).
+    trend_d1/trend_h4  : uptrend | downtrend | sideway (bước ②).
+    news_notes         : ghi chú lịch tin trong tuần (bước ① + ⑧).
+
+    setups/setup       : mỗi lần chấm điểm 1 setup trước khi vào lệnh.
+      @side             : buy | sell.
+      @trade_range      : true nếu xu hướng sideway và chấp nhận trade biên (bước ②).
+      @rr               : risk:reward tính được ở bước ⑦ (bỏ trống nếu thiếu Entry/SL/TP).
+      checklist/step    : n = số bước (1,2,3,4,5,6,7,8,10); ok = true/false.
+      prices            : entry/sl/tp.
+      result            : pass | fail.
+      fails             : lý do fail, phân tách bằng "|" (rỗng nếu pass).
+-->
+<day_trade_weeks>
+    <week id="2026-W32" week_start="2026-08-03" week_end="2026-08-07" status="closed">
+        <monday_levels high="2465.50" low="2440.20" />
+        <prev_week high="2470.00" low="2410.00" />
+        <trend_d1>uptrend</trend_d1>
+        <trend_h4>uptrend</trend_h4>
+        <news_notes>NFP Thứ 6 20:30 - tránh giữ lệnh qua tin</news_notes>
+        <setups>
+            <setup id="1" created_at="2026-08-05T10:30:00+07:00" symbol="XAUUSD" side="buy" trade_range="false" rr="2.1">
+                <checklist>
+                    <step n="1" ok="true" />
+                    <step n="2" ok="true" />
+                    <step n="3" ok="true" />
+                    <step n="4" ok="true" />
+                    <step n="5" ok="true" />
+                    <step n="6" ok="true" />
+                    <step n="7" ok="true" rr="2.1" />
+                    <step n="8" ok="true" />
+                    <step n="10" ok="true" />
+                </checklist>
+                <prices entry="2450.00" sl="2440.00" tp="2471.00" />
+                <result>pass</result>
+                <fails></fails>
+            </setup>
+        </setups>
+    </week>
+</day_trade_weeks>

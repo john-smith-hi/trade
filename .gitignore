@@ -9,3 +9,6 @@ dist/
 # Chứa login/password MT5 thật, không commit. Xem xml/accounts.example.xml để lấy mẫu.
 xml/accounts.xml
 xml/paths.xml
+
+# Dữ liệu checklist theo tuần (đổi liên tục khi dùng trang setup/), không commit.
+xml/day_trade_week.xml

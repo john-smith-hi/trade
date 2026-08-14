@@ -1,0 +1,64 @@
+① THỨ 2 — ĐỨNG NGOÀI
+   ↓
+   - Không vào lệnh
+   - Quan sát giá hình thành biên tuần
+   - Đánh dấu Monday High / Low
+   - Đánh dấu Previous Week High / Low
+   - Xác định các vùng Hỗ trợ / Kháng cự
+   - Kiểm tra lịch tin của cả tuần
+   ↓
+
+② XÁC ĐỊNH XU HƯỚNG D1/H4
+   ↓
+   - Uptrend   → ưu tiên BUY
+   - Downtrend → ưu tiên SELL
+   - Sideway   → trade biên / đứng ngoài
+   ↓
+
+③ XÁC ĐỊNH VÙNG GIÁ QUAN TRỌNG
+   ↓
+   - Hỗ trợ / Kháng cự D1-H4
+   - Đỉnh / đáy tuần trước
+   - Đỉnh / đáy thứ 2
+   - Vùng có nhiều yếu tố trùng nhau → ưu tiên
+   ↓
+
+④ CHỜ GIÁ VỀ VÙNG GIÁ QUAN TRỌNG
+   ↓
+   - Không đuổi giá
+   - Không vào giữa vùng sideway
+   ↓
+
+⑤ CHỜ PHẢN ỨNG TẠI VÙNG GIÁ QUAN TRỌNG
+   ↓
+   - Rejection
+   - Pin bar / Engulfing
+   - False breakout
+   ↓
+
+⑥ XÁC NHẬN M15/H1
+   ↓
+   - Break cấu trúc
+   - HL → BUY
+   - LH → SELL
+   ↓
+
+⑦ KIỂM TRA RR
+   ↓
+   - SL = ngoài cấu trúc + buffer
+   - TP = vùng S/R kế tiếp
+   - RR ≥ 1:2
+   ↓
+
+⑧ KIỂM TRA TIN
+   ↓
+   - Không có Tier-1 sắp ra
+   - Không giữ lệnh vào thời điểm tin mạnh
+   ↓
+
+⑩ VÀO LỆNH
+   ↓
+   - Đặt SL
+   - Đặt TP
+   - Có thể giữ overnight trong tuần
+   - Đóng trước cuối tuần
