@@ -4,13 +4,19 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Checklist vào lệnh</title>
-<link rel="stylesheet" href="style.css" />
+<script src="ver.php"></script>
+<script>
+(function () {
+  var v = window.SETUP_ASSET_VER || "0";
+  document.write('<link rel="stylesheet" href="style.css?v=' + v + '" />');
+})();
+</script>
 </head>
 <body>
 <header>
   <div class="header-left">
     <h1>Checklist vào lệnh</h1>
-    <p class="hint" id="apiStatus">Đang kiểm tra kết nối API...</p>
+    <p class="api-status" id="apiStatus">Đang kiểm tra kết nối API...</p>
   </div>
   <button type="button" id="themeToggle" class="btn btn-secondary theme-toggle">Chế độ tối</button>
 </header>
@@ -196,6 +202,13 @@
   </section>
 </main>
 
-<script src="app.js"></script>
+<script>window.MT5_PROXY = "proxy.php";</script>
+<script>
+(function () {
+  var v = window.SETUP_ASSET_VER || "0";
+  document.write('<script src="common.js?v=' + v + '"><\/script>');
+  document.write('<script src="app.js?v=' + v + '"><\/script>');
+})();
+</script>
 </body>
 </html>

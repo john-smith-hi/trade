@@ -38,14 +38,14 @@
 # (dạng text, giống output khi chạy CLI), để hiển thị trực tiếp trên web.
 #
 # CHECKLIST SETUP (day_trade.py)
-#   UI: thư mục setup/ trong repo (http://127.0.0.1:5001/setup/)
-#       và bản copy WAMP tại D:\wamp64\www\setup (http://localhost/setup/)
+#   UI WAMP: D:\wamp64\www\setup → http://localhost/setup/ (proxy.php → api.py)
+#   Mã nguồn UI cũng có trong repo setup/ (cùng pattern mt5/: common.js + proxy.php)
 #   GET    /api/setup/week              -> tuần hiện tại (auto đóng/tạo) + weekday + can_trade
 #   PUT    /api/setup/week/<week_id>    -> lưu quan sát ① (H/L, tin) + xu hướng ②
 #   POST   /api/setup/setups            -> chấm điểm + lưu 1 setup mới
 #   PUT    /api/setup/setups/<id>       -> chấm điểm lại + sửa 1 setup (tuần active)
 #   DELETE /api/setup/setups/<id>?week_id=  -> xóa 1 setup (tuần active)
-#   GET    /setup/, /setup/<file>       -> serve trang tĩnh trong thư mục setup/
+#   GET    /setup/, /setup/<file>       -> serve file tĩnh repo (dev); production dùng WAMP
 #
 # =============================================================================
 

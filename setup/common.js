@@ -269,7 +269,6 @@
     apiGet,
     apiPost,
     apiPut,
-    apiDelete,
     clearApiCache,
     loadWithRetry,
     debounce,
