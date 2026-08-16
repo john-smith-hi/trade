@@ -24,6 +24,12 @@ import shutil
 import sys
 from pathlib import Path
 
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 ROOT = Path(__file__).resolve().parent
 DEFAULT_DEST = Path(r"D:\wamp64\www")
 KNOWN_APPS = ("mt5", "setup")
@@ -90,7 +96,7 @@ def main() -> int:
         if not src.is_dir():
             print(f"Bỏ qua {name}: không có folder {src}", file=sys.stderr)
             continue
-        print(f"{src}  →  {dest}")
+        print(f"{src}  ->  {dest}")
         clear_dir(dest)
         n = copy_tree(src, dest)
         print(f"  ({n} file)\n")
@@ -100,7 +106,7 @@ def main() -> int:
         print("Không copy được file nào.", file=sys.stderr)
         return 1
 
-    print(f"Xong. Tổng {total} file → {dest_root}")
+    print(f"Xong. Tong {total} file -> {dest_root}")
     return 0
 
 

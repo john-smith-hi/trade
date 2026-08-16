@@ -1,37 +1,37 @@
 :root {
   color-scheme: light;
-  --bg: #f4f4f4;
+  --bg: #f2f4f7;
   --card-bg: #ffffff;
-  --border: #d0d0d0;
-  --text: #222222;
-  --muted: #666666;
-  --primary: #2c2c2c;
-  --primary-hover: #111111;
-  --danger: #5c5c5c;
-  --danger-hover: #333333;
-  --secondary: #ececec;
-  --secondary-hover: #dedede;
-  --ok: #444444;
-  --error: #555555;
-  --overlay: rgba(0, 0, 0, 0.4);
+  --border: #dde1e6;
+  --text: #1f2933;
+  --muted: #6b7280;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --danger: #dc2626;
+  --danger-hover: #b91c1c;
+  --secondary: #e5e7eb;
+  --secondary-hover: #d1d5db;
+  --ok: #15803d;
+  --error: #b91c1c;
+  --overlay: rgba(15, 23, 42, 0.55);
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #161616;
-  --card-bg: #222222;
-  --border: #3a3a3a;
-  --text: #e4e4e4;
-  --muted: #9a9a9a;
-  --primary: #d0d0d0;
-  --primary-hover: #ffffff;
-  --danger: #b0b0b0;
-  --danger-hover: #e0e0e0;
-  --secondary: #333333;
-  --secondary-hover: #404040;
-  --ok: #c8c8c8;
-  --error: #c0c0c0;
-  --overlay: rgba(0, 0, 0, 0.55);
+  --bg: #0f172a;
+  --card-bg: #1e293b;
+  --border: #334155;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  --secondary: #334155;
+  --secondary-hover: #475569;
+  --ok: #4ade80;
+  --error: #f87171;
+  --overlay: rgba(0, 0, 0, 0.65);
 }
 
 * {
@@ -43,6 +43,7 @@ body {
   font-family: "Segoe UI", Arial, sans-serif;
   background: var(--bg);
   color: var(--text);
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 header {
@@ -53,6 +54,7 @@ header {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .header-left {
@@ -70,7 +72,7 @@ header {
 
 .nav a {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--muted);
   text-decoration: none;
 }
@@ -114,8 +116,9 @@ main {
 .card {
   background: var(--card-bg);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 10px;
   padding: 20px;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .card h2 {
@@ -172,10 +175,11 @@ main {
   width: 100%;
   padding: 8px 10px;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: 6px;
   font-size: 14px;
   background: var(--card-bg);
   color: var(--text);
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .hidden {
@@ -217,17 +221,18 @@ main {
 }
 
 .hint-error {
-  color: var(--text);
+  color: var(--danger, #c0392b);
   font-weight: 600;
 }
 
 .btn {
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  padding: 9px 16px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
+  transition: background 0.15s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -239,11 +244,6 @@ main {
 .btn-primary {
   background: var(--primary);
   color: #fff;
-  border-color: var(--primary);
-}
-
-:root[data-theme="dark"] .btn-primary {
-  color: #111;
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -251,13 +251,12 @@ main {
 }
 
 .btn-danger {
-  background: var(--card-bg);
-  color: var(--text);
-  border-color: var(--text);
+  background: var(--danger);
+  color: #fff;
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: var(--secondary-hover);
+  background: var(--danger-hover);
 }
 
 .btn-secondary {
@@ -271,10 +270,10 @@ main {
 
 .output {
   margin-top: 14px;
-  background: #1a1a1a;
-  color: #d8d8d8;
+  background: #0f172a;
+  color: #e2e8f0;
   padding: 14px;
-  border-radius: 3px;
+  border-radius: 8px;
   font-family: "Consolas", "Courier New", monospace;
   font-size: 13px;
   white-space: pre-wrap;
@@ -300,16 +299,17 @@ main {
 .modal-box {
   background: var(--card-bg);
   color: var(--text);
-  border-radius: 4px;
+  border-radius: 10px;
   padding: 22px;
   max-width: 420px;
   width: 100%;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
   border: 1px solid var(--border);
 }
 
 .modal-box h3 {
   margin: 0 0 10px;
-  color: var(--text);
+  color: var(--danger);
 }
 
 .modal-box p {
@@ -337,7 +337,7 @@ main {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: 8px;
 }
 
 .data-table {
@@ -364,7 +364,7 @@ main {
 }
 
 .data-table tbody tr:hover {
-  background: var(--secondary);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
 }
 
 .data-table .empty-row td {
@@ -392,18 +392,25 @@ main {
 
 .status-pill {
   display: inline-block;
-  padding: 1px 6px;
-  border: 1px solid var(--border);
-  border-radius: 2px;
+  padding: 2px 8px;
+  border-radius: 999px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
-.status-ok,
-.status-fail,
+.status-ok {
+  background: color-mix(in srgb, var(--ok) 18%, transparent);
+  color: var(--ok);
+}
+
+.status-fail {
+  background: color-mix(in srgb, var(--error) 18%, transparent);
+  color: var(--error);
+}
+
 .status-muted {
-  background: transparent;
-  color: var(--text);
+  background: var(--secondary);
+  color: var(--muted);
 }
 
 /* Loading / busy */
@@ -447,7 +454,7 @@ main {
 .mt5-busy-card {
   background: var(--card-bg);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 10px;
   padding: 20px 28px;
   display: flex;
   align-items: center;
@@ -517,19 +524,15 @@ main {
   .nav a {
     flex-shrink: 0;
     padding: 8px 12px;
-    border-radius: 3px;
+    border-radius: 8px;
     background: var(--secondary);
     font-size: 13px;
     line-height: 1.2;
   }
 
   .nav a.active {
-    background: var(--primary);
-    color: #fff;
-  }
-
-  :root[data-theme="dark"] .nav a.active {
-    color: #111;
+    background: color-mix(in srgb, var(--primary) 20%, transparent);
+    color: var(--primary);
   }
 
   .api-status {
@@ -553,7 +556,7 @@ main {
 
   .card {
     padding: 14px;
-    border-radius: 4px;
+    border-radius: 8px;
   }
 
   .card h2 {
@@ -634,7 +637,7 @@ main {
 
   .modal-box {
     padding: 18px;
-    border-radius: 4px;
+    border-radius: 12px;
   }
 
   .modal-actions {
