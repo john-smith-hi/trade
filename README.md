@@ -2,7 +2,7 @@
 
 Bộ công cụ local: giao dịch MetaTrader 5 (CLI + web), checklist vào lệnh theo tuần, và phân tích giá cổ phiếu / hàng hóa / crypto.
 
-Web UI chạy trên WAMP (`D:\wamp64\www`). API Python chỉ lắng nghe `127.0.0.1:5001`.
+Web UI chạy trên WAMP. Đường dẫn www khai báo trong `xml/www.xml` (gitignore). API Python chỉ lắng nghe `127.0.0.1:5001`.
 
 ## Cấu trúc
 
@@ -11,7 +11,7 @@ Web UI chạy trên WAMP (`D:\wamp64\www`). API Python chỉ lắng nghe `127.0.
 | `mt5.py` | CLI + logic MT5 (mở lệnh, pending, copy trade, XML accounts/paths) |
 | `api.py` | HTTP API Flask bọc `mt5.py` và `day_trade.py` |
 | `start_api.bat` | Khởi động API |
-| `copy_www.py` | Xóa folder đích rồi copy UI `mt5/` / `setup/` sang `D:\wamp64\www` (không dùng tên `copy.py`) |
+| `copy_www.py` | Xóa folder đích rồi copy UI `mt5/` / `setup/` theo `xml/www.xml` (không dùng tên `copy.py`) |
 | `mt5/` | Giao diện ra lệnh / account / path / lịch sử |
 | `setup/` | Giao diện checklist vào lệnh theo tuần |
 | `day_trade.py` | Chấm điểm setup, đọc/ghi `xml/day_trade_week.xml` |
@@ -19,7 +19,7 @@ Web UI chạy trên WAMP (`D:\wamp64\www`). API Python chỉ lắng nghe `127.0.
 | `xml/` | Cấu hình account, path terminal, checklist tuần |
 | `note-ai/` | Ghi chú kiến trúc cho lần sửa sau |
 
-`xml/accounts.xml`, `xml/paths.xml`, `xml/day_trade_week.xml` **không commit** (đã `.gitignore`). Lấy mẫu từ các file `*.example.xml`.
+`xml/accounts.xml`, `xml/paths.xml`, `xml/www.xml`, `xml/day_trade_week.xml` **không commit** (đã `.gitignore`). Lấy mẫu từ các file `*.example.xml`.
 
 ---
 
@@ -114,10 +114,10 @@ API: `http://127.0.0.1:5001` (chỉ localhost). Sửa `.py` hoặc `.xml` → pr
 ### Đưa UI lên WAMP
 
 ```bash
-python copy_www.py              # xóa www/mt5 + www/setup rồi copy lại
+python copy_www.py              # xóa mt5 + setup trong xml/www.xml rồi copy lại
 python copy_www.py mt5          # chỉ giao diện ra lệnh
 python copy_www.py setup        # chỉ checklist
-python copy_www.py --dest E:\www
+python copy_www.py --dest E:\www   # override xml/www.xml lần này
 ```
 
 Sau đó:

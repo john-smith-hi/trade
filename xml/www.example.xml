@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    MẪU đường dẫn thư mục WAMP www (an toàn để commit).
+    Copy thành www.xml nếu chưa có, rồi sửa path cho đúng máy.
+    copy_www.py đọc xml/www.xml (không commit — đã gitignore).
+-->
+<www>
+    <path>D:\wamp64\www</path>
+</www>

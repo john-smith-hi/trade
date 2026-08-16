@@ -10,5 +10,8 @@ dist/
 xml/accounts.xml
 xml/paths.xml
 
+# Đường dẫn WAMP www trên máy local, không commit. Xem xml/www.example.xml.
+xml/www.xml
+
 # Dữ liệu checklist theo tuần (đổi liên tục khi dùng trang setup/), không commit.
 xml/day_trade_week.xml
