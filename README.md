@@ -151,7 +151,7 @@ Hai request MT5 không chạy song song (`threading.Lock` trong `api.py`).
 
 ---
 
-## 3. Checklist vào lệnh (`setup/` + `day_trade.py`)
+## 3. Setup (`setup/` + `day_trade.py`)
 
 Theo `day_trade_mindset.txt`. Dữ liệu: `xml/day_trade_week.xml`.
 
