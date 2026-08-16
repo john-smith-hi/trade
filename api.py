@@ -29,7 +29,8 @@
 #   PUT  /api/accounts/<name>   -> sửa cấu hình (không đổi login/password/server/name)
 #   POST /api/reload-accounts   -> nạp lại xml/accounts.xml (ép buộc)
 #   POST /api/action            -> thực thi action (status/open/pending/cancel-pending/close-all/modify-all)
-#   GET  /api/quote?account=&symbol=&side=  -> bid/ask/entry (điền TP/SL khi open/pending)
+#   GET  /api/quote?account=&symbol=&side=  -> bid/ask/entry tick live (điền TP/SL)
+#   GET  /api/candle?account=&symbol=&closed=1  -> nến M1 (mặc định nến đã đóng)
 #   GET  /api/positions?account=            -> lệnh mở JSON (điền TP/SL khi modify-all)
 #   GET  /api/orders?account=               -> lệnh chờ JSON (cancel-pending)
 #   GET  /api/history?limit=50  -> lịch sử (lines + rows đã parse cho bảng)
@@ -462,6 +463,38 @@ def quote_endpoint():
                 pass
 
     return jsonify(quote)
+
+
+@app.get("/api/candle")
+def candle_endpoint():
+    """Nến M1 — mặc định nến đã đóng gần nhất (closed=1). Timer dùng endpoint này."""
+    account_name = (request.args.get("account") or "").strip()
+    symbol = (request.args.get("symbol") or "XAUUSD").strip()
+    closed_raw = (request.args.get("closed") or "1").strip().lower()
+    closed = closed_raw not in ("0", "false", "no", "off")
+    if not account_name:
+        return jsonify({"error": "Thiếu 'account'"}), 400
+
+    buf = io.StringIO()
+    with _lock:
+        mt5app.ensure_accounts_fresh()
+        try:
+            account = mt5app.get_account(account_name)
+        except Exception as exc:
+            return jsonify({"error": str(exc)}), 404
+        try:
+            with contextlib.redirect_stdout(buf):
+                mt5app.connect_mt5(account)
+                candle = mt5app.fetch_last_m1_candle(account, symbol, closed=closed)
+        except Exception as exc:
+            return jsonify({"error": str(exc), "detail": buf.getvalue()}), 500
+        finally:
+            try:
+                mt5app.mt5.shutdown()
+            except Exception:
+                pass
+
+    return jsonify(candle)
 
 
 @app.get("/api/positions")

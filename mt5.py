@@ -1406,7 +1406,7 @@ def modify_all_positions_tp_sl(tp_price=None, sl_price=None):
 
 
 def fetch_quote(account, symbol, side="buy"):
-    """Lấy bid/ask/entry cho symbol sau khi connect account. Caller chịu trách nhiệm shutdown."""
+    """Lấy bid/ask/entry (tick live) cho symbol sau khi connect account. Caller chịu trách nhiệm shutdown."""
     symbol = select_symbol(symbol, account)
     tick = get_current_price(symbol)
     side_l = (side or "buy").lower()
@@ -1417,6 +1417,48 @@ def fetch_quote(account, symbol, side="buy"):
         "bid": float(tick.bid),
         "ask": float(tick.ask),
         "entry": float(entry),
+        "source": "tick",
+    }
+
+
+def fetch_last_m1_candle(account, symbol, closed=True):
+    """Lấy nến M1: closed=True → nến 1 phút đã đóng gần nhất; False → nến đang chạy.
+
+    MT5 index: pos 0 = nến hiện tại (chưa đóng), pos 1 = nến đã đóng gần nhất.
+    """
+    symbol = select_symbol(symbol, account)
+    count = 2 if closed else 1
+    rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_M1, 0, count)
+    if rates is None or len(rates) == 0:
+        raise RuntimeError(f"Không lấy được nến M1 cho {symbol}: {mt5.last_error()}")
+    if closed:
+        if len(rates) < 2:
+            raise RuntimeError(f"Chưa đủ nến M1 đã đóng cho {symbol}")
+        bar = rates[1]
+    else:
+        bar = rates[0]
+
+    bar_time = int(bar["time"])
+    time_str = datetime.fromtimestamp(bar_time).strftime("%Y-%m-%d %H:%M:%S")
+    open_p = float(bar["open"])
+    high_p = float(bar["high"])
+    low_p = float(bar["low"])
+    close_p = float(bar["close"])
+    return {
+        "symbol": symbol,
+        "timeframe": "M1",
+        "closed": bool(closed),
+        "time": bar_time,
+        "time_str": time_str,
+        "open": open_p,
+        "high": high_p,
+        "low": low_p,
+        "close": close_p,
+        # Tương thích chỗ cũ so với bid/ask: dùng close.
+        "bid": close_p,
+        "ask": close_p,
+        "entry": close_p,
+        "source": "m1_closed" if closed else "m1_current",
     }
 
 

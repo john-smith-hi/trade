@@ -127,6 +127,7 @@ Sau đó:
 - Path terminal: http://localhost/mt5/path/
 - Lịch sử: http://localhost/mt5/history/
 - Checklist tuần: http://localhost/setup/
+- Timer báo giá: http://localhost/setup/timer/
 
 Trình duyệt gọi `proxy.php` → `127.0.0.1:5001` (cần API đang chạy). CSS/JS gắn `?v=` từ `ver.php` (mtime) để cache đúng.
 
@@ -140,7 +141,8 @@ Trang ra lệnh: **Xem trước** không gửi lệnh; **Xác nhận gửi lện
 | GET/POST/PUT | `/api/accounts` | Account (GET không trả password) |
 | POST | `/api/reload-accounts` | Nạp lại XML |
 | POST | `/api/action` | status / open / pending / cancel-pending / close-all / modify-all |
-| GET | `/api/quote` | bid / ask / entry |
+| GET | `/api/quote` | bid / ask / entry (tick live) |
+| GET | `/api/candle` | nến M1 (mặc định đã đóng) — Timer |
 | GET | `/api/positions` | Lệnh đang mở |
 | GET | `/api/orders` | Lệnh chờ |
 | GET | `/api/history` | `history_mt5.txt` đã parse |
@@ -161,6 +163,8 @@ Theo `day_trade_mindset.txt`. Dữ liệu: `xml/day_trade_week.xml`.
 - Thứ 2 tuần sau: tạo tuần mới
 
 Không gửi lệnh MT5 — chỉ chấm điểm setup thủ công.
+
+Trang **Timer** (`/setup/timer/`): đặt vùng giá (từ–đến), mỗi phút lấy **nến M1 đã đóng** (`GET /api/candle`). Chạm vùng nếu high/low của nến giao vùng. Báo bằng **thông báo Chrome**. Cần giữ tab Setup hoặc Timer mở. Danh sách báo thức lưu `localStorage`.
 
 ---
 

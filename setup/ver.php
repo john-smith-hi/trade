@@ -12,6 +12,7 @@ $files = [
   "style.css",
   "common.js",
   "app.js",
+  "timer/timer.js",
 ];
 
 $v = 0;

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Timer — báo giá</title>
+<script src="../ver.php"></script>
+<script>
+(function () {
+  var v = window.SETUP_ASSET_VER || "0";
+  document.write('<link rel="stylesheet" href="../style.css?v=' + v + '" />');
+})();
+</script>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <nav class="nav">
+      <a href="../">Setup</a>
+      <a href="./" class="active">Timer</a>
+    </nav>
+    <p class="api-status" id="apiStatus">Đang kiểm tra kết nối API...</p>
+  </div>
+  <button type="button" id="themeToggle" class="btn btn-secondary theme-toggle">Chế độ tối</button>
+</header>
+
+<main>
+  <section class="card">
+    <h2>Đặt báo thức theo vùng giá</h2>
+    <p class="hint">
+      Cảnh báo dùng <strong>thông báo Chrome</strong> (góc màn hình Windows), không chỉ trong trang.
+      Cần bấm <strong>Bật thông báo Chrome</strong> và chọn Allow. Giữ tab Setup/Timer mở để poll giá mỗi phút.
+      F12 → Console xem log <code>[Timer HH:MM:SS]</code>. Lần poll đầu chỉ ghi nhận — báo khi giá <strong>đi vào</strong> vùng.
+    </p>
+
+    <div class="grid">
+      <div class="field">
+        <label for="account">Account</label>
+        <select id="account"></select>
+      </div>
+      <div class="field">
+        <label for="symbol">Symbol</label>
+        <input type="text" id="symbol" value="XAUUSD" />
+      </div>
+      <div class="field">
+        <label for="zoneLow">Vùng giá từ</label>
+        <input type="number" id="zoneLow" step="any" />
+      </div>
+      <div class="field">
+        <label for="zoneHigh">đến</label>
+        <input type="number" id="zoneHigh" step="any" />
+      </div>
+    </div>
+    <div class="field">
+      <label for="note">Ghi chú (tuỳ chọn)</label>
+      <input type="text" id="note" placeholder="VD: chờ retest Monday High" />
+    </div>
+    <p class="hint" id="quoteHint"></p>
+    <p class="hint" id="notifyHint"></p>
+    <div class="row">
+      <button type="button" id="btnFetchQuote" class="btn btn-secondary">Lấy giá hiện tại</button>
+      <button type="button" id="btnAdd" class="btn btn-primary">Thêm báo thức</button>
+      <button type="button" id="btnNotify" class="btn btn-secondary">Bật thông báo Chrome</button>
+      <button type="button" id="btnTestNotify" class="btn btn-secondary">Thử thông báo</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Danh sách báo thức</h2>
+    <p class="hint" id="nextPollHint">Lần lấy giá tiếp theo: --</p>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Account</th>
+            <th>Symbol</th>
+            <th>Vùng</th>
+            <th>Giá gần nhất</th>
+            <th>Lần lấy tiếp</th>
+            <th>Trạng thái</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="alertTableBody">
+          <tr class="empty-row"><td colspan="7">Chưa có báo thức nào</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script>window.MT5_PROXY = "../proxy.php";</script>
+<script>
+(function () {
+  var v = window.SETUP_ASSET_VER || "0";
+  document.write('<script src="../common.js?v=' + v + '"><\/script>');
+  document.write('<script src="timer.js?v=' + v + '"><\/script>');
+})();
+</script>
+</body>
+</html>
