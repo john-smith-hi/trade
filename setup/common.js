@@ -259,11 +259,44 @@
   }
 
   const PRICE_ALERT_KEY = "setup-price-alerts";
+  const PRICE_ALERT_SCHEDULE_KEY = "setup-price-alert-schedule";
   const PRICE_ALERT_POLL_MS = 60000;
   let priceAlertBusy = false;
   let priceAlertTimer = null;
   let lastPriceAlertAt = 0;
   let nextPriceAlertAt = 0;
+
+  function loadPriceAlertScheduleState() {
+    try {
+      const raw = localStorage.getItem(PRICE_ALERT_SCHEDULE_KEY);
+      const data = raw ? JSON.parse(raw) : null;
+      if (!data || typeof data !== "object") return;
+      const lastAt = Number(data.lastAt || 0);
+      const nextAt = Number(data.nextAt || 0);
+      if (Number.isFinite(lastAt) && lastAt > 0) {
+        lastPriceAlertAt = lastAt;
+      }
+      if (Number.isFinite(nextAt) && nextAt > 0) {
+        nextPriceAlertAt = nextAt;
+      }
+    } catch (err) {
+      /* ignore */
+    }
+  }
+
+  function savePriceAlertScheduleState() {
+    try {
+      localStorage.setItem(
+        PRICE_ALERT_SCHEDULE_KEY,
+        JSON.stringify({
+          lastAt: lastPriceAlertAt || 0,
+          nextAt: nextPriceAlertAt || 0,
+        }),
+      );
+    } catch (err) {
+      /* ignore */
+    }
+  }
 
   function getPriceAlertSchedule() {
     return {
@@ -277,6 +310,7 @@
   function markPriceAlertSchedule() {
     lastPriceAlertAt = Date.now();
     nextPriceAlertAt = lastPriceAlertAt + PRICE_ALERT_POLL_MS;
+    savePriceAlertScheduleState();
     window.dispatchEvent(new CustomEvent("setup-alerts-schedule"));
   }
 
@@ -511,10 +545,14 @@
 
   function startPriceAlertWatcher() {
     if (priceAlertTimer) return;
+    loadPriceAlertScheduleState();
     console.log(
       `[Timer ${formatPollTime()}] bat dau theo doi gia (moi ${PRICE_ALERT_POLL_MS / 1000}s)`,
     );
-    nextPriceAlertAt = Date.now() + PRICE_ALERT_POLL_MS;
+    if (!nextPriceAlertAt || nextPriceAlertAt <= 0) {
+      nextPriceAlertAt = Date.now() + PRICE_ALERT_POLL_MS;
+      savePriceAlertScheduleState();
+    }
     window.dispatchEvent(new CustomEvent("setup-alerts-schedule"));
     priceAlertTimer = setInterval(pollPriceAlerts, PRICE_ALERT_POLL_MS);
     document.addEventListener("visibilitychange", () => {
