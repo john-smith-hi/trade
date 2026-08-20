@@ -62,11 +62,12 @@
         <input type="text" id="symbol" value="XAUUSD" />
       </div>
       <div class="field" data-actions="open,pending">
-        <label for="side">Side</label>
-        <select id="side">
-          <option value="buy">buy</option>
-          <option value="sell">sell</option>
-        </select>
+        <label>Side</label>
+        <div class="side-toggle" id="sideToggle">
+          <button type="button" class="btn btn-buy active" data-side="buy">Buy</button>
+          <button type="button" class="btn btn-sell" data-side="sell">Sell</button>
+        </div>
+        <input type="hidden" id="side" value="buy" />
       </div>
       <div class="field" data-actions="pending">
         <label for="pendingType">Pending type</label>
@@ -81,16 +82,16 @@
       </div>
       <div class="field field-wide" data-actions="open,pending">
         <label for="lot">Lot</label>
-        <input type="number" id="lot" value="0.01" step="0.01" min="0" />
+        <input type="number" id="lot" step="0.01" min="0" placeholder="để trống = default_lot của account" />
       </div>
       <div class="field-pair field-wide" data-actions="open,pending,modify-all">
         <div class="field">
-          <label for="tpPrice">TP price</label>
-          <input type="number" id="tpPrice" step="any" placeholder="để trống nếu không đặt" />
+          <label for="slPrice">Stop loss *</label>
+          <input type="number" id="slPrice" step="any" placeholder="bắt buộc" required />
         </div>
         <div class="field">
-          <label for="slPrice">SL price</label>
-          <input type="number" id="slPrice" step="any" placeholder="để trống nếu không đặt" />
+          <label for="tpPrice">Take profit</label>
+          <input type="number" id="tpPrice" step="any" placeholder="để trống nếu không đặt" />
         </div>
       </div>
       <p class="hint field-wide hidden" id="priceFillHint" data-actions="open,pending,cancel-pending,close-all,modify-all"></p>
@@ -109,9 +110,9 @@
     <h2>3. Thực thi</h2>
     <div class="row">
       <button type="button" id="btnPreview" class="btn btn-primary">Xem trước</button>
-      <button type="button" id="btnConfirm" class="btn btn-danger">Xác nhận gửi lệnh thật</button>
+      <button type="button" id="btnConfirm" class="btn btn-danger" disabled>Xác nhận gửi lệnh thật</button>
     </div>
-    <p class="hint">"Xem trước" không gửi lệnh thật. Chỉ "Xác nhận gửi lệnh thật" mới thực thi (tương đương <code>--no-ask</code>).</p>
+    <p class="hint">Bắt buộc bấm <strong>Xem trước</strong> với đúng thông số hiện tại trước khi <strong>Xác nhận gửi lệnh thật</strong>. Đổi bất kỳ thông tin nào (account, symbol, side, lot, TP/SL, …) sẽ cần xem trước lại.</p>
     <pre id="output" class="output">Chưa có kết quả nào.</pre>
   </section>
 </main>

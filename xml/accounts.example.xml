@@ -10,6 +10,7 @@
     - path              : TÊN path trong xml/paths.xml (vd: exness, ftmo) — KHÔNG ghi full path.
     - suffix            : hậu tố symbol riêng của broker (Exness = "m", FTMO = "").
     - multi             : hệ số nhân lot khi copy lệnh sang tài khoản này (bỏ trống/1.0 nếu không cần).
+    - default_lot       : lot mặc định trên web khi để trống ô Lot (bỏ trống = 0.01).
     - xauusd_max_loss   : |ước tính lỗ SL| tối đa cho XAUUSD/XAUUSDm (bỏ trống = không giới hạn;
                           khi là account copy và bỏ trống → lấy của account gốc × multi).
     - auto_copy_enabled : true/false, bật thì khi chạy account này (không truyền tham số copy),
@@ -25,6 +26,7 @@
         <path>exness</path>
         <suffix></suffix>
         <multi>1.0</multi>
+        <default_lot>0.01</default_lot>
         <xauusd_max_loss></xauusd_max_loss>
         <auto_copy_enabled>false</auto_copy_enabled>
         <auto_copy_targets></auto_copy_targets>

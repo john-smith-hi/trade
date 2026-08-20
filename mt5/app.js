@@ -50,6 +50,7 @@ function renderAccounts(accounts) {
   updateAccountInfo(accounts);
   select.onchange = () => {
     updateAccountInfo(accounts);
+    invalidatePreview();
     autofillTpSl();
   };
 }
@@ -64,8 +65,10 @@ function updateAccountInfo(accounts) {
     ? `auto-copy → ${acc.auto_copy_targets.join(", ")}`
     : "không auto-copy";
   const maxLoss = acc.xauusd_max_loss == null ? "không giới hạn" : acc.xauusd_max_loss;
+  const defaultLot = acc.default_lot ?? 0.01;
   el("accountInfo").textContent =
-    `login: ${acc.login} | server: ${acc.server} | suffix: "${acc.suffix}" | multi: ${acc.multi} | max_loss: ${maxLoss} | ${autoCopy}`;
+    `login: ${acc.login} | server: ${acc.server} | suffix: "${acc.suffix}" | multi: ${acc.multi} | default_lot: ${defaultLot} | max_loss: ${maxLoss} | ${autoCopy}`;
+  applyDefaultLotPlaceholder();
 }
 
 let lastAccounts = [];
@@ -73,6 +76,41 @@ let fillSeq = 0;
 /** null = không áp dụng; false = action cần lệnh nhưng không có */
 let actionHasPositions = null;
 let actionHasOrders = null;
+let previewValid = false;
+let previewSnapshot = null;
+
+function getSide() {
+  return el("side").value === "sell" ? "sell" : "buy";
+}
+
+function setSide(side) {
+  const value = side === "sell" ? "sell" : "buy";
+  el("side").value = value;
+  document.querySelectorAll("#sideToggle [data-side]").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.side === value);
+  });
+}
+
+function accountDefaultLot(accountName) {
+  const acc = lastAccounts.find((a) => a.name === accountName);
+  const lot = Number(acc?.default_lot);
+  return Number.isFinite(lot) && lot > 0 ? lot : 0.01;
+}
+
+function resolveLot() {
+  const raw = el("lot").value.trim();
+  if (raw !== "") {
+    const lot = Number(raw);
+    if (Number.isFinite(lot) && lot > 0) return lot;
+  }
+  return accountDefaultLot(el("account").value);
+}
+
+function applyDefaultLotPlaceholder() {
+  const lotInput = el("lot");
+  if (!lotInput) return;
+  lotInput.placeholder = `để trống = ${accountDefaultLot(el("account").value)} (default_lot)`;
+}
 
 function actionNeedsOpenPositions(action = el("action").value) {
   return action === "modify-all" || action === "close-all";
@@ -86,23 +124,54 @@ function actionUsesQuote(action = el("action").value) {
   return action === "open" || action === "pending";
 }
 
-function setExecuteEnabled(enabled) {
+function invalidatePreview() {
+  previewValid = false;
+  previewSnapshot = null;
+  syncConfirmEnabled();
+}
+
+function markPreviewOk() {
+  previewValid = true;
+  previewSnapshot = payloadSnapshot();
+  syncConfirmEnabled();
+}
+
+function payloadSnapshot() {
+  return JSON.stringify(buildPayload(false));
+}
+
+function payloadsMatchPreview() {
+  return previewValid && previewSnapshot === payloadSnapshot();
+}
+
+function setPreviewEnabled(enabled) {
   const preview = el("btnPreview");
-  const confirm = el("btnConfirm");
   if (preview) preview.disabled = !enabled;
-  if (confirm) confirm.disabled = !enabled;
+}
+
+function syncConfirmEnabled() {
+  const confirm = el("btnConfirm");
+  if (!confirm) return;
+  let enabled = payloadsMatchPreview();
+  if (actionNeedsOpenPositions()) {
+    enabled = enabled && actionHasPositions === true;
+  } else if (actionNeedsPendingOrders()) {
+    enabled = enabled && actionHasOrders === true;
+  }
+  confirm.disabled = !enabled;
 }
 
 function syncExecuteForAction() {
   if (actionNeedsOpenPositions()) {
-    setExecuteEnabled(actionHasPositions === true);
+    setPreviewEnabled(actionHasPositions === true);
   } else if (actionNeedsPendingOrders()) {
-    setExecuteEnabled(actionHasOrders === true);
+    setPreviewEnabled(actionHasOrders === true);
   } else {
     actionHasPositions = null;
     actionHasOrders = null;
-    setExecuteEnabled(true);
+    setPreviewEnabled(true);
   }
+  syncConfirmEnabled();
 }
 
 function setPriceHint(text, { asError = false } = {}) {
@@ -124,7 +193,7 @@ async function autofillFromQuote() {
   syncExecuteForAction();
   const account = el("account").value;
   const symbol = el("symbol").value.trim();
-  const side = el("side").value;
+  const side = getSide();
   const action = el("action").value;
   if (!account || !symbol) {
     setPriceHint("Chọn account và nhập symbol để lấy giá.");
@@ -138,7 +207,8 @@ async function autofillFromQuote() {
     const data = await apiGet(`/api/quote?${q}`, { useCache: false, timeoutMs: 30000 });
     if (seq !== fillSeq) return;
     const price = data.entry;
-    setTpSl(price, price);
+    // SL bắt buộc — điền tạm = entry; TP tùy chọn — để trống.
+    setTpSl("", price);
     if (action === "pending") {
       const pendingType = el("pendingType").value;
       let tip;
@@ -152,11 +222,11 @@ async function autofillFromQuote() {
         tip = `Sell Stop: nhập giá chờ < bid ${data.bid}`;
       }
       setPriceHint(
-        `Quote ${data.symbol}: bid=${data.bid} ask=${data.ask}. ${tip}. Đã điền TP/SL tạm = entry — hãy chỉnh lại.`,
+        `Quote ${data.symbol}: bid=${data.bid} ask=${data.ask}. ${tip}. Đã điền SL tạm = entry — hãy chỉnh SL (TP tùy chọn).`,
       );
     } else {
       setPriceHint(
-        `Đã điền từ quote ${data.symbol}: bid=${data.bid} ask=${data.ask} → entry ${side}=${price}. Hãy chỉnh TP/SL cho đúng hướng.`,
+        `Đã điền từ quote ${data.symbol}: bid=${data.bid} ask=${data.ask} → entry ${side}=${price}. Hãy chỉnh SL (bắt buộc); TP tùy chọn.`,
       );
     }
     markApiOk("Đã lấy giá thị trường");
@@ -178,7 +248,7 @@ async function checkOpenPositionsForAction() {
 
   const seq = ++fillSeq;
   setPriceHint("Đang lấy lệnh mở...");
-  setExecuteEnabled(false);
+  setPreviewEnabled(false);
   try {
     const q = new URLSearchParams({ account });
     const data = await apiGet(`/api/positions?${q}`, { useCache: false, timeoutMs: 30000 });
@@ -204,8 +274,9 @@ async function checkOpenPositionsForAction() {
       const pos = withLevels || positions[0];
       setTpSl(pos.tp != null ? pos.tp : "", pos.sl != null ? pos.sl : "");
       setPriceHint(
-        `Đã điền từ lệnh #${pos.ticket} (${pos.side} ${pos.symbol}): TP=${pos.tp ?? "chưa đặt"} | SL=${pos.sl ?? "chưa đặt"} | mở=${pos.price_open}`
-        + (positions.length > 1 ? ` — tổng ${positions.length} lệnh mở` : ""),
+        `Đã điền từ lệnh #${pos.ticket} (${pos.side} ${pos.symbol}): SL=${pos.sl ?? "chưa đặt"} | TP=${pos.tp ?? "chưa đặt"} | mở=${pos.price_open}`
+        + (positions.length > 1 ? ` — tổng ${positions.length} lệnh mở` : "")
+        + (pos.sl == null ? " — cần nhập Stop loss trước khi sửa" : ""),
       );
       markApiOk("Đã lấy SL/TP từ lệnh mở");
     } else {
@@ -238,7 +309,7 @@ async function checkPendingOrdersForAction() {
 
   const seq = ++fillSeq;
   setPriceHint("Đang lấy lệnh chờ...");
-  setExecuteEnabled(false);
+  setPreviewEnabled(false);
   try {
     const q = new URLSearchParams({ account });
     const data = await apiGet(`/api/orders?${q}`, { useCache: false, timeoutMs: 30000 });
@@ -344,10 +415,10 @@ function buildPayload(noAsk) {
     account: el("account").value,
     action,
     symbol: isVisible("symbol") ? el("symbol").value : undefined,
-    side: isVisible("side") ? el("side").value : undefined,
+    side: isVisible("side") ? getSide() : undefined,
     pending_type: isVisible("pendingType") ? el("pendingType").value : undefined,
     price: isVisible("price") ? el("price").value : undefined,
-    lot: isVisible("lot") ? el("lot").value : undefined,
+    lot: isVisible("lot") ? resolveLot() : undefined,
     tp_price: isVisible("tpPrice") ? el("tpPrice").value : "",
     sl_price: isVisible("slPrice") ? el("slPrice").value : "",
     comment: isVisible("comment") ? el("comment").value : undefined,
@@ -379,9 +450,23 @@ async function submitAction(noAsk, triggerBtn) {
     alert("Lệnh pending cần nhập Giá chờ.");
     return;
   }
+  const action = el("action").value;
+  if (action === "open" || action === "pending" || action === "modify-all") {
+    const slRaw = el("slPrice").value.trim();
+    const sl = Number(slRaw);
+    if (!slRaw || !Number.isFinite(sl) || sl <= 0) {
+      alert("Stop loss là bắt buộc — hãy nhập mức giá SL hợp lệ (> 0).");
+      el("slPrice").focus();
+      return;
+    }
+  }
   if (noAsk) {
+    if (!payloadsMatchPreview()) {
+      alert("Cần bấm Xem trước với đúng thông số hiện tại trước khi gửi lệnh thật.");
+      return;
+    }
     const ok = await showConfirmModal(
-      "Bạn chắc chắn muốn GỬI LỆNH THẬT (hoặc thực thi thật) không? Hành động này không thể xem trước lại.",
+      "Bạn chắc chắn muốn GỬI LỆNH THẬT (hoặc thực thi thật) không?",
     );
     if (!ok) return;
   }
@@ -391,10 +476,15 @@ async function submitAction(noAsk, triggerBtn) {
   try {
     const data = await withBusy(
       () => apiPost("/api/action", buildPayload(noAsk), { timeoutMs: 60000 }),
-      "Đang gửi lệnh / xem trước...",
+      noAsk ? "Đang gửi lệnh thật..." : "Đang xem trước...",
       { block: true },
     );
     output.textContent = data.output || "(không có output)";
+    if (noAsk) {
+      invalidatePreview();
+    } else {
+      markPreviewOk();
+    }
     if (actionNeedsOpenPositions()) {
       await checkOpenPositionsForAction();
     } else if (actionNeedsPendingOrders()) {
@@ -402,6 +492,7 @@ async function submitAction(noAsk, triggerBtn) {
     }
   } catch (err) {
     output.textContent = `Lỗi: ${err.message}`;
+    if (!noAsk) invalidatePreview();
   } finally {
     syncExecuteForAction();
   }
@@ -411,23 +502,41 @@ document.addEventListener("DOMContentLoaded", async () => {
   initTheme();
   updateParamsVisibility();
   await loadAccounts({ useCache: false });
+  syncConfirmEnabled();
 
   el("themeToggle").addEventListener("click", toggleTheme);
   el("action").addEventListener("change", () => {
+    invalidatePreview();
     updateParamsVisibility();
     autofillTpSl();
   });
   el("symbol").addEventListener("change", () => {
+    invalidatePreview();
     if (actionUsesQuote()) autofillTpSl();
   });
   el("symbol").addEventListener("blur", () => {
-    if (actionUsesQuote()) autofillTpSl();
-  });
-  el("side").addEventListener("change", () => {
+    invalidatePreview();
     if (actionUsesQuote()) autofillTpSl();
   });
   el("pendingType").addEventListener("change", () => {
+    invalidatePreview();
     if (el("action").value === "pending") autofillTpSl();
+  });
+  ["price", "lot", "tpPrice", "slPrice", "comment", "copy"].forEach((id) => {
+    const node = el(id);
+    if (!node) return;
+    node.addEventListener("input", invalidatePreview);
+    node.addEventListener("change", invalidatePreview);
+  });
+  el("account").addEventListener("change", invalidatePreview);
+  document.querySelectorAll("#sideToggle [data-side]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const next = btn.dataset.side;
+      if (next === getSide()) return;
+      setSide(next);
+      invalidatePreview();
+      if (actionUsesQuote()) autofillTpSl();
+    });
   });
   el("btnReloadAccounts").addEventListener("click", reloadAccounts);
   el("btnPreview").addEventListener("click", (e) => submitAction(false, e.target));

@@ -114,6 +114,7 @@ def _account_public(acc):
         "path_exe": _resolve_path_exe(path_ref),
         "suffix": acc.get("suffix"),
         "multi": acc.get("multi"),
+        "default_lot": acc.get("default_lot", 0.01),
         "xauusd_max_loss": acc.get("xauusd_max_loss"),
         "auto_copy_enabled": acc.get("auto_copy_enabled"),
         "auto_copy_targets": acc.get("auto_copy_targets"),
@@ -166,7 +167,7 @@ def _parse_auto_copy_targets(value):
 def _parse_editable_fields(data, *, require_present=False):
     """Parse các trường được phép sửa (không gồm login/password/server/name)."""
     allowed = {
-        "path", "suffix", "multi", "xauusd_max_loss",
+        "path", "suffix", "multi", "default_lot", "xauusd_max_loss",
         "auto_copy_enabled", "auto_copy_targets",
     }
     forbidden = {"login", "password", "server", "name"}
@@ -192,6 +193,11 @@ def _parse_editable_fields(data, *, require_present=False):
         fields["suffix"] = str(data.get("suffix") or "")
     if "multi" in data:
         fields["multi"] = _to_float(data.get("multi"), "multi", default=1.0)
+    if "default_lot" in data:
+        default_lot = _to_float(data.get("default_lot"), "default_lot", default=0.01)
+        if default_lot <= 0:
+            raise ValueError("'default_lot' phải > 0")
+        fields["default_lot"] = default_lot
     if "xauusd_max_loss" in data:
         fields["xauusd_max_loss"] = _to_float_or_none(data.get("xauusd_max_loss"), "xauusd_max_loss")
     if "auto_copy_enabled" in data:
@@ -199,6 +205,20 @@ def _parse_editable_fields(data, *, require_present=False):
     if "auto_copy_targets" in data:
         fields["auto_copy_targets"] = _parse_auto_copy_targets(data.get("auto_copy_targets"))
     return fields
+
+
+def _resolve_lot_for_account(account_name, lot_raw):
+    if lot_raw not in (None, ""):
+        try:
+            lot = float(lot_raw)
+            if lot > 0:
+                return lot
+        except (TypeError, ValueError):
+            pass
+    for acc in mt5app.ACCOUNTS:
+        if acc.get("name") == account_name:
+            return float(acc.get("default_lot") or 0.01)
+    return 0.01
 
 
 def _find_account_index(name):
@@ -306,7 +326,7 @@ def create_account_endpoint():
     editable_raw = {
         k: data[k]
         for k in (
-            "path", "suffix", "multi", "xauusd_max_loss",
+            "path", "suffix", "multi", "default_lot", "xauusd_max_loss",
             "auto_copy_enabled", "auto_copy_targets",
         )
         if k in data
@@ -326,6 +346,7 @@ def create_account_endpoint():
         "path": editable.get("path"),
         "suffix": editable.get("suffix", ""),
         "multi": editable.get("multi", 1.0),
+        "default_lot": editable.get("default_lot", 0.01),
         "xauusd_max_loss": editable.get("xauusd_max_loss"),
         "auto_copy_enabled": editable.get("auto_copy_enabled", False),
         "auto_copy_targets": editable.get("auto_copy_targets", []),
@@ -400,7 +421,9 @@ def action_endpoint():
     no_ask = bool(data.get("no_ask", False))
 
     try:
-        lot = float(data.get("lot", 0.01))
+        with _lock:
+            mt5app.ensure_accounts_fresh()
+            lot = _resolve_lot_for_account(account, data.get("lot"))
         tp_price = _to_float_or_none(data.get("tp_price"), "tp_price")
         sl_price = _to_float_or_none(data.get("sl_price"), "sl_price")
         price = _to_float_or_none(data.get("price"), "price")
@@ -410,6 +433,10 @@ def action_endpoint():
     pending_type = (data.get("pending_type") or "limit").strip().lower()
     if pending_type not in ("limit", "stop"):
         return jsonify({"error": "'pending_type' phải là limit hoặc stop"}), 400
+
+    if action in ("open", "pending", "modify-all"):
+        if sl_price is None or sl_price <= 0:
+            return jsonify({"error": "Stop loss là bắt buộc (sl_price > 0)"}), 400
 
     copy_raw = data.get("copy", None)
     if copy_raw is None:

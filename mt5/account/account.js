@@ -42,6 +42,7 @@ function clearEditForm() {
   el("editPath").value = "";
   el("editSuffix").value = "";
   el("editMulti").value = "1";
+  el("editDefaultLot").value = "0.01";
   el("editMaxLoss").value = "";
   el("editAutoCopyEnabled").value = "false";
   el("editAutoCopyTargets").value = "";
@@ -58,6 +59,7 @@ function fillEditForm(accounts) {
   fillPathSelects(acc.path || "", el("newPath").value);
   el("editSuffix").value = acc.suffix ?? "";
   el("editMulti").value = acc.multi ?? 1;
+  el("editDefaultLot").value = acc.default_lot ?? 0.01;
   el("editMaxLoss").value = acc.xauusd_max_loss == null ? "" : acc.xauusd_max_loss;
   el("editAutoCopyEnabled").value = acc.auto_copy_enabled ? "true" : "false";
   el("editAutoCopyTargets").value = (acc.auto_copy_targets || []).join(",");
@@ -73,11 +75,12 @@ function updateAccountInfo(accounts) {
     ? `auto-copy → ${acc.auto_copy_targets.join(", ")}`
     : "không auto-copy";
   const maxLoss = acc.xauusd_max_loss == null ? "không giới hạn" : acc.xauusd_max_loss;
+  const defaultLot = acc.default_lot ?? 0.01;
   const pathLabel = acc.path
     ? `${acc.path}${acc.path_exe ? ` → ${acc.path_exe}` : ""}`
     : "(không chọn)";
   el("accountInfo").textContent =
-    `login: ${acc.login} | server: ${acc.server} | path: ${pathLabel} | suffix: "${acc.suffix}" | multi: ${acc.multi} | max_loss: ${maxLoss} | ${autoCopy}`;
+    `login: ${acc.login} | server: ${acc.server} | path: ${pathLabel} | suffix: "${acc.suffix}" | multi: ${acc.multi} | default_lot: ${defaultLot} | max_loss: ${maxLoss} | ${autoCopy}`;
 }
 
 function renderAccounts(accounts) {
@@ -120,6 +123,7 @@ function buildEditPayload() {
     path: el("editPath").value.trim(),
     suffix: el("editSuffix").value,
     multi: el("editMulti").value,
+    default_lot: el("editDefaultLot").value || "0.01",
     xauusd_max_loss: el("editMaxLoss").value,
     auto_copy_enabled: el("editAutoCopyEnabled").value === "true",
     auto_copy_targets: parseTargetsCsv(el("editAutoCopyTargets").value),
@@ -135,6 +139,7 @@ function buildNewAccountPayload() {
     path: el("newPath").value.trim(),
     suffix: el("newSuffix").value,
     multi: el("newMulti").value || "1",
+    default_lot: el("newDefaultLot").value || "0.01",
     xauusd_max_loss: el("newMaxLoss").value,
     auto_copy_enabled: el("newAutoCopyEnabled").value === "true",
     auto_copy_targets: parseTargetsCsv(el("newAutoCopyTargets").value),
@@ -149,6 +154,7 @@ function clearNewAccountForm() {
   el("newPath").value = lastPaths[0]?.name || "";
   el("newSuffix").value = "";
   el("newMulti").value = "1";
+  el("newDefaultLot").value = "0.01";
   el("newMaxLoss").value = "";
   el("newAutoCopyEnabled").value = "false";
   el("newAutoCopyTargets").value = "";

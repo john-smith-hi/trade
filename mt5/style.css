@@ -12,6 +12,7 @@
   --secondary: #e5e7eb;
   --secondary-hover: #d1d5db;
   --ok: #15803d;
+  --ok-hover: #166534;
   --error: #b91c1c;
   --overlay: rgba(15, 23, 42, 0.55);
 }
@@ -30,6 +31,7 @@
   --secondary: #334155;
   --secondary-hover: #475569;
   --ok: #4ade80;
+  --ok-hover: #22c55e;
   --error: #f87171;
   --overlay: rgba(0, 0, 0, 0.65);
 }
@@ -266,6 +268,54 @@ main {
 
 .btn-secondary:hover:not(:disabled) {
   background: var(--secondary-hover);
+}
+
+.side-toggle {
+  display: flex;
+  gap: 8px;
+}
+
+.side-toggle .btn {
+  flex: 1;
+  border: 2px solid transparent;
+}
+
+.btn-buy {
+  background: transparent;
+  color: var(--ok);
+  border-color: var(--ok);
+}
+
+.btn-buy:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ok) 12%, transparent);
+}
+
+.btn-buy.active {
+  background: var(--ok);
+  color: #fff;
+}
+
+.btn-buy.active:hover:not(:disabled) {
+  background: var(--ok-hover);
+}
+
+.btn-sell {
+  background: transparent;
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.btn-sell:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
+.btn-sell.active {
+  background: var(--danger);
+  color: #fff;
+}
+
+.btn-sell.active:hover:not(:disabled) {
+  background: var(--danger-hover);
 }
 
 .output {

@@ -15,6 +15,7 @@
 #   - suffix : hậu tố symbol theo broker — Exness = "m", FTMO = "".
 #              Ví dụ --symbol XAUUSD → XAUUSDm (Exness) hoặc XAUUSD (FTMO).
 #   - multi  : hệ số nhân lot khi copy lệnh sang tài khoản đó.
+#   - default_lot : lot mặc định trên web khi để trống ô Lot (bỏ trống = 0.01).
 #   - xauusd_max_loss : |ước tính lỗ SL| tối đa cho XAUUSD (bỏ trống = không giới hạn).
 #     Khi copy: account đích bỏ trống thì lấy xauusd_max_loss của account gốc × multi.
 #   - auto_copy_enabled/auto_copy_targets : bật thì account đó sẽ TỰ ĐỘNG copy
@@ -31,10 +32,11 @@
 #   --symbol --side --lot --tp-price --sl-price --price --pending-type --comment --copy --no-ask
 #   (Không có --no-ask → chỉ xem trước, KHÔNG gửi lệnh thật.)
 #   TP/SL là mức giá cụ thể (không phải số điểm).
-#   action=open BẮT BUỘC có cả --tp-price và --sl-price.
-#     BUY : SL < giá mở < TP
-#     SELL: TP < giá mở < SL
-#   action=pending BẮT BUỘC --price (giá chờ) + TP + SL; --pending-type = limit | stop.
+#   action=open BẮT BUỘC --sl-price; --tp-price tùy chọn.
+#     BUY : SL < giá mở (< TP nếu có)
+#     SELL: (TP nếu có <) giá mở < SL
+#   action=pending BẮT BUỘC --price (giá chờ) + --sl-price; --tp-price tùy chọn;
+#     --pending-type = limit | stop.
 #     BUY  LIMIT: giá chờ < ask | BUY  STOP: giá chờ > ask
 #     SELL LIMIT: giá chờ > bid | SELL STOP: giá chờ < bid
 #   Không truyền --copy → tự dùng auto_copy_enabled/auto_copy_targets của account (nếu có).
@@ -45,14 +47,14 @@
 #   # Xem trạng thái tài khoản
 #   python mt5.py --account prop_demo --action status
 #
-#   # Mở lệnh (xem trước) — bắt buộc TP + SL đúng hướng
-#   python mt5.py --account fake --action open --symbol XAUUSD --side buy --lot 0.01 --tp-price 60000 --sl-price 58000
+#   # Mở lệnh (xem trước) — bắt buộc SL; TP tùy chọn, đúng hướng
+#   python mt5.py --account fake --action open --symbol XAUUSD --side buy --lot 0.01 --sl-price 58000
 #
-#   # Mở lệnh thật
+#   # Mở lệnh thật (có cả TP)
 #   python mt5.py --account fake --action open --symbol XAUUSD --side buy --lot 0.01 --tp-price 60000 --sl-price 58000 --no-ask
 #
 #   # Đặt lệnh chờ mua (Buy Limit) tại giá
-#   python mt5.py --account fake --action pending --symbol XAUUSD --side buy --pending-type limit --price 2500 --lot 0.01 --tp-price 2550 --sl-price 2480 --no-ask
+#   python mt5.py --account fake --action pending --symbol XAUUSD --side buy --pending-type limit --price 2500 --lot 0.01 --sl-price 2480 --no-ask
 #
 #   # Đặt lệnh chờ mua (Buy Stop) khi giá phá lên
 #   python mt5.py --account fake --action pending --symbol XAUUSD --side buy --pending-type stop --price 2600 --lot 0.01 --tp-price 2650 --sl-price 2580 --no-ask
@@ -233,6 +235,14 @@ def load_accounts():
         except ValueError:
             multi = 1.0
 
+        default_lot_text = _xml_text(node, "default_lot")
+        try:
+            default_lot = float(default_lot_text) if default_lot_text else 0.01
+        except ValueError:
+            default_lot = 0.01
+        if default_lot <= 0:
+            default_lot = 0.01
+
         max_loss_text = _xml_text(node, "xauusd_max_loss")
         # Bỏ trống = không giới hạn (None).
         xauusd_max_loss = None
@@ -257,6 +267,7 @@ def load_accounts():
             "path": path_ref,
             "suffix": _xml_text(node, "suffix"),
             "multi": multi,
+            "default_lot": default_lot,
             "xauusd_max_loss": xauusd_max_loss,
             "auto_copy_enabled": _xml_bool(node, "auto_copy_enabled", False),
             "auto_copy_targets": _xml_list(node, "auto_copy_targets"),
@@ -280,6 +291,8 @@ def save_accounts(accounts):
         ET.SubElement(node, "path").text = str(path_ref)
         ET.SubElement(node, "suffix").text = str(acc.get("suffix", ""))
         ET.SubElement(node, "multi").text = str(acc.get("multi", 1.0))
+        default_lot = acc.get("default_lot")
+        ET.SubElement(node, "default_lot").text = "" if default_lot is None else str(default_lot)
         max_loss = acc.get("xauusd_max_loss")
         ET.SubElement(node, "xauusd_max_loss").text = "" if max_loss is None else str(max_loss)
         ET.SubElement(node, "auto_copy_enabled").text = "true" if acc.get("auto_copy_enabled") else "false"
@@ -893,8 +906,8 @@ def build_trade_request(symbol, side, lot, tp_price=None, sl_price=None, comment
 
 
 def open_trade(account, symbol, side, lot, tp_price=None, sl_price=None, comment="Python trader test"):
-    if tp_price is None or sl_price is None:
-        raise RuntimeError("Lệnh open bắt buộc phải có --tp-price và --sl-price")
+    if sl_price is None:
+        raise RuntimeError("Lệnh open bắt buộc phải có --sl-price (stop loss)")
 
     symbol = select_symbol(symbol, account)
     entry_price = get_entry_price(symbol, side)
@@ -902,12 +915,15 @@ def open_trade(account, symbol, side, lot, tp_price=None, sl_price=None, comment
 
     print(f"Sẽ mở lệnh {side.upper()} trên {symbol} với khối lượng {lot} lot")
     print(f"Giá vào dự kiến: {entry_price}")
-    print(f"TP: {tp_price} | SL: {sl_price}")
+    print(f"TP: {tp_price if tp_price is not None else 'không đặt'} | SL: {sl_price}")
 
     # Ước tính luôn in ở chế độ xem trước — --no-ask chỉ quyết định có gửi lệnh thật hay không.
     contract_size = resolve_contract_size(symbol)
     estimated = estimate_tp_sl_pnl(side, entry_price, tp_price, sl_price, lot, contract_size)
-    print(f"Ước tính lời TP: {estimated.get('tp', 0):.8f}")
+    if tp_price is not None:
+        print(f"Ước tính lời TP: {estimated.get('tp', 0):.8f}")
+    else:
+        print("Không đặt TP — bỏ qua ước tính lời TP.")
     print(f"Ước tính lỗ SL: {estimated.get('sl', 0):.8f}")
     validate_xauusd_max_loss(symbol, side, entry_price, sl_price, lot, account=account)
 
@@ -1056,8 +1072,8 @@ def open_pending_trade(account, symbol, side, pending_type, price, lot,
                        tp_price=None, sl_price=None, comment="Python pending"):
     if price is None:
         raise RuntimeError("Lệnh pending bắt buộc phải có --price (giá chờ)")
-    if tp_price is None or sl_price is None:
-        raise RuntimeError("Lệnh pending bắt buộc phải có cả --tp-price và --sl-price")
+    if sl_price is None:
+        raise RuntimeError("Lệnh pending bắt buộc phải có --sl-price (stop loss)")
 
     symbol = select_symbol(symbol, account)
     price = normalize_price(symbol, price)
@@ -1069,11 +1085,14 @@ def open_pending_trade(account, symbol, side, pending_type, price, lot,
     print(f"Giá chờ: {price} | bid={market['bid']} ask={market['ask']}")
     if market["min_distance"]:
         print(f"Khoảng cách tối thiểu (stops_level): {market['min_distance']}")
-    print(f"TP: {tp_price} | SL: {sl_price}")
+    print(f"TP: {tp_price if tp_price is not None else 'không đặt'} | SL: {sl_price}")
 
     contract_size = resolve_contract_size(symbol)
     estimated = estimate_tp_sl_pnl(side, price, tp_price, sl_price, lot, contract_size)
-    print(f"Ước tính lời TP: {estimated.get('tp', 0):.8f}")
+    if tp_price is not None:
+        print(f"Ước tính lời TP: {estimated.get('tp', 0):.8f}")
+    else:
+        print("Không đặt TP — bỏ qua ước tính lời TP.")
     print(f"Ước tính lỗ SL: {estimated.get('sl', 0):.8f}")
     validate_xauusd_max_loss(symbol, side, price, sl_price, lot, account=account)
 
@@ -1663,13 +1682,13 @@ def main():
 
     args = parser.parse_args()
 
-    if args.action == "open" and (args.tp_price is None or args.sl_price is None):
-        parser.error("action=open bắt buộc phải có cả --tp-price và --sl-price")
+    if args.action == "open" and args.sl_price is None:
+        parser.error("action=open bắt buộc phải có --sl-price (stop loss); --tp-price tùy chọn")
     if args.action == "pending":
         if args.price is None:
             parser.error("action=pending bắt buộc phải có --price (giá chờ)")
-        if args.tp_price is None or args.sl_price is None:
-            parser.error("action=pending bắt buộc phải có cả --tp-price và --sl-price")
+        if args.sl_price is None:
+            parser.error("action=pending bắt buộc phải có --sl-price (stop loss); --tp-price tùy chọn")
 
     copy_names = None
     if args.copy is not None:
