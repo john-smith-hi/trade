@@ -16,3 +16,6 @@ xml/www.xml
 
 # Dữ liệu checklist theo tuần (đổi liên tục khi dùng trang setup/), không commit.
 xml/day_trade_week.xml
+
+# Báo thức vùng giá trang setup/timer/ (đổi khi đặt/poll), không commit.
+xml/timer.xml

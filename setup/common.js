@@ -265,6 +265,11 @@
   let priceAlertTimer = null;
   let lastPriceAlertAt = 0;
   let nextPriceAlertAt = 0;
+  let priceAlertsCache = [];
+  let persistBusy = false;
+  let persistSeq = 0;
+  let priceAlertsHydrated = false;
+  let priceAlertsDirty = false;
 
   function loadPriceAlertScheduleState() {
     try {
@@ -314,7 +319,7 @@
     window.dispatchEvent(new CustomEvent("setup-alerts-schedule"));
   }
 
-  function loadPriceAlerts() {
+  function loadPriceAlertsFromLocal() {
     try {
       const raw = localStorage.getItem(PRICE_ALERT_KEY);
       const list = raw ? JSON.parse(raw) : [];
@@ -324,9 +329,86 @@
     }
   }
 
+  function loadPriceAlerts() {
+    return priceAlertsCache;
+  }
+
+  async function persistPriceAlertsToXml() {
+    if (!priceAlertsHydrated) return;
+    persistSeq += 1;
+    if (persistBusy) return;
+    persistBusy = true;
+    try {
+      while (true) {
+        const seq = persistSeq;
+        const snapshot = priceAlertsCache;
+        try {
+          await apiPut("/api/setup/timer", { alerts: snapshot });
+          priceAlertsDirty = false;
+        } catch (err) {
+          console.log(
+            `[Timer ${formatPollTime()}] loi luu xml/timer.xml: ${err.message || err}`,
+          );
+          try {
+            localStorage.setItem(PRICE_ALERT_KEY, JSON.stringify(snapshot));
+          } catch (storeErr) {
+            /* ignore */
+          }
+        }
+        if (seq === persistSeq) break;
+      }
+    } finally {
+      persistBusy = false;
+    }
+  }
+
   function savePriceAlerts(list) {
-    localStorage.setItem(PRICE_ALERT_KEY, JSON.stringify(list));
+    priceAlertsCache = Array.isArray(list) ? list : [];
+    priceAlertsDirty = true;
     window.dispatchEvent(new CustomEvent("setup-alerts-updated"));
+    persistPriceAlertsToXml();
+  }
+
+  function mergeAlertLists(localFirst, serverList) {
+    const seen = new Set();
+    const merged = [];
+    for (const alert of localFirst) {
+      if (!alert || !alert.id || seen.has(alert.id)) continue;
+      merged.push(alert);
+      seen.add(alert.id);
+    }
+    for (const alert of serverList) {
+      if (!alert || !alert.id || seen.has(alert.id)) continue;
+      merged.push(alert);
+      seen.add(alert.id);
+    }
+    return merged;
+  }
+
+  async function hydratePriceAlerts() {
+    const data = await apiGet("/api/setup/timer", { useCache: false });
+    let list = Array.isArray(data.alerts) ? data.alerts : [];
+    if (!list.length) {
+      const local = loadPriceAlertsFromLocal();
+      if (local.length) {
+        list = local;
+        priceAlertsDirty = true;
+      }
+    }
+    if (priceAlertsDirty && priceAlertsCache.length) {
+      list = mergeAlertLists(priceAlertsCache, list);
+    }
+    priceAlertsCache = list;
+    priceAlertsHydrated = true;
+    try {
+      localStorage.removeItem(PRICE_ALERT_KEY);
+    } catch (err) {
+      /* ignore */
+    }
+    window.dispatchEvent(new CustomEvent("setup-alerts-updated"));
+    if (priceAlertsDirty) {
+      persistPriceAlertsToXml();
+    }
   }
 
   function ensureToastStack() {
@@ -543,8 +625,21 @@
     }
   }
 
-  function startPriceAlertWatcher() {
+  async function startPriceAlertWatcher() {
     if (priceAlertTimer) return;
+    try {
+      await hydratePriceAlerts();
+    } catch (err) {
+      const local = loadPriceAlertsFromLocal();
+      if (local.length) {
+        priceAlertsCache = local;
+        priceAlertsDirty = true;
+        window.dispatchEvent(new CustomEvent("setup-alerts-updated"));
+      }
+      priceAlertsHydrated = true;
+      console.log(`[Timer ${formatPollTime()}] khong tai xml/timer.xml: ${err.message || err}`);
+      if (priceAlertsDirty) persistPriceAlertsToXml();
+    }
     loadPriceAlertScheduleState();
     console.log(
       `[Timer ${formatPollTime()}] bat dau theo doi gia (moi ${PRICE_ALERT_POLL_MS / 1000}s)`,

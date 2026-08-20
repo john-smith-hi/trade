@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    MẪU file lưu báo thức vùng giá của trang setup/timer/.
+    Copy thành "timer.xml" (cùng thư mục xml/) — API tự làm khi chạy lần đầu.
+
+    alert@id          : mã báo thức (tạo từ trình duyệt).
+    alert@account     : tên account trong accounts.xml.
+    alert@symbol      : mã giao dịch (vd XAUUSD).
+    alert@zone_low    : cạnh dưới vùng giá.
+    alert@zone_high   : cạnh trên vùng giá.
+    alert@enabled     : true = đang theo dõi.
+    alert@fired       : true = đã chạm vùng và đã báo (không báo lại).
+    alert@primed      : true = đã có lần poll đầu (lần đầu chỉ ghi nhận giá).
+    alert@inside      : true = nến M1 gần nhất đang giao vùng.
+    alert@fired_at    : unix ms lúc chạm vùng (rỗng nếu chưa).
+    alert@last_at     : unix ms lúc lấy nến gần nhất.
+    note              : ghi chú tuỳ chọn.
+    last              : giá nến M1 gần nhất (cập nhật mỗi lần poll).
+-->
+<timer_alerts>
+</timer_alerts>

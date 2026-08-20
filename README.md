@@ -19,7 +19,7 @@ Web UI chạy trên WAMP. Đường dẫn www khai báo trong `xml/www.xml` (git
 | `xml/` | Cấu hình account, path terminal, checklist tuần |
 | `note-ai/` | Ghi chú kiến trúc cho lần sửa sau |
 
-`xml/accounts.xml`, `xml/paths.xml`, `xml/www.xml`, `xml/day_trade_week.xml` **không commit** (đã `.gitignore`). Lấy mẫu từ các file `*.example.xml`.
+`xml/accounts.xml`, `xml/paths.xml`, `xml/www.xml`, `xml/day_trade_week.xml`, `xml/timer.xml` **không commit** (đã `.gitignore`). Lấy mẫu từ các file `*.example.xml`.
 
 ---
 
@@ -147,6 +147,7 @@ Trang ra lệnh: **Xem trước** không gửi lệnh; **Xác nhận gửi lện
 | GET | `/api/orders` | Lệnh chờ |
 | GET | `/api/history` | `history_mt5.txt` đã parse |
 | GET/PUT | `/api/setup/week` | Tuần checklist |
+| GET/PUT | `/api/setup/timer` | Báo thức vùng giá (`xml/timer.xml`) |
 | POST/PUT/DELETE | `/api/setup/setups` | Setup trong tuần |
 
 Hai request MT5 không chạy song song (`threading.Lock` trong `api.py`).
@@ -155,7 +156,7 @@ Hai request MT5 không chạy song song (`threading.Lock` trong `api.py`).
 
 ## 3. Setup (`setup/` + `day_trade.py`)
 
-Theo `day_trade_mindset.txt`. Dữ liệu: `xml/day_trade_week.xml`.
+Theo `day_trade_mindset.txt`. Dữ liệu tuần: `xml/day_trade_week.xml`. Báo thức Timer: `xml/timer.xml`.
 
 - Tuần T2–T6 (giờ VN): tuần `active`, ghi được
 - Thứ 2: chỉ quan sát, không vào lệnh
@@ -164,7 +165,7 @@ Theo `day_trade_mindset.txt`. Dữ liệu: `xml/day_trade_week.xml`.
 
 Không gửi lệnh MT5 — chỉ chấm điểm setup thủ công.
 
-Trang **Timer** (`/setup/timer/`): đặt vùng giá (từ–đến), mỗi phút lấy **nến M1 đã đóng** (`GET /api/candle`). Chạm vùng nếu high/low của nến giao vùng. Báo bằng **thông báo Chrome**. Cần giữ tab Setup hoặc Timer mở. Danh sách báo thức lưu `localStorage`.
+Trang **Timer** (`/setup/timer/`): đặt vùng giá (từ–đến), mỗi phút lấy **nến M1 đã đóng** (`GET /api/candle`). Chạm vùng nếu high/low của nến giao vùng. Báo bằng **thông báo Chrome**. Cần giữ tab Setup hoặc Timer mở. Danh sách báo thức lưu `xml/timer.xml`.
 
 ---
 

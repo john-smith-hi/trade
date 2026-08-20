@@ -47,6 +47,8 @@
 #   POST   /api/setup/setups            -> chấm điểm + lưu 1 setup mới
 #   PUT    /api/setup/setups/<id>       -> chấm điểm lại + sửa 1 setup (tuần active)
 #   DELETE /api/setup/setups/<id>?week_id=  -> xóa 1 setup (tuần active)
+#   GET    /api/setup/timer             -> danh sách báo thức vùng giá (xml/timer.xml)
+#   PUT    /api/setup/timer             -> lưu toàn bộ danh sách báo thức
 #   GET    /setup/, /setup/<file>       -> serve file tĩnh repo (dev); production dùng WAMP
 #
 # =============================================================================
@@ -62,6 +64,7 @@ from flask_cors import CORS
 
 import day_trade
 import mt5 as mt5app
+import timer_alerts
 
 API_HOST = "127.0.0.1"
 API_PORT = 5001
@@ -79,10 +82,11 @@ _lock = threading.Lock()
 def _watch_extra_files():
     """Mọi .py (root) và mọi .xml trong project — đổi là reloader restart process.
 
-    Ngoại lệ: day_trade_week.xml đổi liên tục mỗi lần lưu checklist trên trang
-    setup/, không nên coi là "đổi code" -> loại khỏi danh sách theo dõi.
+    Ngoại lệ: day_trade_week.xml và timer.xml đổi liên tục khi dùng trang
+    setup/ (checklist / báo thức), không nên coi là "đổi code" -> loại khỏi
+    danh sách theo dõi.
     """
-    skip = {day_trade.WEEK_FILE.resolve()}
+    skip = {day_trade.WEEK_FILE.resolve(), timer_alerts.ALERTS_FILE.resolve()}
     watched = {p.resolve() for p in ROOT_DIR.glob("*.py") if p.is_file()}
     watched.update(
         p.resolve() for p in ROOT_DIR.rglob("*.xml")
@@ -741,6 +745,32 @@ def setup_delete_endpoint(setup_id):
         return jsonify({"error": str(exc)}), 400
 
     return jsonify({"week": week})
+
+
+@app.get("/api/setup/timer")
+def setup_timer_list_endpoint():
+    with _lock:
+        alerts = timer_alerts.load_alerts()
+    return jsonify({"alerts": alerts})
+
+
+@app.put("/api/setup/timer")
+def setup_timer_save_endpoint():
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"error": "Body JSON không hợp lệ"}), 400
+
+    raw = data.get("alerts")
+    if raw is None:
+        return jsonify({"error": "Thiếu 'alerts'"}), 400
+
+    try:
+        with _lock:
+            alerts = timer_alerts.replace_alerts(raw)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    return jsonify({"alerts": alerts})
 
 
 if __name__ == "__main__":
