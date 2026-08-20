@@ -10,7 +10,10 @@ Web UI chạy trên WAMP. Đường dẫn www khai báo trong `xml/www.xml` (git
 |----------------|------|
 | `mt5.py` | CLI + logic MT5 (mở lệnh, pending, copy trade, XML accounts/paths) |
 | `api.py` | HTTP API Flask bọc `mt5.py` và `day_trade.py` |
-| `start_api.bat` | Khởi động API |
+| `start_api.bat` | Khởi động API (máy dev, auto-reload) |
+| `start_server.bat` | API 24/7 trên Windows Server (tắt reload, watcher Telegram) |
+| `telegram_notify.py` | Gửi cảnh báo Telegram (`xml/telegram.xml`) |
+| `watch.py` | Poll Timer + lệnh TP/SL/pending trên server |
 | `copy_www.py` | Xóa folder đích rồi copy UI `mt5/` / `setup/` theo `xml/www.xml` (không dùng tên `copy.py`) |
 | `mt5/` | Giao diện ra lệnh / account / path / lịch sử |
 | `setup/` | Giao diện checklist vào lệnh theo tuần |
@@ -19,7 +22,7 @@ Web UI chạy trên WAMP. Đường dẫn www khai báo trong `xml/www.xml` (git
 | `xml/` | Cấu hình account, path terminal, checklist tuần |
 | `note-ai/` | Ghi chú kiến trúc cho lần sửa sau |
 
-`xml/accounts.xml`, `xml/paths.xml`, `xml/www.xml`, `xml/day_trade_week.xml`, `xml/timer.xml` **không commit** (đã `.gitignore`). Lấy mẫu từ các file `*.example.xml`.
+`xml/accounts.xml`, `xml/paths.xml`, `xml/www.xml`, `xml/day_trade_week.xml`, `xml/timer.xml`, `xml/telegram.xml`, `xml/mt5_watch.xml` **không commit** (đã `.gitignore`). Lấy mẫu từ các file `*.example.xml`.
 
 ---
 
@@ -148,6 +151,7 @@ Trang ra lệnh: **Xem trước** không gửi lệnh; **Xác nhận gửi lện
 | GET | `/api/history` | `history_mt5.txt` đã parse |
 | GET/PUT | `/api/setup/week` | Tuần checklist |
 | GET/PUT | `/api/setup/timer` | Báo thức vùng giá (`xml/timer.xml`) |
+| POST | `/api/setup/telegram-test` | Gửi 1 tin thử Telegram |
 | POST/PUT/DELETE | `/api/setup/setups` | Setup trong tuần |
 
 Hai request MT5 không chạy song song (`threading.Lock` trong `api.py`).
@@ -165,7 +169,17 @@ Theo `day_trade_mindset.txt`. Dữ liệu tuần: `xml/day_trade_week.xml`. Báo
 
 Không gửi lệnh MT5 — chỉ chấm điểm setup thủ công.
 
-Trang **Timer** (`/setup/timer/`): đặt vùng giá (từ–đến), mỗi phút lấy **nến M1 đã đóng** (`GET /api/candle`). Chạm vùng nếu high/low của nến giao vùng. Báo bằng **thông báo Chrome**. Cần giữ tab Setup hoặc Timer mở. Danh sách báo thức lưu `xml/timer.xml`.
+Trang **Timer** (`/setup/timer/`): đặt vùng giá (từ–đến). Server poll **nến M1 đã đóng** (~30s) trong `watch.py`. Chạm vùng nếu high/low của nến giao vùng. Cảnh báo **Telegram** (không cần giữ tab). Cần `start_server.bat` (hoặc `start_api.bat`) + `xml/telegram.xml` (`enabled=true`, token, chat_id). Danh sách báo thức: `xml/timer.xml`.
+
+### Windows Server 24/7 + Telegram
+
+1. Copy `xml/telegram.example.xml` → `xml/telegram.xml`. BotFather lấy token; nhắn bot rồi `getUpdates` lấy `chat_id`. Đặt `<enabled>true</enabled>`.
+2. Cài app Telegram trên điện thoại / máy cần nhận tin (cùng tài khoản, hoặc cùng group với bot).
+3. Chạy `start_server.bat` (vòng restart nếu Python thoát). Task Scheduler: **At log on**, “Run only when user is logged on” (MT5 cần session desktop).
+4. Không disconnect RDP bằng cách đóng cửa sổ — dùng `tscon` về console hoặc để session mở.
+5. Nút **Thử Telegram** trên trang Timer.
+
+Watcher gửi tin: mở/đóng lệnh (web/CLI + auto_copy), pending khớp, đóng TP/SL/stop-out, Timer chạm vùng. Bot **chỉ gửi tin**, không nhận lệnh.
 
 ---
 

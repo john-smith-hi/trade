@@ -1,0 +1,51 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<accounts>
+    <account>
+        <name>fake</name>
+        <login>416025113</login>
+        <password>y.y4#R8W*cR7W9m</password>
+        <server>Exness-MT5Trial14</server>
+        <path>exness</path>
+        <suffix>m</suffix>
+        <multi>1.0</multi>
+        <xauusd_max_loss>400.0</xauusd_max_loss>
+        <auto_copy_enabled>false</auto_copy_enabled>
+        <auto_copy_targets />
+    </account>
+    <account>
+        <name>real</name>
+        <login>201967146</login>
+        <password>753159@Lmnnml.</password>
+        <server>Exness-MT5Real18</server>
+        <path>exness</path>
+        <suffix>m</suffix>
+        <multi>1.0</multi>
+        <xauusd_max_loss>100.0</xauusd_max_loss>
+        <auto_copy_enabled>true</auto_copy_enabled>
+        <auto_copy_targets>prop_1</auto_copy_targets>
+    </account>
+    <account>
+        <name>prop_demo</name>
+        <login>1514017511</login>
+        <password>9f1MY1r6U1$TH</password>
+        <server>FTMO-Demo</server>
+        <path>ftmo</path>
+        <suffix />
+        <multi>5.0</multi>
+        <xauusd_max_loss />
+        <auto_copy_enabled>false</auto_copy_enabled>
+        <auto_copy_targets />
+    </account>
+    <account>
+        <name>prop_1</name>
+        <login>511378790</login>
+        <password>8*QV4neZ?33r8</password>
+        <server>FTMO-Server</server>
+        <path>ftmo</path>
+        <suffix />
+        <multi>5.0</multi>
+        <xauusd_max_loss>300.0</xauusd_max_loss>
+        <auto_copy_enabled>false</auto_copy_enabled>
+        <auto_copy_targets />
+    </account>
+</accounts>

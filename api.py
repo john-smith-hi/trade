@@ -49,7 +49,12 @@
 #   DELETE /api/setup/setups/<id>?week_id=  -> xóa 1 setup (tuần active)
 #   GET    /api/setup/timer             -> danh sách báo thức vùng giá (xml/timer.xml)
 #   PUT    /api/setup/timer             -> lưu toàn bộ danh sách báo thức
+#   POST   /api/setup/telegram-test     -> gửi 1 tin thử qua bot Telegram
 #   GET    /setup/, /setup/<file>       -> serve file tĩnh repo (dev); production dùng WAMP
+#
+# CHẠY 24/7 (Windows Server)
+#   start_server.bat  → TRADE_SERVER=1, tắt reloader, bật watcher Timer + lệnh
+#   start_api.bat     → máy dev (reloader)
 #
 # =============================================================================
 
@@ -64,12 +69,16 @@ from flask_cors import CORS
 
 import day_trade
 import mt5 as mt5app
+import telegram_notify
 import timer_alerts
+import watch
+import watch_state
 
 API_HOST = "127.0.0.1"
 API_PORT = 5001
 ROOT_DIR = Path(__file__).resolve().parent
 SETUP_DIR = ROOT_DIR / "setup"
+SERVER_MODE = os.environ.get("TRADE_SERVER") == "1"
 
 app = Flask(__name__)
 CORS(app)
@@ -82,11 +91,15 @@ _lock = threading.Lock()
 def _watch_extra_files():
     """Mọi .py (root) và mọi .xml trong project — đổi là reloader restart process.
 
-    Ngoại lệ: day_trade_week.xml và timer.xml đổi liên tục khi dùng trang
-    setup/ (checklist / báo thức), không nên coi là "đổi code" -> loại khỏi
-    danh sách theo dõi.
+    Ngoại lệ: XML dữ liệu đổi liên tục (checklist, timer, telegram, watch)
+    không nên coi là "đổi code" -> loại khỏi danh sách theo dõi.
     """
-    skip = {day_trade.WEEK_FILE.resolve(), timer_alerts.ALERTS_FILE.resolve()}
+    skip = {
+        day_trade.WEEK_FILE.resolve(),
+        timer_alerts.ALERTS_FILE.resolve(),
+        telegram_notify.CONFIG_FILE.resolve(),
+        watch_state.WATCH_FILE.resolve(),
+    }
     watched = {p.resolve() for p in ROOT_DIR.glob("*.py") if p.is_file()}
     watched.update(
         p.resolve() for p in ROOT_DIR.rglob("*.xml")
@@ -773,16 +786,52 @@ def setup_timer_save_endpoint():
     return jsonify({"alerts": alerts})
 
 
+@app.post("/api/setup/telegram-test")
+def setup_telegram_test_endpoint():
+    status = telegram_notify.config_status()
+    if not status.get("configured"):
+        return jsonify({
+            "error": "Chưa cấu hình xml/telegram.xml (bot_token / chat_id).",
+            **status,
+        }), 400
+    if not status.get("enabled"):
+        return jsonify({
+            "error": "Telegram đang tắt — đặt <enabled>true</enabled> trong xml/telegram.xml.",
+            **status,
+        }), 400
+    ok = telegram_notify.send_alert(
+        telegram_notify.build_message("TEST TELEGRAM", ["Bot cảnh báo trade đang hoạt động."]),
+    )
+    if not ok:
+        return jsonify({
+            "error": "Gửi thất bại — kiểm tra token, chat_id và mạng (api.telegram.org).",
+            **status,
+        }), 502
+    return jsonify({"ok": True, **status})
+
+
+def _should_start_watcher():
+    if SERVER_MODE:
+        return True
+    return os.environ.get("WERKZEUG_RUN_MAIN") == "true"
+
+
 if __name__ == "__main__":
+    if _should_start_watcher():
+        watch.start_watcher(_lock)
+
     # Process mẹ của reloader có WERKZEUG_RUN_MAIN=false — bỏ qua banner trùng.
     if os.environ.get("WERKZEUG_RUN_MAIN") != "false":
         print(f"Đang chạy MT5 API tại http://{API_HOST}:{API_PORT} (chỉ localhost)")
-        print("Auto-reload: sửa .py hoặc .xml → process restart và nạp lại nội dung.")
+        if SERVER_MODE:
+            print("Chế độ server 24/7: tắt auto-reload, bật watcher Timer + lệnh → Telegram.")
+        else:
+            print("Auto-reload: sửa .py hoặc .xml → process restart và nạp lại nội dung.")
 
     app.run(
         host=API_HOST,
         port=API_PORT,
         threaded=True,
-        use_reloader=True,
-        extra_files=_watch_extra_files(),
+        use_reloader=not SERVER_MODE,
+        extra_files=_watch_extra_files() if not SERVER_MODE else None,
     )

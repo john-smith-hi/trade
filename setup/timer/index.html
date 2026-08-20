@@ -28,10 +28,10 @@
   <section class="card">
     <h2>Đặt báo thức theo vùng giá</h2>
     <p class="hint">
-      Cảnh báo dùng <strong>thông báo Chrome</strong> (góc màn hình Windows), không chỉ trong trang.
-      Cần bấm <strong>Bật thông báo Chrome</strong> và chọn Allow. Giữ tab Setup/Timer mở để poll giá mỗi phút.
-      F12 → Console xem log <code>[Timer HH:MM:SS]</code>. Lần poll đầu chỉ ghi nhận — báo khi giá <strong>đi vào</strong> vùng.
-      Danh sách báo thức lưu <code>xml/timer.xml</code> (không mất khi đổi trình duyệt).
+      Cảnh báo gửi <strong>Telegram</strong> (điện thoại / máy đã cài app, cùng tài khoản hoặc group).
+      Server poll nến M1 đã đóng ~30s — chạy <code>start_server.bat</code> (Windows Server 24/7) hoặc <code>start_api.bat</code>.
+      Không cần giữ tab này mở. Lần poll đầu chỉ ghi nhận — báo khi giá <strong>đi vào</strong> vùng.
+      Danh sách lưu <code>xml/timer.xml</code>. Token bot: <code>xml/telegram.xml</code>.
     </p>
 
     <div class="grid">
@@ -61,14 +61,13 @@
     <div class="row">
       <button type="button" id="btnFetchQuote" class="btn btn-secondary">Lấy giá hiện tại</button>
       <button type="button" id="btnAdd" class="btn btn-primary">Thêm báo thức</button>
-      <button type="button" id="btnNotify" class="btn btn-secondary">Bật thông báo Chrome</button>
-      <button type="button" id="btnTestNotify" class="btn btn-secondary">Thử thông báo</button>
+      <button type="button" id="btnTestNotify" class="btn btn-secondary">Thử Telegram</button>
     </div>
   </section>
 
   <section class="card">
     <h2>Danh sách báo thức</h2>
-    <p class="hint" id="nextPollHint">Lần lấy giá tiếp theo: --</p>
+    <p class="hint" id="nextPollHint">Cảnh báo Telegram do server poll. Lần lấy giá: --</p>
     <div class="table-wrap">
       <table class="data-table">
         <thead>

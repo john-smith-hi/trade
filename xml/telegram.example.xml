@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    MẪU cấu hình bot Telegram (chỉ GỬI cảnh báo, không nhận lệnh).
+    Copy thành "telegram.xml" (cùng thư mục xml/) rồi điền token / chat_id.
+
+    1. Telegram → @BotFather → /newbot → copy token vào <bot_token>.
+    2. Mở bot, bấm Start (hoặc thêm bot vào group).
+    3. chat_id:
+       - Chat riêng: nhắn bot rồi mở
+         https://api.telegram.org/bot<TOKEN>/getUpdates
+         lấy result[0].message.chat.id
+       - Group: thêm bot, gửi 1 tin, getUpdates lấy chat.id (số âm).
+    4. Cài app Telegram trên điện thoại / máy khác, đăng nhập cùng tài khoản
+       (hoặc cùng group) — mọi thiết bị đều nhận tin.
+
+    enabled = false → không gửi (giữ token trên máy).
+-->
+<telegram>
+    <enabled>false</enabled>
+    <bot_token>CHANGE_ME</bot_token>
+    <chat_id>CHANGE_ME</chat_id>
+</telegram>

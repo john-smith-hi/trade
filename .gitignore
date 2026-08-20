@@ -19,3 +19,9 @@ xml/day_trade_week.xml
 
 # Báo thức vùng giá trang setup/timer/ (đổi khi đặt/poll), không commit.
 xml/timer.xml
+
+# Bot Telegram (token). Xem xml/telegram.example.xml.
+xml/telegram.xml
+
+# Trạng thái watcher lệnh (khử trùng cảnh báo), không commit.
+xml/mt5_watch.xml

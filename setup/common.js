@@ -259,64 +259,27 @@
   }
 
   const PRICE_ALERT_KEY = "setup-price-alerts";
-  const PRICE_ALERT_SCHEDULE_KEY = "setup-price-alert-schedule";
-  const PRICE_ALERT_POLL_MS = 60000;
-  let priceAlertBusy = false;
+  const PRICE_ALERT_POLL_MS = 30000;
+  const PRICE_ALERT_REFRESH_MS = 15000;
   let priceAlertTimer = null;
-  let lastPriceAlertAt = 0;
-  let nextPriceAlertAt = 0;
   let priceAlertsCache = [];
   let persistBusy = false;
   let persistSeq = 0;
   let priceAlertsHydrated = false;
   let priceAlertsDirty = false;
 
-  function loadPriceAlertScheduleState() {
-    try {
-      const raw = localStorage.getItem(PRICE_ALERT_SCHEDULE_KEY);
-      const data = raw ? JSON.parse(raw) : null;
-      if (!data || typeof data !== "object") return;
-      const lastAt = Number(data.lastAt || 0);
-      const nextAt = Number(data.nextAt || 0);
-      if (Number.isFinite(lastAt) && lastAt > 0) {
-        lastPriceAlertAt = lastAt;
-      }
-      if (Number.isFinite(nextAt) && nextAt > 0) {
-        nextPriceAlertAt = nextAt;
-      }
-    } catch (err) {
-      /* ignore */
-    }
-  }
-
-  function savePriceAlertScheduleState() {
-    try {
-      localStorage.setItem(
-        PRICE_ALERT_SCHEDULE_KEY,
-        JSON.stringify({
-          lastAt: lastPriceAlertAt || 0,
-          nextAt: nextPriceAlertAt || 0,
-        }),
-      );
-    } catch (err) {
-      /* ignore */
-    }
-  }
-
   function getPriceAlertSchedule() {
+    const lastAt = priceAlertsCache.reduce((max, alert) => {
+      const value = Number(alert && alert.lastAt) || 0;
+      return value > max ? value : max;
+    }, 0);
     return {
       intervalMs: PRICE_ALERT_POLL_MS,
-      lastAt: lastPriceAlertAt,
-      nextAt: nextPriceAlertAt,
-      busy: priceAlertBusy,
+      lastAt,
+      nextAt: lastAt > 0 ? lastAt + PRICE_ALERT_POLL_MS : 0,
+      busy: false,
+      server: true,
     };
-  }
-
-  function markPriceAlertSchedule() {
-    lastPriceAlertAt = Date.now();
-    nextPriceAlertAt = lastPriceAlertAt + PRICE_ALERT_POLL_MS;
-    savePriceAlertScheduleState();
-    window.dispatchEvent(new CustomEvent("setup-alerts-schedule"));
   }
 
   function loadPriceAlertsFromLocal() {
@@ -422,23 +385,6 @@
     return stack;
   }
 
-  function playAlertBeep() {
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = 880;
-      gain.gain.value = 0.08;
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.35);
-    } catch (err) {
-      /* ignore */
-    }
-  }
-
   function escapeHtml(text) {
     return String(text)
       .replace(/&/g, "&amp;")
@@ -461,167 +407,21 @@
     setTimeout(close, 20000);
   }
 
-  function showChromeNotification(title, body, { tag } = {}) {
-    if (!("Notification" in window)) {
-      console.log("[Timer] trinh duyet khong ho tro Notification API");
-      return false;
-    }
-    if (Notification.permission !== "granted") {
-      console.log(
-        `[Timer] chua co quyen Chrome notification (permission=${Notification.permission})`,
-      );
-      return false;
-    }
-    try {
-      const note = new Notification(title, {
-        body: body || "",
-        requireInteraction: true,
-        silent: false,
-        tag: tag || `setup-timer-${Date.now()}`,
-      });
-      note.onclick = () => {
-        try {
-          window.focus();
-        } catch (err) {
-          /* ignore */
-        }
-        note.close();
-      };
-      console.log(`[Timer ${formatPollTime()}] da gui Chrome notification: ${title}`);
-      return true;
-    } catch (err) {
-      console.log(`[Timer] loi gui Chrome notification: ${err.message || err}`);
-      return false;
-    }
-  }
-
-  async function ensureChromeNotifyPermission() {
-    if (!("Notification" in window)) return "unsupported";
-    if (Notification.permission === "granted") return "granted";
-    if (Notification.permission === "denied") return "denied";
-    try {
-      return await Notification.requestPermission();
-    } catch (err) {
-      return Notification.permission || "denied";
-    }
-  }
-
-  function notifyPriceAlert(alert, quote) {
-    const title = "Setup Key Level";
-    const body = "";
-
-    playAlertBeep();
-    const sent = showChromeNotification(title, body, { tag: `setup-alert-${alert.id}` });
-    // Toast trong trang chỉ là dự phòng khi chưa cho phép Chrome notification.
-    if (!sent) {
-      showCornerToast({
-        title,
-        body: "Bấm \"Bật thông báo Chrome\" trên trang Timer để nhận popup hệ thống.",
-      });
-    }
-  }
-
-  function quoteHitsZone(quote, alert) {
-    const low = Math.min(Number(alert.zoneLow), Number(alert.zoneHigh));
-    const high = Math.max(Number(alert.zoneLow), Number(alert.zoneHigh));
-    if (!Number.isFinite(low) || !Number.isFinite(high)) return false;
-    // Nến M1: chạm vùng nếu high/low của nến giao với [low, high].
-    if (quote.high != null && quote.low != null) {
-      return !(Number(quote.high) < low || Number(quote.low) > high);
-    }
-    return !(quote.ask < low || quote.bid > high);
-  }
-
   function formatPollTime(date = new Date()) {
     const pad = (n) => String(n).padStart(2, "0");
     return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
   }
 
-  async function pollPriceAlerts() {
-    if (priceAlertBusy || document.visibilityState === "hidden") return;
-    const now = new Date();
-    const timeLabel = formatPollTime(now);
-    const alerts = loadPriceAlerts();
-    // Luôn cập nhật giá cho mọi alert đang bật (kể cả đã fired).
-    const enabled = alerts.filter((a) => a.enabled);
-    if (!enabled.length) {
-      console.log(`[Timer ${timeLabel}] dang chay — chua co bao thuc nao dang bat`);
-      markPriceAlertSchedule();
-      return;
-    }
-
-    priceAlertBusy = true;
-    window.dispatchEvent(new CustomEvent("setup-alerts-schedule"));
+  async function refreshPriceAlertsFromServer() {
+    if (priceAlertsDirty || persistBusy) return;
     try {
-      const keys = [...new Set(enabled.map((a) => `${a.account}\t${a.symbol}`))];
-      const quotes = {};
-      for (const key of keys) {
-        const [account, symbol] = key.split("\t");
-        try {
-          // Nến M1 đã đóng gần nhất — không dùng tick live của /api/quote.
-          const q = new URLSearchParams({ account, symbol, closed: "1" });
-          const data = await apiGet(`/api/candle?${q}`, { useCache: false, timeoutMs: 30000 });
-          quotes[key] = data;
-          console.log(
-            `[Timer ${timeLabel}] nen M1 da dong ${account} ${data.symbol || symbol}` +
-              ` @ ${data.time_str}: O=${data.open} H=${data.high} L=${data.low} C=${data.close}`,
-          );
-        } catch (err) {
-          const msg = String(err.message || err);
-          quotes[key] = { error: msg };
-          console.log(`[Timer ${timeLabel}] loi lay nen M1 ${account} ${symbol}: ${msg}`);
-        }
-      }
-
-      const next = loadPriceAlerts().map((alert) => {
-        if (!alert.enabled) return alert;
-        const quote = quotes[`${alert.account}\t${alert.symbol}`];
-        if (!quote || quote.error) {
-          return { ...alert, lastError: quote ? quote.error : "no quote", lastAt: now.getTime() };
-        }
-        const inside = quoteHitsZone(quote, alert);
-        const updated = {
-          ...alert,
-          lastBid: quote.close != null ? quote.close : quote.bid,
-          lastAsk: quote.close != null ? quote.close : quote.ask,
-          lastOpen: quote.open,
-          lastHigh: quote.high,
-          lastLow: quote.low,
-          lastClose: quote.close,
-          lastCandleTime: quote.time_str || "",
-          lastSymbol: quote.symbol,
-          lastAt: now.getTime(),
-          lastError: "",
-          inside,
-        };
-        // Da bao roi: van cap nhat gia, khong thong bao lai.
-        if (alert.fired) return updated;
-        if (!alert.primed) {
-          updated.primed = true;
-          return updated;
-        }
-        if (inside && !alert.inside) {
-          updated.fired = true;
-          updated.firedAt = now.getTime();
-          console.log(
-            `[Timer ${timeLabel}] CHAM VUNG ${alert.symbol} ` +
-              `${alert.zoneLow}-${alert.zoneHigh} (M1 ${quote.time_str}` +
-              ` H=${quote.high} L=${quote.low} C=${quote.close})`,
-          );
-          notifyPriceAlert(updated, {
-            bid: quote.close,
-            ask: quote.close,
-            high: quote.high,
-            low: quote.low,
-            time_str: quote.time_str,
-          });
-        }
-        return updated;
-      });
-      savePriceAlerts(next);
-    } finally {
-      priceAlertBusy = false;
-      markPriceAlertSchedule();
+      const data = await apiGet("/api/setup/timer", { useCache: false });
+      if (priceAlertsDirty) return;
+      priceAlertsCache = Array.isArray(data.alerts) ? data.alerts : [];
+      window.dispatchEvent(new CustomEvent("setup-alerts-updated"));
+      window.dispatchEvent(new CustomEvent("setup-alerts-schedule"));
+    } catch (err) {
+      console.log(`[Timer ${formatPollTime()}] khong tai xml/timer.xml: ${err.message || err}`);
     }
   }
 
@@ -640,20 +440,11 @@
       console.log(`[Timer ${formatPollTime()}] khong tai xml/timer.xml: ${err.message || err}`);
       if (priceAlertsDirty) persistPriceAlertsToXml();
     }
-    loadPriceAlertScheduleState();
-    console.log(
-      `[Timer ${formatPollTime()}] bat dau theo doi gia (moi ${PRICE_ALERT_POLL_MS / 1000}s)`,
-    );
-    if (!nextPriceAlertAt || nextPriceAlertAt <= 0) {
-      nextPriceAlertAt = Date.now() + PRICE_ALERT_POLL_MS;
-      savePriceAlertScheduleState();
-    }
     window.dispatchEvent(new CustomEvent("setup-alerts-schedule"));
-    priceAlertTimer = setInterval(pollPriceAlerts, PRICE_ALERT_POLL_MS);
+    priceAlertTimer = setInterval(refreshPriceAlertsFromServer, PRICE_ALERT_REFRESH_MS);
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") pollPriceAlerts();
+      if (document.visibilityState === "visible") refreshPriceAlertsFromServer();
     });
-    pollPriceAlerts();
   }
 
   global.MT5 = {
@@ -678,8 +469,6 @@
     savePriceAlerts,
     startPriceAlertWatcher,
     showCornerToast,
-    showChromeNotification,
-    ensureChromeNotifyPermission,
     getPriceAlertSchedule,
   };
 })(window);

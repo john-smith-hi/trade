@@ -215,6 +215,22 @@ def save_alerts(alerts):
     tree.write(ALERTS_FILE, encoding="UTF-8", xml_declaration=True)
 
 
+def candle_hits_zone(candle, alert):
+    """Nến M1 chạm vùng nếu high/low giao với [zoneLow, zoneHigh]."""
+    if not candle or not alert:
+        return False
+    low = min(float(alert["zoneLow"]), float(alert["zoneHigh"]))
+    high = max(float(alert["zoneLow"]), float(alert["zoneHigh"]))
+    c_high = candle.get("high")
+    c_low = candle.get("low")
+    if c_high is None or c_low is None:
+        close = candle.get("close")
+        if close is None:
+            return False
+        return low <= float(close) <= high
+    return not (float(c_high) < low or float(c_low) > high)
+
+
 def replace_alerts(raw_list):
     """Thay toàn bộ danh sách, bỏ mục không hợp lệ. Trả list đã chuẩn hoá."""
     if raw_list is None:

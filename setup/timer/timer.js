@@ -3,13 +3,12 @@ const {
   initTheme,
   toggleTheme,
   apiGet,
+  apiPost,
   withBusy,
   markApiOk,
   markApiError,
   loadPriceAlerts,
   savePriceAlerts,
-  ensureChromeNotifyPermission,
-  showChromeNotification,
   getPriceAlertSchedule,
 } = window.MT5;
 
@@ -57,13 +56,14 @@ function updateNextPollCells() {
   const hint = el("nextPollHint");
   if (hint) {
     const schedule = getPriceAlertSchedule ? getPriceAlertSchedule() : null;
-    if (schedule && schedule.busy) {
-      hint.textContent = "Lần lấy giá tiếp theo: đang lấy nến M1...";
-    } else if (schedule && schedule.nextAt) {
+    if (schedule && schedule.nextAt) {
       const at = new Date(schedule.nextAt).toLocaleTimeString("vi-VN", { hour12: false });
-      hint.textContent = `Lần lấy giá tiếp theo: còn ${label} (lúc ${at})`;
+      hint.textContent =
+        `Server poll nến ~${Math.round((schedule.intervalMs || 30000) / 1000)}s (Telegram). ` +
+        `Lần lấy tiếp: còn ${label} (lúc ${at})`;
     } else {
-      hint.textContent = "Lần lấy giá tiếp theo: --";
+      hint.textContent =
+        "Cảnh báo Telegram do server (start_server.bat). Chưa có lần poll — chạy API rồi đợi ~30s.";
     }
   }
   document.querySelectorAll(".next-poll-cell").forEach((node) => {
@@ -218,24 +218,6 @@ function setNotifyHint(text, asError = false) {
   hint.classList.toggle("hint-error", !!asError && !!text);
 }
 
-function refreshNotifyStatus() {
-  if (!("Notification" in window)) {
-    setNotifyHint("Trình duyệt không hỗ trợ thông báo Chrome.", true);
-    return;
-  }
-  const perm = Notification.permission;
-  if (perm === "granted") {
-    setNotifyHint("Thông báo Chrome: đã bật — khi chạm vùng sẽ hiện popup góc màn hình như Chrome.");
-  } else if (perm === "denied") {
-    setNotifyHint(
-      "Thông báo Chrome: bị chặn. Vào ổ khóa cạnh URL → Site settings → Notifications → Allow.",
-      true,
-    );
-  } else {
-    setNotifyHint("Thông báo Chrome: chưa cho phép — bấm \"Bật thông báo Chrome\" rồi chọn Allow.", true);
-  }
-}
-
 async function addAlert() {
   const account = el("account").value;
   const symbol = (el("symbol").value || "").trim().toUpperCase();
@@ -256,15 +238,6 @@ async function addAlert() {
   if (!Number.isFinite(low)) low = high;
   if (!Number.isFinite(high)) high = low;
 
-  const perm = await ensureChromeNotifyPermission();
-  refreshNotifyStatus();
-  if (perm !== "granted") {
-    setQuoteHint(
-      "Chưa bật thông báo Chrome — vẫn thêm báo thức, nhưng khi chạm vùng sẽ không có popup hệ thống.",
-      true,
-    );
-  }
-
   const alert = {
     id: uid(),
     account,
@@ -280,49 +253,20 @@ async function addAlert() {
   savePriceAlerts([alert, ...loadPriceAlerts()]);
   el("note").value = "";
   setQuoteHint(
-    `Đã thêm ${symbol} ${alert.zoneLow}–${alert.zoneHigh}. Giữ tab mở. ` +
-      (perm === "granted" ? "Sẽ báo bằng thông báo Chrome." : "Hãy bật thông báo Chrome."),
-    perm !== "granted",
+    `Đã thêm ${symbol} ${alert.zoneLow}–${alert.zoneHigh}. ` +
+      "Server poll nến M1 và gửi Telegram khi chạm vùng (cần start_server.bat / API đang chạy).",
   );
   renderTable();
 }
 
-async function requestNotify() {
-  if (!("Notification" in window)) {
-    setNotifyHint("Trình duyệt không hỗ trợ thông báo Chrome.", true);
-    return;
+async function testTelegram() {
+  setNotifyHint("Đang gửi tin thử Telegram...");
+  try {
+    await apiPost("/api/setup/telegram-test", {});
+    setNotifyHint("Đã gửi thử — kiểm tra app Telegram trên điện thoại / máy.");
+  } catch (err) {
+    setNotifyHint(err.message || String(err), true);
   }
-  const perm = await ensureChromeNotifyPermission();
-  refreshNotifyStatus();
-  if (perm === "granted") {
-    showChromeNotification(
-      "Setup Key Level",
-      "",
-      { tag: "setup-timer-ready" },
-    );
-  }
-}
-
-function testNotify() {
-  if (!("Notification" in window)) {
-    setNotifyHint("Trình duyệt không hỗ trợ thông báo Chrome.", true);
-    return;
-  }
-  if (Notification.permission !== "granted") {
-    setNotifyHint("Chưa Allow — bấm \"Bật thông báo Chrome\" trước.", true);
-    return;
-  }
-  const ok = showChromeNotification(
-    "Setup Key Level",
-    "",
-    { tag: `setup-timer-test-${Date.now()}` },
-  );
-  setNotifyHint(
-    ok
-      ? "Đã gửi thử — xem góc màn hình / khay thông báo Windows."
-      : "Gửi thử thất bại — xem Console (F12).",
-    !ok,
-  );
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -330,8 +274,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   el("themeToggle").addEventListener("click", toggleTheme);
   el("btnFetchQuote").addEventListener("click", fetchQuote);
   el("btnAdd").addEventListener("click", addAlert);
-  el("btnNotify").addEventListener("click", requestNotify);
-  if (el("btnTestNotify")) el("btnTestNotify").addEventListener("click", testNotify);
+  if (el("btnTestNotify")) el("btnTestNotify").addEventListener("click", testTelegram);
   el("account").addEventListener("change", () => {
     localStorage.setItem(ACCOUNT_KEY, el("account").value);
   });
@@ -340,7 +283,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setInterval(updateNextPollCells, 1000);
   renderTable();
   updateNextPollCells();
-  refreshNotifyStatus();
+  setNotifyHint("Cảnh báo: Telegram (xml/telegram.xml). Nút Thử gửi 1 tin kiểm tra bot.");
   try {
     await loadAccounts();
     markApiOk();

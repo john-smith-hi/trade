@@ -84,7 +84,7 @@ import argparse
 import sys
 import time
 import xml.etree.ElementTree as ET
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import MetaTrader5 as mt5
@@ -117,6 +117,7 @@ ORDER_TYPE_LABELS = {
     7: "SELL_STOP_LIMIT",
 }
 NO_ASK = False
+TELEGRAM_IS_COPY = False
 DEFAULT_MAGIC = 234567
 DEFAULT_DEVIATION = 20
 CURRENT_ACCOUNT_NAME = None
@@ -460,7 +461,7 @@ def get_auto_copy_targets(account):
     return list(account.get("auto_copy_targets") or [])
 
 
-def save_trade_history(symbol, lot, result, request, status, detail=""):
+def save_trade_history(symbol, lot, result, request, status, detail="", profit=None, position=None):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     ticket = getattr(result, "order", None)
     retcode = getattr(result, "retcode", None)
@@ -484,6 +485,104 @@ def save_trade_history(symbol, lot, result, request, status, detail=""):
         new_content = entry
 
     HISTORY_FILE.write_text(new_content + "\n", encoding="utf-8")
+    _notify_trade_telegram(symbol, lot, result, request, status, detail, profit=profit, position=position)
+
+
+def _request_side_label(request, position=None):
+    if position is not None:
+        pos_type = int(getattr(position, "type", -1))
+        if pos_type == mt5.ORDER_TYPE_BUY:
+            return "BUY"
+        if pos_type == mt5.ORDER_TYPE_SELL:
+            return "SELL"
+    order_type = request.get("type") if isinstance(request, dict) else None
+    if order_type is None:
+        return ""
+    return ORDER_TYPE_LABELS.get(int(order_type), "")
+
+
+def _recent_deal_for_order(order_ticket, position_ticket=None, entry=None):
+    if order_ticket is None and position_ticket is None:
+        return None
+    try:
+        deals = mt5.history_deals_get(datetime.now() - timedelta(minutes=3), datetime.now())
+    except Exception:
+        return None
+    if not deals:
+        return None
+    want_order = int(order_ticket) if order_ticket not in (None, "") else None
+    want_pos = int(position_ticket) if position_ticket not in (None, "") else None
+    for deal in reversed(deals):
+        if want_order is not None and int(getattr(deal, "order", 0) or 0) != want_order:
+            if want_pos is None or int(getattr(deal, "position_id", 0) or 0) != want_pos:
+                continue
+        elif want_order is None and want_pos is not None:
+            if int(getattr(deal, "position_id", 0) or 0) != want_pos:
+                continue
+        if entry is not None and int(getattr(deal, "entry", -1)) != entry:
+            continue
+        return deal
+    return None
+
+
+def _notify_trade_telegram(symbol, lot, result, request, status, detail, profit=None, position=None):
+    """Cảnh báo ngay sau lệnh do web/CLI/copy thực hiện. Lỗi Telegram không raise."""
+    if status not in ("SUCCESS", "PENDING_SUCCESS", "CLOSE_SUCCESS"):
+        return
+    try:
+        import telegram_notify
+        import watch_state
+    except Exception:
+        return
+
+    account = CURRENT_ACCOUNT_NAME or "-"
+    order_ticket = getattr(result, "order", None)
+    pos_ticket = getattr(position, "ticket", None) if position is not None else None
+    side = _request_side_label(request, position)
+    prefix = "[COPY] " if TELEGRAM_IS_COPY else ""
+    lines = [
+        f"account: {account}",
+        f"{symbol} {side} {lot}".strip(),
+    ]
+
+    if status == "SUCCESS":
+        title = f"{prefix}MỞ LỆNH"
+        price = request.get("price") if isinstance(request, dict) else None
+        if price not in (None, ""):
+            lines.append(f"giá: {price}")
+        lines.append(f"ticket: {order_ticket if order_ticket is not None else '-'}")
+        deal = _recent_deal_for_order(order_ticket, entry=getattr(mt5, "DEAL_ENTRY_IN", 0))
+        if deal is not None:
+            watch_state.remember_deal(getattr(deal, "ticket", None))
+        watch_state.remember_skip_open_order(order_ticket)
+
+    elif status == "PENDING_SUCCESS":
+        title = f"{prefix}ĐẶT LỆNH CHỜ"
+        if detail:
+            lines.append(detail)
+        lines.append(f"ticket: {order_ticket if order_ticket is not None else '-'}")
+        watch_state.add_pending_ticket(account, order_ticket)
+
+    else:
+        title = f"{prefix}ĐÓNG LỆNH (tay)"
+        lines.append(f"ticket: {pos_ticket if pos_ticket is not None else order_ticket}")
+        deal = _recent_deal_for_order(
+            order_ticket,
+            position_ticket=pos_ticket,
+            entry=getattr(mt5, "DEAL_ENTRY_OUT", 1),
+        )
+        pnl = profit
+        if deal is not None:
+            pnl = getattr(deal, "profit", pnl)
+            watch_state.remember_deal(getattr(deal, "ticket", None))
+        pnl_text = telegram_notify.format_pnl(pnl)
+        if pnl_text:
+            lines.append(f"P/L: {pnl_text}")
+
+    try:
+        telegram_notify.send_alert(telegram_notify.build_message(title, lines))
+    except Exception:
+        pass
 
 
 def confirm_action(message):
@@ -497,7 +596,7 @@ def confirm_action(message):
     return False
 
 
-def connect_mt5(account):
+def connect_mt5(account, quiet=False):
     global CURRENT_ACCOUNT_NAME
 
     terminal_path = resolve_terminal_path(account)
@@ -540,9 +639,10 @@ def connect_mt5(account):
     CURRENT_ACCOUNT_NAME = account["name"]
     path_ref = account.get("path") or "(mặc định)"
     terminal_label = terminal_path or "(terminal mặc định đang chạy)"
-    print(f"Đang sử dụng tài khoản {account['name']}: {account['login']} | server: {account['server']}")
-    print(f"Path config: {path_ref} → {terminal_label}")
-    print("Đăng nhập MT5 thành công!")
+    if not quiet:
+        print(f"Đang sử dụng tài khoản {account['name']}: {account['login']} | server: {account['server']}")
+        print(f"Path config: {path_ref} → {terminal_label}")
+        print("Đăng nhập MT5 thành công!")
 
 
 def resolve_symbol_for_account(symbol, account):
@@ -1232,7 +1332,12 @@ def close_position(position, confirm=True):
         return None
 
     print(f"Đóng lệnh thành công! Ticket ID: {result.order}")
-    save_trade_history(position.symbol, position.volume, result, request, "CLOSE_SUCCESS", f"ticket={position.ticket}")
+    save_trade_history(
+        position.symbol, position.volume, result, request, "CLOSE_SUCCESS",
+        f"ticket={position.ticket}",
+        profit=float(getattr(position, "profit", 0) or 0),
+        position=position,
+    )
     return result
 
 
@@ -1576,8 +1681,9 @@ def execute_request(account_name, action, symbol="XAUUSD", side="buy", lot=0.01,
     auto_copy_targets của account trong xml/accounts.xml. Truyền list cụ thể
     (kể cả []) sẽ override, không dùng cấu hình auto-copy.
     """
-    global NO_ASK
+    global NO_ASK, TELEGRAM_IS_COPY
     NO_ASK = no_ask
+    TELEGRAM_IS_COPY = False
 
     primary_account = get_account(account_name)
 
@@ -1617,6 +1723,7 @@ def execute_request(account_name, action, symbol="XAUUSD", side="buy", lot=0.01,
         elif copy_names:
             for copy_name in copy_names:
                 print(f"\n--- [COPY] Đang thực thi sang tài khoản {copy_name} ---")
+                TELEGRAM_IS_COPY = True
                 try:
                     source_copy = get_account(copy_name)
                     copy_account = dict(source_copy)
@@ -1639,6 +1746,8 @@ def execute_request(account_name, action, symbol="XAUUSD", side="buy", lot=0.01,
                     run_action_on_account(copy_account, args, lot_for_copy)
                 except Exception as copy_exc:
                     print(f"[COPY LỖI - {copy_name}] {copy_exc}")
+                finally:
+                    TELEGRAM_IS_COPY = False
     except Exception as exc:
         print(exc)
     finally:
