@@ -80,7 +80,7 @@ function updateAccountInfo(accounts) {
     ? `${acc.path}${acc.path_exe ? ` → ${acc.path_exe}` : ""}`
     : "(không chọn)";
   el("accountInfo").textContent =
-    `login: ${acc.login} | server: ${acc.server} | path: ${pathLabel} | suffix: "${acc.suffix}" | multi: ${acc.multi} | default_lot: ${defaultLot} | max_loss: ${maxLoss} | ${autoCopy}`;
+    `login: ${acc.login} | server: ${acc.server} | path: ${pathLabel} | suffix: "${acc.suffix}" | multi: ${acc.multi} | lot mặc định: ${defaultLot} | max_loss: ${maxLoss} | ${autoCopy}`;
 }
 
 function renderAccounts(accounts) {
@@ -118,12 +118,21 @@ function parseTargetsCsv(text) {
     .filter(Boolean);
 }
 
+function parseDefaultLot(raw, fieldLabel = "Lot mặc định") {
+  const text = String(raw ?? "").trim();
+  const lot = text === "" ? 0.01 : Number(text);
+  if (!Number.isFinite(lot) || lot <= 0) {
+    throw new Error(`${fieldLabel} phải là số > 0`);
+  }
+  return lot;
+}
+
 function buildEditPayload() {
   return {
     path: el("editPath").value.trim(),
     suffix: el("editSuffix").value,
     multi: el("editMulti").value,
-    default_lot: el("editDefaultLot").value || "0.01",
+    default_lot: parseDefaultLot(el("editDefaultLot").value),
     xauusd_max_loss: el("editMaxLoss").value,
     auto_copy_enabled: el("editAutoCopyEnabled").value === "true",
     auto_copy_targets: parseTargetsCsv(el("editAutoCopyTargets").value),
@@ -139,7 +148,7 @@ function buildNewAccountPayload() {
     path: el("newPath").value.trim(),
     suffix: el("newSuffix").value,
     multi: el("newMulti").value || "1",
-    default_lot: el("newDefaultLot").value || "0.01",
+    default_lot: parseDefaultLot(el("newDefaultLot").value),
     xauusd_max_loss: el("newMaxLoss").value,
     auto_copy_enabled: el("newAutoCopyEnabled").value === "true",
     auto_copy_targets: parseTargetsCsv(el("newAutoCopyTargets").value),
@@ -207,12 +216,19 @@ async function saveSelectedAccount() {
     alert("Chưa chọn account để sửa.");
     return;
   }
+  let payload;
+  try {
+    payload = buildEditPayload();
+  } catch (err) {
+    alert(err.message || err);
+    return;
+  }
   const btn = el("btnSaveAccount");
   btn.disabled = true;
   status.textContent = "Đang lưu...";
   try {
     const data = await withBusy(
-      () => apiPut(`/api/accounts/${encodeURIComponent(name)}`, buildEditPayload()),
+      () => apiPut(`/api/accounts/${encodeURIComponent(name)}`, payload),
       "Đang lưu account...",
       { block: true },
     );
@@ -233,7 +249,13 @@ async function saveSelectedAccount() {
 }
 
 async function addAccount() {
-  const payload = buildNewAccountPayload();
+  let payload;
+  try {
+    payload = buildNewAccountPayload();
+  } catch (err) {
+    alert(err.message || err);
+    return;
+  }
   const status = el("addAccountStatus");
   if (!payload.name || !payload.login || !payload.password || !payload.server) {
     alert("Cần điền Name, Login, Password, Server.");

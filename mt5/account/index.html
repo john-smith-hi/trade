@@ -41,7 +41,7 @@
 
   <section class="card">
     <h2>Sửa account đang chọn</h2>
-    <p class="hint">Path chỉ chọn từ trang Path. Không đổi login / password / server. Không xóa. Cấu hình exe tại <a href="../path/">Path</a>.</p>
+    <p class="hint">Path chỉ chọn từ trang Path. Không đổi login / password / server. Không xóa. Cấu hình exe tại <a href="../path/">Path</a>. <strong>Lot mặc định</strong> dùng khi để trống ô Lot ở trang Ra lệnh.</p>
     <div class="grid">
       <div class="field">
         <label for="editLogin">Login (chỉ xem)</label>
@@ -64,8 +64,8 @@
         <input type="number" id="editMulti" step="any" min="0" value="1" />
       </div>
       <div class="field">
-        <label for="editDefaultLot">default_lot</label>
-        <input type="number" id="editDefaultLot" step="any" min="0" placeholder="0.01" />
+        <label for="editDefaultLot">Lot mặc định</label>
+        <input type="number" id="editDefaultLot" step="0.01" min="0.01" placeholder="0.01" />
       </div>
       <div class="field">
         <label for="editMaxLoss">xauusd_max_loss</label>
@@ -121,8 +121,8 @@
         <input type="number" id="newMulti" step="any" min="0" value="1" />
       </div>
       <div class="field">
-        <label for="newDefaultLot">default_lot</label>
-        <input type="number" id="newDefaultLot" step="any" min="0" value="0.01" />
+        <label for="newDefaultLot">Lot mặc định</label>
+        <input type="number" id="newDefaultLot" step="0.01" min="0.01" value="0.01" />
       </div>
       <div class="field">
         <label for="newMaxLoss">xauusd_max_loss</label>
