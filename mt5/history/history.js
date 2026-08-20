@@ -1,5 +1,5 @@
 // Trang lịch sử — bảng + busy + refresh throttle.
-const { el, initTheme, toggleTheme, apiGet, withBusy, onVisibleRefresh, markApiOk, markApiError } = window.MT5;
+const { el, initTheme, toggleTheme, apiGet, apiDelete, withBusy, onVisibleRefresh, markApiOk, markApiError } = window.MT5;
 
 function statusClass(status) {
   const s = String(status || "").toUpperCase();
@@ -67,12 +67,30 @@ async function loadHistory({ silent = false, useCache = true } = {}) {
   }
 }
 
+async function clearHistory() {
+  if (!window.confirm("Xóa toàn bộ lịch sử lệnh trong history_mt5.txt? Hành động này không thể hoàn tác.")) {
+    return;
+  }
+
+  try {
+    await withBusy(async () => {
+      await apiDelete("/api/history");
+      renderHistoryTable([]);
+      markApiOk("Đã xóa lịch sử");
+    }, "Đang xóa lịch sử...");
+  } catch (err) {
+    markApiError(err);
+    window.alert(`Lỗi xóa lịch sử: ${err.message || err}`);
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   initTheme();
   loadHistory({ useCache: false });
 
   el("themeToggle").addEventListener("click", toggleTheme);
   el("btnHistory").addEventListener("click", () => loadHistory({ useCache: false }));
+  el("btnClearHistory").addEventListener("click", clearHistory);
 
   onVisibleRefresh(() => loadHistory({ silent: true, useCache: true }), { minIntervalMs: 20000 });
 });

@@ -33,7 +33,8 @@
 #   GET  /api/candle?account=&symbol=&closed=1  -> nến M1 (mặc định nến đã đóng)
 #   GET  /api/positions?account=            -> lệnh mở JSON (điền TP/SL khi modify-all)
 #   GET  /api/orders?account=               -> lệnh chờ JSON (cancel-pending)
-#   GET  /api/history?limit=50  -> lịch sử (lines + rows đã parse cho bảng)
+#   GET    /api/history?limit=50  -> lịch sử (lines + rows đã parse cho bảng)
+#   DELETE /api/history           -> xóa toàn bộ history_mt5.txt
 #
 # Kết quả của /api/action trả về đúng nguyên văn các dòng print() của mt5.py
 # (dạng text, giống output khi chạy CLI), để hiển thị trực tiếp trên web.
@@ -570,6 +571,13 @@ def history_endpoint():
     lines = lines[:limit]
     rows = [_parse_history_line(line) for line in lines]
     return jsonify({"lines": lines, "rows": rows})
+
+
+@app.delete("/api/history")
+def history_delete_endpoint():
+    with _lock:
+        mt5app.HISTORY_FILE.write_text("", encoding="utf-8")
+    return jsonify({"ok": True, "lines": [], "rows": []})
 
 
 def _parse_history_line(line):
