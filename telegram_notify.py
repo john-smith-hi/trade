@@ -13,6 +13,8 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 import json
+import ssl
+import sys
 import xml.etree.ElementTree as ET
 
 XML_DIR = Path(__file__).with_name("xml")
@@ -40,7 +42,7 @@ def _load_config():
         if CONFIG_EXAMPLE_FILE.exists():
             CONFIG_FILE.write_text(CONFIG_EXAMPLE_FILE.read_text(encoding="utf-8"), encoding="utf-8")
         else:
-            return {"enabled": False, "bot_token": "", "chat_id": ""}
+            return {"enabled": False, "bot_token": "", "chat_id": "", "verify_ssl": True}
 
     try:
         mtime = CONFIG_FILE.stat().st_mtime
@@ -52,18 +54,26 @@ def _load_config():
     try:
         root = ET.parse(CONFIG_FILE).getroot()
     except ET.ParseError:
-        _cached = {"enabled": False, "bot_token": "", "chat_id": ""}
+        _cached = {"enabled": False, "bot_token": "", "chat_id": "", "verify_ssl": True}
         _cached_mtime = mtime
         return _cached
 
     enabled_text = _xml_text(root, "enabled").lower()
     token = _xml_text(root, "bot_token")
     chat_id = _xml_text(root, "chat_id")
+    verify_text = _xml_text(root, "verify_ssl").lower()
     enabled = enabled_text in ("1", "true", "yes", "on")
     if token in ("", "CHANGE_ME") or chat_id in ("", "CHANGE_ME"):
         enabled = False
+    # Thiếu thẻ → verify. false/0/off → không verify (antivirus MITM / self-signed).
+    verify_ssl = verify_text not in ("0", "false", "no", "off")
 
-    _cached = {"enabled": enabled, "bot_token": token, "chat_id": chat_id}
+    _cached = {
+        "enabled": enabled,
+        "bot_token": token,
+        "chat_id": chat_id,
+        "verify_ssl": verify_ssl,
+    }
     _cached_mtime = mtime
     return _cached
 
@@ -109,6 +119,36 @@ def build_message(title, lines):
             parts.append(text)
     parts.append(format_now())
     return "\n".join(parts)
+
+
+def _ssl_context(verify):
+    """verify=False khi antivirus/proxy chèn chứng chỉ tự ký vào chuỗi HTTPS."""
+    if not verify:
+        ctx = ssl._create_unverified_context()
+        ctx.check_hostname = False
+        return ctx
+    ctx = ssl.create_default_context()
+    if sys.platform == "win32":
+        try:
+            for store in ("CA", "ROOT"):
+                for cert, encoding, _trust in ssl.enum_certificates(store):
+                    if encoding == "x509_asn":
+                        try:
+                            ctx.load_verify_locations(cadata=cert)
+                        except ssl.SSLError:
+                            continue
+        except Exception:
+            pass
+    return ctx
+
+
+def _is_ssl_verify_error(exc):
+    text = str(exc) + str(getattr(exc, "reason", "") or "")
+    return "CERTIFICATE_VERIFY_FAILED" in text or "certificate verify failed" in text.lower()
+
+
+def _urlopen(req, verify):
+    return urlopen(req, timeout=SEND_TIMEOUT_SEC, context=_ssl_context(verify))
 
 
 def _set_error(message):
@@ -158,8 +198,21 @@ def send_alert(text):
     }).encode("utf-8")
     req = Request(url, data=payload, method="POST")
     req.add_header("Content-Type", "application/x-www-form-urlencoded")
+    verify = bool(cfg.get("verify_ssl", True))
     try:
-        with urlopen(req, timeout=SEND_TIMEOUT_SEC) as resp:
+        try:
+            resp_cm = _urlopen(req, verify)
+        except (URLError, OSError) as exc:
+            if verify and _is_ssl_verify_error(exc):
+                print(
+                    "[Telegram] SSL verify thất bại (thường do antivirus/proxy self-signed). "
+                    "Gửi lại không verify. Có thể đặt <verify_ssl>false</verify_ssl> trong telegram.xml.",
+                    flush=True,
+                )
+                resp_cm = _urlopen(req, False)
+            else:
+                raise
+        with resp_cm as resp:
             raw = resp.read().decode("utf-8", errors="replace")
         data = json.loads(raw) if raw else {}
         if data.get("ok"):

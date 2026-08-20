@@ -14,9 +14,12 @@
        (hoặc cùng group) — mọi thiết bị đều nhận tin.
 
     enabled = false → không gửi (giữ token trên máy).
+    verify_ssl = false → khi Python báo CERTIFICATE_VERIFY_FAILED
+      (antivirus/proxy chèn chứng chỉ tự ký). Chỉ ảnh hưởng HTTPS tới Telegram.
 -->
 <telegram>
     <enabled>false</enabled>
     <bot_token>CHANGE_ME</bot_token>
     <chat_id>CHANGE_ME</chat_id>
+    <verify_ssl>true</verify_ssl>
 </telegram>
