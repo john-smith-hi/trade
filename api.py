@@ -803,8 +803,9 @@ def setup_telegram_test_endpoint():
         telegram_notify.build_message("TEST TELEGRAM", ["Bot cảnh báo trade đang hoạt động."]),
     )
     if not ok:
+        detail = telegram_notify.last_send_error() or "không rõ lỗi"
         return jsonify({
-            "error": "Gửi thất bại — kiểm tra token, chat_id và mạng (api.telegram.org).",
+            "error": f"Gửi thất bại — {detail}",
             **status,
         }), 502
     return jsonify({"ok": True, **status})

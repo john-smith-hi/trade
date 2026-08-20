@@ -9,7 +9,7 @@
 
 from datetime import datetime
 from pathlib import Path
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 import json
@@ -21,7 +21,8 @@ CONFIG_EXAMPLE_FILE = XML_DIR / "telegram.example.xml"
 
 _cached = None
 _cached_mtime = None
-SEND_TIMEOUT_SEC = 5
+_last_error = ""
+SEND_TIMEOUT_SEC = 20
 
 
 def _xml_text(root, tag):
@@ -67,6 +68,10 @@ def _load_config():
     return _cached
 
 
+def last_send_error():
+    return _last_error
+
+
 def config_status():
     """Trạng thái an toàn cho API test (không trả token)."""
     cfg = _load_config()
@@ -106,20 +111,43 @@ def build_message(title, lines):
     return "\n".join(parts)
 
 
+def _set_error(message):
+    global _last_error
+    _last_error = str(message or "").strip()
+
+
+def _parse_telegram_error(raw):
+    try:
+        data = json.loads(raw) if raw else {}
+    except json.JSONDecodeError:
+        return (raw or "").strip()[:300]
+    desc = str(data.get("description") or "").strip()
+    code = data.get("error_code")
+    if desc and code:
+        return f"{code}: {desc}"
+    return desc or (raw or "").strip()[:300]
+
+
 def send_alert(text):
     """Gửi 1 tin. Trả True nếu Telegram nhận. Mọi lỗi → False, không raise."""
+    global _last_error
+    _last_error = ""
     body = str(text or "").strip()
     if not body:
+        _set_error("Tin rỗng.")
         return False
     try:
         cfg = _load_config()
-    except Exception:
+    except Exception as exc:
+        _set_error(exc)
         return False
     if not cfg.get("enabled"):
+        _set_error("Telegram đang tắt (enabled=false).")
         return False
     token = cfg.get("bot_token") or ""
     chat_id = cfg.get("chat_id") or ""
     if not token or token == "CHANGE_ME" or not chat_id or chat_id == "CHANGE_ME":
+        _set_error("Thiếu bot_token hoặc chat_id.")
         return False
 
     url = f"https://api.telegram.org/bot{token}/sendMessage"
@@ -134,8 +162,26 @@ def send_alert(text):
         with urlopen(req, timeout=SEND_TIMEOUT_SEC) as resp:
             raw = resp.read().decode("utf-8", errors="replace")
         data = json.loads(raw) if raw else {}
-        return bool(data.get("ok"))
-    except (URLError, TimeoutError, OSError, ValueError, json.JSONDecodeError):
+        if data.get("ok"):
+            return True
+        _set_error(_parse_telegram_error(raw) or "Telegram trả ok=false.")
         return False
-    except Exception:
+    except HTTPError as exc:
+        raw = ""
+        try:
+            raw = exc.read().decode("utf-8", errors="replace")
+        except Exception:
+            raw = ""
+        hint = _parse_telegram_error(raw) or f"HTTP {exc.code}"
+        if "chat not found" in hint.lower():
+            hint += (
+                " — mở bot trên Telegram, bấm Start, gửi 1 tin, rồi lấy lại chat.id từ getUpdates."
+            )
+        _set_error(hint)
+        return False
+    except (URLError, TimeoutError, OSError) as exc:
+        _set_error(f"Không gọi được api.telegram.org ({type(exc).__name__}: {exc})")
+        return False
+    except Exception as extra:
+        _set_error(f"{type(extra).__name__}: {extra}")
         return False
