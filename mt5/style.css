@@ -623,7 +623,7 @@ main {
     margin-bottom: 0;
   }
 
-  /* TP | SL giữ cùng 1 hàng trên điện thoại */
+  /* SL | TP giữ cùng 1 hàng trên điện thoại */
   .field-pair {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 10px;
