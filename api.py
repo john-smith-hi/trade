@@ -75,11 +75,6 @@ import timer_alerts
 import watch
 import watch_state
 
-try:
-    import auto_update
-except ImportError:
-    auto_update = None
-
 API_HOST = "127.0.0.1"
 API_PORT = 5001
 ROOT_DIR = Path(__file__).resolve().parent
@@ -826,14 +821,9 @@ def _should_start_watcher():
 if __name__ == "__main__":
     if _should_start_watcher():
         watch.start_watcher(_lock)
-        if SERVER_MODE and auto_update is not None:
-            auto_update.start_auto_update()
         print(f"Đang chạy MT5 API tại http://{API_HOST}:{API_PORT} (chỉ localhost)")
         if SERVER_MODE:
-            print(
-                "Chế độ server 24/7: watcher Telegram; "
-                "auto git pull + copy_www khi remote có code mới (rồi restart)."
-            )
+            print("Chế độ server 24/7: watcher Timer + lệnh → Telegram (không Flask-reloader).")
         else:
             print("Auto-reload: sửa .py hoặc .xml → process restart và nạp lại nội dung.")
 

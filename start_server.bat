@@ -2,14 +2,8 @@
 cd /d "%~dp0"
 REM =============================================================================
 REM Chay API 24/7 tren Windows Server (khong pause, tu khoi dong lai neu crash).
-REM
-REM Tu dong (khi TRADE_SERVER=1):
-REM   - Moi ~2 phut: git fetch; neu remote co commit moi → reset --hard + pull
-REM     → copy_www.py → thoat api.py → vong loop bat nay chay lai.
-REM   - Tat auto-update: set TRADE_AUTO_UPDATE=0
-REM   - Doi chu ky: set TRADE_UPDATE_SEC=60
-REM
 REM Khong dung Flask-reloader (tranh timeout UI).
+REM Cap nhat code: tu git pull + python copy_www.py + restart bat nay.
 REM Sua accounts.xml / paths.xml → soft-reload, khong can restart.
 REM
 REM Task Scheduler: At log on, user dang ngoi may,
@@ -22,8 +16,8 @@ REM   enabled=true. Cai app Telegram tren dien thoai (cung tai khoan / group).
 REM =============================================================================
 set TRADE_SERVER=1
 echo Dang chay MT5 API 24/7 tai http://127.0.0.1:5001
-echo Watcher Telegram + auto git pull/copy_www khi co code moi tren remote.
-echo Ctrl+C de dung. Neu python thoat, se tu chay lai sau 5 giay.
+echo Watcher Timer + lenh -^> Telegram. Cap nhat code: git pull + copy_www + restart bat.
+echo Ctrl+C de dung. Neu python crash, se tu chay lai sau 5 giay.
 echo.
 
 :loop

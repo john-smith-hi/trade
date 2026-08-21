@@ -10,9 +10,7 @@ Web UI chạy trên WAMP. Đường dẫn www khai báo trong `xml/www.xml` (git
 |----------------|------|
 | `mt5.py` | CLI + logic MT5 (mở lệnh, pending, copy trade, XML accounts/paths) |
 | `api.py` | HTTP API Flask bọc `mt5.py` và `day_trade.py` |
-| `start_server.bat` | API 24/7 + watcher Telegram; **tự** `git pull` + `copy_www` khi remote có code mới rồi restart |
-| `update_server.bat` | (Tuỳ chọn) ép pull + copy + restart ngay, không đợi chu kỳ ~2 phút |
-| `auto_update.py` | Thread kiểm tra git remote (chỉ khi `TRADE_SERVER=1`) |
+| `start_server.bat` | API 24/7 (watcher Telegram; không Flask-reloader; restart nếu crash) |
 | `telegram_notify.py` | Gửi cảnh báo Telegram (`xml/telegram.xml`) |
 | `watch.py` | Poll Timer + lệnh TP/SL/pending trên server |
 | `copy_www.py` | Xóa folder đích rồi copy UI `mt5/` / `setup/` theo `xml/www.xml` (không dùng tên `copy.py`) |
@@ -179,7 +177,7 @@ Trang **Timer** (`/setup/timer/`): đặt vùng giá (từ–đến). Server pol
 3. Chạy `start_server.bat` (vòng restart nếu Python thoát). Task Scheduler: **At log on**, “Run only when user is logged on” (MT5 cần session desktop).
 4. Không disconnect RDP bằng cách đóng cửa sổ — dùng `tscon` về console hoặc để session mở.
 5. Nút **Thử Telegram** trên trang Timer.
-6. Sau khi `git push` từ máy dev: máy 1 để `start_server.bat` chạy — ~2 phút tự `git pull` + `copy_www` + restart API. Muốn cập nhật ngay: `update_server.bat`. Tắt auto: `set TRADE_AUTO_UPDATE=0`.
+6. Cập nhật code trên máy 1 (thủ công): `git pull` → `python copy_www.py` → tắt rồi chạy lại `start_server.bat`.
 
 Watcher gửi tin: mở/đóng lệnh (web/CLI + auto_copy), pending khớp, đóng TP/SL/stop-out, Timer chạm vùng. Bot **chỉ gửi tin**, không nhận lệnh.
 
