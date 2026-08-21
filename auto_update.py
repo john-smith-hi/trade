@@ -24,6 +24,8 @@ ROOT = Path(__file__).resolve().parent
 DEFAULT_INTERVAL_SEC = 120
 FIRST_CHECK_DELAY_SEC = 20
 TELEGRAM_DETAIL_MAX = 1500
+_DIRTY_NOTIFY_COOLDOWN_SEC = 3600
+_last_dirty_notify_at = 0.0
 
 
 def _log(message: str) -> None:
@@ -132,6 +134,38 @@ def _rollback(old_head: str) -> bool:
     return True
 
 
+def _notify_dirty_block(dirty: list[str], behind: int) -> None:
+    """Báo Telegram khi không pull được vì file tracked đang sửa (cooldown 1h)."""
+    global _last_dirty_notify_at
+    now = time.time()
+    if now - _last_dirty_notify_at < _DIRTY_NOTIFY_COOLDOWN_SEC:
+        return
+    try:
+        import telegram_notify
+    except Exception as exc:
+        _log(f"Khong import telegram_notify: {exc}")
+        return
+
+    preview = "\n".join(dirty[:15])
+    if len(dirty) > 15:
+        preview += f"\n... (+{len(dirty) - 15} dong)"
+    text = telegram_notify.build_message(
+        "UPDATE — KHÔNG PULL ĐƯỢC",
+        [
+            f"May 1: co {behind} commit moi tren remote nhung file tracked dang sua local.",
+            "Tren may 1 chay: git status --porcelain --untracked-files=no",
+            "Xoa sua local: git checkout -- .   roi restart start_server.bat",
+            "Hoac set TRADE_UPDATE_RESET_DIRTY=1 trong start_server.bat (reset --hard roi pull).",
+            preview,
+        ],
+    )
+    if telegram_notify.send_alert(text):
+        _last_dirty_notify_at = now
+        _log("Da gui Telegram: khong pull duoc (dirty).")
+    else:
+        _log(f"Gui Telegram dirty that bai: {telegram_notify.last_send_error() or '?'}")
+
+
 def apply_update_if_needed() -> bool:
     """
     Pull + kiểm tra cú pháp + copy_www nếu remote có code mới.
@@ -141,16 +175,36 @@ def apply_update_if_needed() -> bool:
     if not (ROOT / ".git").exists():
         return False
 
-    if _tracked_dirty_paths():
-        dirty = _tracked_dirty_paths()
-        preview = "; ".join(dirty[:8])
-        if len(dirty) > 8:
-            preview += f"; ... (+{len(dirty) - 8})"
-        _log(f"Bo qua git pull — file tracked dang sua local: {preview}")
+    behind = _upstream_behind_count()
+    if behind is None:
         return False
 
-    behind = _upstream_behind_count()
-    if behind is None or behind <= 0:
+    dirty = _tracked_dirty_paths()
+    if dirty:
+        for line in dirty[:20]:
+            _log(f"  tracked dirty: {line}")
+        if behind > 0:
+            force = os.environ.get("TRADE_UPDATE_RESET_DIRTY", "").strip().lower() in (
+                "1", "true", "yes", "on",
+            )
+            if force:
+                _log("TRADE_UPDATE_RESET_DIRTY=1 — git reset --hard HEAD truoc khi pull.")
+                reset = _git(["reset", "--hard", "HEAD"])
+                if reset.returncode != 0:
+                    _log(f"reset that bai: {(reset.stderr or reset.stdout).strip()}")
+                    _notify_dirty_block(dirty, behind)
+                    return False
+            else:
+                _log(
+                    f"Bo qua git pull — {len(dirty)} file tracked dang sua local "
+                    f"(remote dang hon {behind} commit). Xem dong 'tracked dirty' ben tren."
+                )
+                _notify_dirty_block(dirty, behind)
+                return False
+        else:
+            return False
+
+    if behind <= 0:
         return False
 
     old_head = _git_head()

@@ -9,6 +9,8 @@ REM     → compileall; loi cu phap → Telegram + rollback, giu API cu
 REM     → OK → copy_www.py → thoat api.py → vong loop bat nay chay lai.
 REM   - Tat auto-update: set TRADE_AUTO_UPDATE=0
 REM   - Doi chu ky: set TRADE_UPDATE_SEC=60
+REM   - Neu may 1 luon "tracked dirty": tren may 1 chay git status / git checkout -- .
+REM     hoac set TRADE_UPDATE_RESET_DIRTY=1 (reset --hard roi moi pull).
 REM
 REM Khong dung Flask-reloader (tranh timeout UI).
 REM Sua accounts.xml / paths.xml → soft-reload, khong can restart.
