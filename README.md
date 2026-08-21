@@ -10,7 +10,9 @@ Web UI chạy trên WAMP. Đường dẫn www khai báo trong `xml/www.xml` (git
 |----------------|------|
 | `mt5.py` | CLI + logic MT5 (mở lệnh, pending, copy trade, XML accounts/paths) |
 | `api.py` | HTTP API Flask bọc `mt5.py` và `day_trade.py` |
-| `start_server.bat` | API 24/7 (auto-reload, watcher Telegram, restart nếu crash) |
+| `start_server.bat` | API 24/7 + watcher Telegram; **tự** `git pull` + `copy_www` khi remote có code mới rồi restart |
+| `update_server.bat` | (Tuỳ chọn) ép pull + copy + restart ngay, không đợi chu kỳ ~2 phút |
+| `auto_update.py` | Thread kiểm tra git remote (chỉ khi `TRADE_SERVER=1`) |
 | `telegram_notify.py` | Gửi cảnh báo Telegram (`xml/telegram.xml`) |
 | `watch.py` | Poll Timer + lệnh TP/SL/pending trên server |
 | `copy_www.py` | Xóa folder đích rồi copy UI `mt5/` / `setup/` theo `xml/www.xml` (không dùng tên `copy.py`) |
@@ -177,6 +179,7 @@ Trang **Timer** (`/setup/timer/`): đặt vùng giá (từ–đến). Server pol
 3. Chạy `start_server.bat` (vòng restart nếu Python thoát). Task Scheduler: **At log on**, “Run only when user is logged on” (MT5 cần session desktop).
 4. Không disconnect RDP bằng cách đóng cửa sổ — dùng `tscon` về console hoặc để session mở.
 5. Nút **Thử Telegram** trên trang Timer.
+6. Sau khi `git push` từ máy dev: máy 1 để `start_server.bat` chạy — ~2 phút tự `git pull` → **kiểm tra cú pháp** → `copy_www` → restart. Lỗi cú pháp: **Telegram** `UPDATE — LỖI CÚ PHÁP`, rollback commit cũ, API cũ giữ chạy. Muốn pull ngay: `update_server.bat`. Tắt auto: `set TRADE_AUTO_UPDATE=0`.
 
 Watcher gửi tin: mở/đóng lệnh (web/CLI + auto_copy), pending khớp, đóng TP/SL/stop-out, Timer chạm vùng. Bot **chỉ gửi tin**, không nhận lệnh.
 
@@ -207,4 +210,5 @@ python stock.py BTC,ETH,BNB 20 1H -o out.txt
 - `api.py` không bind ra mạng ngoài.
 - Không có `--no-ask` / không bấm xác nhận trên web → không gửi lệnh.
 - `xml/accounts.xml` chứa mật khẩu thật — giữ ngoài git.
+- Ngrok: nên bật **Basic Auth** trên tunnel (`realm="ngrok"`). Không auth thì `proxy.php` vẫn forward được mọi `/api/...` kể cả đặt lệnh. Không chia sẻ user/pass ngrok; URL free đổi thường xuyên.
 - Ghi chú chi tiết: `note-ai/`.
