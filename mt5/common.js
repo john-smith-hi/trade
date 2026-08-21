@@ -168,7 +168,7 @@
         return data;
       } catch (err) {
         if (err && err.name === "AbortError") {
-          throw new Error("API timeout — kiểm tra start_api.bat");
+          throw new Error("API timeout — kiểm tra start_server.bat");
         }
         throw err;
       } finally {
@@ -254,7 +254,7 @@
     clearBusyHard();
     const node = el("apiStatus");
     if (!node) return;
-    node.textContent = `Không kết nối được api.py (${err.message || err}). Hãy chạy start_api.bat.`;
+    node.textContent = `Không kết nối được api.py (${err.message || err}). Hãy chạy start_server.bat.`;
     node.className = "api-status error";
   }
 

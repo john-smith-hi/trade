@@ -75,7 +75,7 @@ header("Content-Type: application/json; charset=utf-8");
 if ($response === false) {
     http_response_code(502);
     echo json_encode([
-        "error" => "Không gọi được tới api.py tại {$target_url}. Hãy chắc chắn đã chạy start_api.bat "
+        "error" => "Không gọi được tới api.py tại {$target_url}. Hãy chắc chắn đã chạy start_server.bat "
             . "trên máy chủ WampServer này. Chi tiết lỗi: {$error}",
     ]);
     exit;

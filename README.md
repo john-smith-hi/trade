@@ -10,8 +10,7 @@ Web UI chạy trên WAMP. Đường dẫn www khai báo trong `xml/www.xml` (git
 |----------------|------|
 | `mt5.py` | CLI + logic MT5 (mở lệnh, pending, copy trade, XML accounts/paths) |
 | `api.py` | HTTP API Flask bọc `mt5.py` và `day_trade.py` |
-| `start_api.bat` | Khởi động API (máy dev, auto-reload) |
-| `start_server.bat` | API 24/7 trên Windows Server (tắt reload, watcher Telegram) |
+| `start_server.bat` | API 24/7 (auto-reload, watcher Telegram, restart nếu crash) |
 | `telegram_notify.py` | Gửi cảnh báo Telegram (`xml/telegram.xml`) |
 | `watch.py` | Poll Timer + lệnh TP/SL/pending trên server |
 | `copy_www.py` | Xóa folder đích rồi copy UI `mt5/` / `setup/` theo `xml/www.xml` (không dùng tên `copy.py`) |
@@ -109,7 +108,7 @@ PUT account trên web **không** đổi `name` / `login` / `password` / `server`
 
 ```bash
 python api.py
-# hoặc start_api.bat
+# hoặc start_server.bat
 ```
 
 API: `http://127.0.0.1:5001` (chỉ localhost). Sửa `.py` hoặc `.xml` → process tự restart.
@@ -169,7 +168,7 @@ Theo `day_trade_mindset.txt`. Dữ liệu tuần: `xml/day_trade_week.xml`. Báo
 
 Không gửi lệnh MT5 — chỉ chấm điểm setup thủ công.
 
-Trang **Timer** (`/setup/timer/`): đặt vùng giá (từ–đến). Server poll **nến M1 đã đóng** (~30s) trong `watch.py`. Chạm vùng nếu high/low của nến giao vùng. Cảnh báo **Telegram** (không cần giữ tab). Cần `start_server.bat` (hoặc `start_api.bat`) + `xml/telegram.xml` (`enabled=true`, token, chat_id). Danh sách báo thức: `xml/timer.xml`.
+Trang **Timer** (`/setup/timer/`): đặt vùng giá (từ–đến). Server poll **nến M1 đã đóng** (~30s) trong `watch.py`. Chạm vùng nếu high/low của nến giao vùng. Cảnh báo **Telegram** (không cần giữ tab). Cần `start_server.bat` + `xml/telegram.xml` (`enabled=true`, token, chat_id). Danh sách báo thức: `xml/timer.xml`.
 
 ### Windows Server 24/7 + Telegram
 

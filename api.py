@@ -11,7 +11,7 @@
 #
 # CHẠY
 #   python api.py
-#   hoặc start_api.bat
+#   hoặc start_server.bat  (24/7 + vòng restart nếu crash)
 #   (mặc định lắng nghe tại http://127.0.0.1:5001, chỉ localhost, không expose
 #   ra mạng ngoài vì có thao tác gửi lệnh thật + thông tin tài khoản)
 #
@@ -53,8 +53,7 @@
 #   GET    /setup/, /setup/<file>       -> serve file tĩnh repo (dev); production dùng WAMP
 #
 # CHẠY 24/7 (Windows Server)
-#   start_server.bat  → TRADE_SERVER=1, tắt reloader, bật watcher Timer + lệnh
-#   start_api.bat     → máy dev (reloader)
+#   start_server.bat  → TRADE_SERVER=1, watcher Timer + lệnh, auto-reload, vòng restart nếu crash
 #
 # =============================================================================
 
@@ -812,9 +811,9 @@ def setup_telegram_test_endpoint():
 
 
 def _should_start_watcher():
-    if SERVER_MODE:
-        return True
-    return os.environ.get("WERKZEUG_RUN_MAIN") == "true"
+    # Reloader: process mẹ WERKZEUG_RUN_MAIN=false — không start watcher.
+    # Không reloader / process con: env unset hoặc "true" → start.
+    return os.environ.get("WERKZEUG_RUN_MAIN") != "false"
 
 
 if __name__ == "__main__":
@@ -825,7 +824,7 @@ if __name__ == "__main__":
     if os.environ.get("WERKZEUG_RUN_MAIN") != "false":
         print(f"Đang chạy MT5 API tại http://{API_HOST}:{API_PORT} (chỉ localhost)")
         if SERVER_MODE:
-            print("Chế độ server 24/7: tắt auto-reload, bật watcher Timer + lệnh → Telegram.")
+            print("Chế độ server 24/7: watcher Timer + lệnh → Telegram; auto-reload khi sửa .py/.xml.")
         else:
             print("Auto-reload: sửa .py hoặc .xml → process restart và nạp lại nội dung.")
 
@@ -833,6 +832,6 @@ if __name__ == "__main__":
         host=API_HOST,
         port=API_PORT,
         threaded=True,
-        use_reloader=not SERVER_MODE,
-        extra_files=_watch_extra_files() if not SERVER_MODE else None,
+        use_reloader=True,
+        extra_files=_watch_extra_files(),
     )
