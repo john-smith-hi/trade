@@ -2,7 +2,8 @@
 cd /d "%~dp0"
 REM =============================================================================
 REM Chay API 24/7 tren Windows Server (khong pause, tu khoi dong lai neu crash).
-REM Auto-reload: sua .py / .xml → process tu restart.
+REM Khong dung Flask-reloader (tranh timeout UI). Sua .py → restart bat nay.
+REM Sua accounts.xml / paths.xml → soft-reload, khong can restart.
 REM
 REM Task Scheduler: At log on, user dang ngoi may,
 REM   "Run only when user is logged on" (MT5 can session desktop).
@@ -14,7 +15,7 @@ REM   enabled=true. Cai app Telegram tren dien thoai (cung tai khoan / group).
 REM =============================================================================
 set TRADE_SERVER=1
 echo Dang chay MT5 API 24/7 tai http://127.0.0.1:5001
-echo Watcher Timer + lenh -^> Telegram. Sua .py/.xml -^> auto-reload.
+echo Watcher Timer + lenh -^> Telegram. Khong auto-reload .py (sua code thi restart bat).
 echo Ctrl+C de dung. Neu python crash, se tu chay lai sau 5 giay.
 echo.
 

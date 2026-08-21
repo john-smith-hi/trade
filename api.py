@@ -53,7 +53,9 @@
 #   GET    /setup/, /setup/<file>       -> serve file tĩnh repo (dev); production dùng WAMP
 #
 # CHẠY 24/7 (Windows Server)
-#   start_server.bat  → TRADE_SERVER=1, watcher Timer + lệnh, auto-reload, vòng restart nếu crash
+#   start_server.bat  → TRADE_SERVER=1, watcher Timer + lệnh, KHÔNG Flask-reloader
+#                       (tránh 2 process kẹt port → UI timeout 12s). Sửa .py → restart bat.
+#                       Sửa accounts/paths.xml → soft-reload, không cần restart.
 #
 # =============================================================================
 
@@ -78,6 +80,9 @@ API_PORT = 5001
 ROOT_DIR = Path(__file__).resolve().parent
 SETUP_DIR = ROOT_DIR / "setup"
 SERVER_MODE = os.environ.get("TRADE_SERVER") == "1"
+# Server 24/7: tắt reloader — trên Windows dễ có 2 process LISTEN cùng port,
+# TCP nối được nhưng không trả HTTP → trình duyệt AbortError "API timeout" sau 12s.
+USE_RELOADER = not SERVER_MODE
 
 app = Flask(__name__)
 CORS(app)
@@ -811,8 +816,9 @@ def setup_telegram_test_endpoint():
 
 
 def _should_start_watcher():
-    # use_reloader=True: chỉ process con (WERKZEUG_RUN_MAIN=true) chạy watcher + banner.
-    # Process mẹ / lần chạy trước khi reloader spawn: env unset hoặc "false" → bỏ qua.
+    # Không reloader: start ngay. Có reloader: chỉ process con (WERKZEUG_RUN_MAIN=true).
+    if not USE_RELOADER:
+        return True
     return os.environ.get("WERKZEUG_RUN_MAIN") == "true"
 
 
@@ -821,7 +827,7 @@ if __name__ == "__main__":
         watch.start_watcher(_lock)
         print(f"Đang chạy MT5 API tại http://{API_HOST}:{API_PORT} (chỉ localhost)")
         if SERVER_MODE:
-            print("Chế độ server 24/7: watcher Timer + lệnh → Telegram; auto-reload khi sửa .py/.xml.")
+            print("Chế độ server 24/7: watcher Timer + lệnh → Telegram (không Flask-reloader).")
         else:
             print("Auto-reload: sửa .py hoặc .xml → process restart và nạp lại nội dung.")
 
@@ -829,6 +835,6 @@ if __name__ == "__main__":
         host=API_HOST,
         port=API_PORT,
         threaded=True,
-        use_reloader=True,
-        extra_files=_watch_extra_files(),
+        use_reloader=USE_RELOADER,
+        extra_files=_watch_extra_files() if USE_RELOADER else None,
     )
