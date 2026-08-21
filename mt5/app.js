@@ -68,7 +68,7 @@ function updateAccountInfo(accounts) {
   const defaultLot = acc.default_lot ?? 0.01;
   el("accountInfo").textContent =
     `login: ${acc.login} | server: ${acc.server} | suffix: "${acc.suffix}" | multi: ${acc.multi} | default_lot: ${defaultLot} | max_loss: ${maxLoss} | ${autoCopy}`;
-  applyDefaultLotPlaceholder();
+  applyDefaultLot();
 }
 
 let lastAccounts = [];
@@ -106,10 +106,12 @@ function resolveLot() {
   return accountDefaultLot(el("account").value);
 }
 
-function applyDefaultLotPlaceholder() {
+function applyDefaultLot() {
   const lotInput = el("lot");
   if (!lotInput) return;
-  lotInput.placeholder = `để trống = ${accountDefaultLot(el("account").value)} (default_lot)`;
+  const lot = accountDefaultLot(el("account").value);
+  lotInput.value = String(lot);
+  lotInput.placeholder = `default_lot`;
 }
 
 function actionNeedsOpenPositions(action = el("action").value) {
