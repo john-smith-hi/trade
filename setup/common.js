@@ -168,7 +168,9 @@
         return data;
       } catch (err) {
         if (err && err.name === "AbortError") {
-          throw new Error("API timeout — kiểm tra start_server.bat");
+          throw new Error(
+            "API timeout — trên ĐÚNG máy đang chạy ngrok/WAMP: chạy start_server.bat và xem có dòng Running on 127.0.0.1:5001",
+          );
         }
         throw err;
       } finally {
@@ -254,7 +256,7 @@
     clearBusyHard();
     const node = el("apiStatus");
     if (!node) return;
-    node.textContent = `Không kết nối được api.py (${err.message || err}). Hãy chạy start_server.bat.`;
+    node.textContent = `Không kết nối được api.py (${err.message || err}). WAMP+ngrok+API phải cùng máy — chạy start_server.bat trên máy đó.`;
     node.className = "api-status error";
   }
 

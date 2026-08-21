@@ -75,8 +75,10 @@ header("Content-Type: application/json; charset=utf-8");
 if ($response === false) {
     http_response_code(502);
     echo json_encode([
-        "error" => "Không gọi được tới api.py tại {$target_url}. Hãy chắc chắn đã chạy start_server.bat "
-            . "trên máy chủ WampServer này. Chi tiết lỗi: {$error}",
+        "error" => "Không gọi được api.py tại {$target_url}. "
+            . "WAMP + ngrok + start_server.bat phải CÙNG MỘT MÁY "
+            . "(proxy chỉ gọi 127.0.0.1 của máy đang serve trang này). "
+            . "Chi tiết: {$error}",
     ]);
     exit;
 }
