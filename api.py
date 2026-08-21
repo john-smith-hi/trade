@@ -811,17 +811,14 @@ def setup_telegram_test_endpoint():
 
 
 def _should_start_watcher():
-    # Reloader: process mẹ WERKZEUG_RUN_MAIN=false — không start watcher.
-    # Không reloader / process con: env unset hoặc "true" → start.
-    return os.environ.get("WERKZEUG_RUN_MAIN") != "false"
+    # use_reloader=True: chỉ process con (WERKZEUG_RUN_MAIN=true) chạy watcher + banner.
+    # Process mẹ / lần chạy trước khi reloader spawn: env unset hoặc "false" → bỏ qua.
+    return os.environ.get("WERKZEUG_RUN_MAIN") == "true"
 
 
 if __name__ == "__main__":
     if _should_start_watcher():
         watch.start_watcher(_lock)
-
-    # Process mẹ của reloader có WERKZEUG_RUN_MAIN=false — bỏ qua banner trùng.
-    if os.environ.get("WERKZEUG_RUN_MAIN") != "false":
         print(f"Đang chạy MT5 API tại http://{API_HOST}:{API_PORT} (chỉ localhost)")
         if SERVER_MODE:
             print("Chế độ server 24/7: watcher Timer + lệnh → Telegram; auto-reload khi sửa .py/.xml.")
