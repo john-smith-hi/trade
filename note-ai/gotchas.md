@@ -3,13 +3,13 @@
 ## 1. `NameError: DEFAULT_XAUUSD_MAX_LOSS is not defined`
 
 Xảy ra khi xóa hằng mặc định nhưng `load_accounts` vẫn còn nhánh cũ / process API cũ.
-Hiện tại: trống → `None`. Nếu gặp lại: grep còn sót tên hằng và **restart** `start_api.bat`.
+Hiện tại: trống → `None`. Nếu gặp lại: grep còn sót tên hằng và **restart** `start_server.bat`.
 
 ## 2. Sửa `accounts.xml` / `paths.xml` mà web vẫn hiện config cũ
 
 - Soft-reload + Flask reloader đã có — xem `auto-reload.md`.
 - UI còn GET cache ~15s → bấm **Tải lại danh sách** hoặc đợi / focus tab.
-- Process API rất cũ (trước khi có watch XML) → restart `start_api.bat` một lần.
+- Process API rất cũ (trước khi có watch XML) → restart `start_server.bat` một lần.
 
 ## 3. Không commit secrets
 
@@ -58,7 +58,7 @@ Nguyên nhân đã gặp:
 - Busy count / overlay không clear khi API lỗi / timeout.
 
 Hiện tại: `document.write` + busy watchdog ~20s + `markApiError` → `clearBusyHard`.
-Nếu vẫn đứng: kiểm tra `start_api.bat` còn chạy; DevTools Network xem `proxy.php` / `ver.php`.
+Nếu vẫn đứng: kiểm tra `start_server.bat` còn chạy; DevTools Network xem `proxy.php` / `ver.php`.
 
 ## 12. History API
 

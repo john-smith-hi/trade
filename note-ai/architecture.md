@@ -3,7 +3,7 @@
 ## Luồng chạy
 
 ```
-start_api.bat
+start_server.bat
   → python api.py          (Flask, 127.0.0.1:5001)
       → import mt5.py      (logic MT5 + đọc xml/accounts.xml, xml/paths.xml)
 ```
@@ -21,7 +21,7 @@ Web UI (không nằm trong repo trade):
 |------|---------|
 | `mt5.py` | CLI + logic giao dịch, load/save accounts + paths, copy trade |
 | `api.py` | HTTP mỏng bọc `mt5.execute_request`, CORS, lock thread, CRUD accounts/paths, history |
-| `start_api.bat` | Khởi động API |
+| `start_server.bat` | Khởi động API 24/7 (reload + watcher) |
 | `xml/accounts.xml` | Config account thật (**gitignore**, không commit) |
 | `xml/paths.xml` | Map tên path (`exness` / `ftmo` / …) → `terminal64.exe` |
 | `xml/accounts.example.xml` / `paths.example.xml` | Mẫu an toàn để commit |
