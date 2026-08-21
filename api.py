@@ -259,10 +259,9 @@ def _find_path_index(name):
 
 @app.get("/api/paths")
 def get_paths():
-    with _lock:
-        mt5app.ensure_paths_fresh()
-        paths = list(mt5app.PATHS)
-    return jsonify({"paths": paths})
+    # Không lấy _lock MT5 — chỉ đọc XML; tránh treo khi watcher đang connect.
+    mt5app.ensure_paths_fresh()
+    return jsonify({"paths": list(mt5app.PATHS)})
 
 
 @app.post("/api/paths")
@@ -316,9 +315,9 @@ def update_path_endpoint(name):
 
 @app.get("/api/accounts")
 def get_accounts():
-    with _lock:
-        mt5app.ensure_accounts_fresh()
-        accounts = [_account_public(acc) for acc in mt5app.ACCOUNTS]
+    # Không lấy _lock MT5 — trang web / trình duyệt mở URL này không bị watcher chặn.
+    mt5app.ensure_accounts_fresh()
+    accounts = [_account_public(acc) for acc in mt5app.ACCOUNTS]
     return jsonify({"accounts": accounts})
 
 
@@ -673,8 +672,7 @@ def setup_static(filename="index.html"):
 
 @app.get("/api/setup/week")
 def setup_week_endpoint():
-    with _lock:
-        week, weekday, is_weekend = day_trade.ensure_current_week()
+    week, weekday, is_weekend = day_trade.ensure_current_week()
     return jsonify({
         "week": week,
         "weekday": weekday,
@@ -766,9 +764,7 @@ def setup_delete_endpoint(setup_id):
 
 @app.get("/api/setup/timer")
 def setup_timer_list_endpoint():
-    with _lock:
-        alerts = timer_alerts.load_alerts()
-    return jsonify({"alerts": alerts})
+    return jsonify({"alerts": timer_alerts.load_alerts()})
 
 
 @app.put("/api/setup/timer")

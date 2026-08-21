@@ -596,7 +596,7 @@ def confirm_action(message):
     return False
 
 
-def connect_mt5(account, quiet=False):
+def connect_mt5(account, quiet=False, timeout_ms=None):
     global CURRENT_ACCOUNT_NAME
 
     terminal_path = resolve_terminal_path(account)
@@ -605,13 +605,17 @@ def connect_mt5(account, quiet=False):
     # Nếu không shutdown, tick/symbol có thể còn cache từ terminal trước -> giá vào sai.
     mt5.shutdown()
 
+    # Watcher/quiet: timeout ngắn để không giữ API lock quá lâu.
+    if timeout_ms is None:
+        timeout_ms = 8000 if quiet else 60000
+
     # Với các broker/prop-firm khác (VD: FTMO), phải chỉ định path tới terminal MT5 riêng của họ,
     # vì terminal MT5 mặc định (thường là bản Exness) không có server tương ứng nên sẽ bị IPC timeout.
     init_kwargs = {
         "login": account["login"],
         "password": account["password"],
         "server": account["server"],
-        "timeout": 60000,
+        "timeout": int(timeout_ms),
     }
     if terminal_path:
         init_kwargs["path"] = terminal_path
