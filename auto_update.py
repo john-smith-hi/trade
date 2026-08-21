@@ -3,8 +3,7 @@
 # =============================================================================
 #
 # Định kỳ: git fetch → nếu remote có commit mới → git pull --ff-only
-# → kiểm tra cú pháp (compileall) → nếu lỗi: Telegram + rollback HEAD cũ, giữ API
-# → nếu OK: copy_www.py → os._exit(0) để start_server.bat chạy lại api.py.
+# → copy_www.py → os._exit(0) để start_server.bat vòng loop chạy lại api.py.
 #
 # Tắt: set TRADE_AUTO_UPDATE=0
 # Chu kỳ giây: TRADE_UPDATE_SEC (mặc định 120)
@@ -23,9 +22,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 DEFAULT_INTERVAL_SEC = 120
 FIRST_CHECK_DELAY_SEC = 20
-TELEGRAM_DETAIL_MAX = 1500
-_DIRTY_NOTIFY_COOLDOWN_SEC = 3600
-_last_dirty_notify_at = 0.0
 
 
 def _log(message: str) -> None:
@@ -42,13 +38,6 @@ def _git(args: list[str]) -> subprocess.CompletedProcess[str]:
         encoding="utf-8",
         errors="replace",
     )
-
-
-def _git_head() -> str:
-    result = _git(["rev-parse", "HEAD"])
-    if result.returncode != 0:
-        return ""
-    return (result.stdout or "").strip()
 
 
 def _upstream_behind_count() -> int | None:
@@ -68,162 +57,29 @@ def _upstream_behind_count() -> int | None:
         return None
 
 
-def _tracked_dirty_paths() -> list[str]:
-    """Chỉ file ĐÃ TRACK bị sửa/xóa (bỏ qua untracked — xml local, log, …)."""
-    status = _git(["status", "--porcelain", "--untracked-files=no"])
-    if status.returncode != 0:
-        return ["(git status failed)"]
-    paths = []
-    for line in (status.stdout or "").splitlines():
-        text = line.strip()
-        if text:
-            paths.append(text)
-    return paths
-
-
-def _syntax_check() -> tuple[bool, str]:
-    """compileall toàn bộ .py trong project. (ok, chi_tiet_loi)."""
-    proc = subprocess.run(
-        [sys.executable, "-m", "compileall", "-q", "-f", str(ROOT)],
-        cwd=str(ROOT),
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-    )
-    detail = ((proc.stderr or "") + "\n" + (proc.stdout or "")).strip()
-    return proc.returncode == 0, detail
-
-
-def _notify_syntax_fail(old_head: str, new_head: str, detail: str) -> None:
-    try:
-        import telegram_notify
-    except Exception as exc:
-        _log(f"Khong import telegram_notify: {exc}")
-        return
-
-    lines = [
-        "May 1: git pull ve code loi cu phap — da rollback, API cu van chay.",
-        f"HEAD cu: {old_head[:12] or '?'}",
-        f"HEAD loi: {new_head[:12] or '?'}",
-    ]
-    if detail:
-        clipped = detail if len(detail) <= TELEGRAM_DETAIL_MAX else detail[:TELEGRAM_DETAIL_MAX] + "\n..."
-        lines.append(clipped)
-    else:
-        lines.append("(compileall that bai, khong co chi tiet stderr)")
-
-    text = telegram_notify.build_message("UPDATE — LỖI CÚ PHÁP", lines)
-    ok = telegram_notify.send_alert(text)
-    if ok:
-        _log("Da gui Telegram canh bao loi cu phap.")
-    else:
-        err = telegram_notify.last_send_error() or "unknown"
-        _log(f"Gui Telegram that bai: {err}")
-
-
-def _rollback(old_head: str) -> bool:
-    if not old_head:
-        _log("Khong rollback duoc — thieu old HEAD.")
-        return False
-    reset = _git(["reset", "--hard", old_head])
-    if reset.returncode != 0:
-        _log(f"git reset --hard that bai: {(reset.stderr or reset.stdout).strip()}")
-        return False
-    _log(f"Da rollback ve {old_head[:12]}.")
-    return True
-
-
-def _notify_dirty_block(dirty: list[str], behind: int) -> None:
-    """Báo Telegram khi không pull được vì file tracked đang sửa (cooldown 1h)."""
-    global _last_dirty_notify_at
-    now = time.time()
-    if now - _last_dirty_notify_at < _DIRTY_NOTIFY_COOLDOWN_SEC:
-        return
-    try:
-        import telegram_notify
-    except Exception as exc:
-        _log(f"Khong import telegram_notify: {exc}")
-        return
-
-    preview = "\n".join(dirty[:15])
-    if len(dirty) > 15:
-        preview += f"\n... (+{len(dirty) - 15} dong)"
-    text = telegram_notify.build_message(
-        "UPDATE — KHÔNG PULL ĐƯỢC",
-        [
-            f"May 1: co {behind} commit moi tren remote nhung file tracked dang sua local.",
-            "Tren may 1 chay: git status --porcelain --untracked-files=no",
-            "Xoa sua local: git checkout -- .   roi restart start_server.bat",
-            "Hoac set TRADE_UPDATE_RESET_DIRTY=1 trong start_server.bat (reset --hard roi pull).",
-            preview,
-        ],
-    )
-    if telegram_notify.send_alert(text):
-        _last_dirty_notify_at = now
-        _log("Da gui Telegram: khong pull duoc (dirty).")
-    else:
-        _log(f"Gui Telegram dirty that bai: {telegram_notify.last_send_error() or '?'}")
-
-
 def apply_update_if_needed() -> bool:
     """
-    Pull + kiểm tra cú pháp + copy_www nếu remote có code mới.
-    True = cập nhật OK, caller nên thoát process để bat restart.
-    False = không đổi / lỗi cú pháp đã rollback / bỏ qua.
+    Pull + copy_www nếu remote có code mới.
+    True = đã cập nhật, caller nên thoát process để bat restart.
     """
     if not (ROOT / ".git").exists():
         return False
 
     behind = _upstream_behind_count()
-    if behind is None:
+    if behind is None or behind <= 0:
         return False
 
-    dirty = _tracked_dirty_paths()
-    if dirty:
-        for line in dirty[:20]:
-            _log(f"  tracked dirty: {line}")
-        if behind > 0:
-            force = os.environ.get("TRADE_UPDATE_RESET_DIRTY", "").strip().lower() in (
-                "1", "true", "yes", "on",
-            )
-            if force:
-                _log("TRADE_UPDATE_RESET_DIRTY=1 — git reset --hard HEAD truoc khi pull.")
-                reset = _git(["reset", "--hard", "HEAD"])
-                if reset.returncode != 0:
-                    _log(f"reset that bai: {(reset.stderr or reset.stdout).strip()}")
-                    _notify_dirty_block(dirty, behind)
-                    return False
-            else:
-                _log(
-                    f"Bo qua git pull — {len(dirty)} file tracked dang sua local "
-                    f"(remote dang hon {behind} commit). Xem dong 'tracked dirty' ben tren."
-                )
-                _notify_dirty_block(dirty, behind)
-                return False
-        else:
-            return False
+    # Bỏ sửa local trên file tracked để pull luôn được (máy 1 = bản deploy).
+    _git(["reset", "--hard", "HEAD"])
+    _git(["clean", "-fd", "--", "*.pyc"])
 
-    if behind <= 0:
-        return False
-
-    old_head = _git_head()
     _log(f"Phat hien {behind} commit moi tren remote — git pull --ff-only ...")
     pull = _git(["pull", "--ff-only"])
     if pull.returncode != 0:
         _log(f"git pull that bai: {(pull.stderr or pull.stdout).strip()}")
         return False
 
-    new_head = _git_head()
-    _log("Kiem tra cu phap (python -m compileall) ...")
-    ok, detail = _syntax_check()
-    if not ok:
-        _log("LOI CU PHAP sau git pull — rollback + Telegram.")
-        _notify_syntax_fail(old_head, new_head, detail)
-        _rollback(old_head)
-        return False
-
-    _log("Cu phap OK. copy_www.py ...")
+    _log("copy_www.py ...")
     copied = subprocess.run(
         [sys.executable, str(ROOT / "copy_www.py")],
         cwd=str(ROOT),
@@ -266,7 +122,7 @@ def start_auto_update() -> bool:
     )
     thread.start()
     _log(
-        f"Bat auto git pull + compileall + copy_www moi {interval}s "
+        f"Bat auto git pull + copy_www moi {interval}s "
         f"(sau {FIRST_CHECK_DELAY_SEC}s kiem tra lan dau)."
     )
     return True

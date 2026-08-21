@@ -179,7 +179,7 @@ Trang **Timer** (`/setup/timer/`): đặt vùng giá (từ–đến). Server pol
 3. Chạy `start_server.bat` (vòng restart nếu Python thoát). Task Scheduler: **At log on**, “Run only when user is logged on” (MT5 cần session desktop).
 4. Không disconnect RDP bằng cách đóng cửa sổ — dùng `tscon` về console hoặc để session mở.
 5. Nút **Thử Telegram** trên trang Timer.
-6. Sau khi `git push` từ máy dev: máy 1 để `start_server.bat` chạy — ~2 phút tự `git pull` → **kiểm tra cú pháp** → `copy_www` → restart. Lỗi cú pháp: **Telegram** `UPDATE — LỖI CÚ PHÁP`, rollback commit cũ, API cũ giữ chạy. Muốn pull ngay: `update_server.bat`. Tắt auto: `set TRADE_AUTO_UPDATE=0`.
+6. Sau khi `git push` từ máy dev: máy 1 để `start_server.bat` chạy — ~2 phút tự `git pull` + `copy_www` + restart API. Muốn cập nhật ngay: `update_server.bat`. Tắt auto: `set TRADE_AUTO_UPDATE=0`.
 
 Watcher gửi tin: mở/đóng lệnh (web/CLI + auto_copy), pending khớp, đóng TP/SL/stop-out, Timer chạm vùng. Bot **chỉ gửi tin**, không nhận lệnh.
 
