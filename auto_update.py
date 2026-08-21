@@ -66,11 +66,17 @@ def _upstream_behind_count() -> int | None:
         return None
 
 
-def _working_tree_dirty() -> bool:
-    status = _git(["status", "--porcelain"])
+def _tracked_dirty_paths() -> list[str]:
+    """Chỉ file ĐÃ TRACK bị sửa/xóa (bỏ qua untracked — xml local, log, …)."""
+    status = _git(["status", "--porcelain", "--untracked-files=no"])
     if status.returncode != 0:
-        return True
-    return bool((status.stdout or "").strip())
+        return ["(git status failed)"]
+    paths = []
+    for line in (status.stdout or "").splitlines():
+        text = line.strip()
+        if text:
+            paths.append(text)
+    return paths
 
 
 def _syntax_check() -> tuple[bool, str]:
@@ -135,8 +141,12 @@ def apply_update_if_needed() -> bool:
     if not (ROOT / ".git").exists():
         return False
 
-    if _working_tree_dirty():
-        _log("Bo qua git pull — working tree co thay doi local (status --porcelain).")
+    if _tracked_dirty_paths():
+        dirty = _tracked_dirty_paths()
+        preview = "; ".join(dirty[:8])
+        if len(dirty) > 8:
+            preview += f"; ... (+{len(dirty) - 8})"
+        _log(f"Bo qua git pull — file tracked dang sua local: {preview}")
         return False
 
     behind = _upstream_behind_count()
