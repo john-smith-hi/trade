@@ -2,7 +2,7 @@
 
 ## Mục tiêu đã thống nhất
 
-Sửa **bất kỳ `.py` hoặc `.xml`** trong project → nội dung được làm mới, không cần restart tay `start_api.bat` lâu dài (process tự restart / soft-reload).
+Sửa **bất kỳ `.py` hoặc `.xml`** trong project → nội dung được làm mới, không cần restart tay `start_server.bat` lâu dài (process tự restart / soft-reload).
 
 ## Cách triển khai hiện tại (`api.py`)
 
@@ -33,4 +33,4 @@ Commit cũ chỉ soft-reload XML theo mtime + watch `*.py` — **không** watch 
 
 ## Sau khi đổi code `api.py` lần đầu
 
-Vẫn cần **restart một lần** `start_api.bat` để process nhận logic watch mới.
+Vẫn cần **restart một lần** `start_server.bat` để process nhận logic watch mới.

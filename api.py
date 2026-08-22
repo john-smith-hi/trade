@@ -11,7 +11,7 @@
 #
 # CHẠY
 #   python api.py
-#   hoặc start_api.bat
+#   hoặc start_server.bat  (24/7 + vòng restart nếu crash)
 #   (mặc định lắng nghe tại http://127.0.0.1:5001, chỉ localhost, không expose
 #   ra mạng ngoài vì có thao tác gửi lệnh thật + thông tin tài khoản)
 #
@@ -53,8 +53,9 @@
 #   GET    /setup/, /setup/<file>       -> serve file tĩnh repo (dev); production dùng WAMP
 #
 # CHẠY 24/7 (Windows Server)
-#   start_server.bat  → TRADE_SERVER=1, tắt reloader, bật watcher Timer + lệnh
-#   start_api.bat     → máy dev (reloader)
+#   start_server.bat  → TRADE_SERVER=1, watcher Timer + lệnh, KHÔNG Flask-reloader
+#                       (tránh 2 process kẹt port → UI timeout 12s). Sửa .py → restart bat.
+#                       Sửa accounts/paths.xml → soft-reload, không cần restart.
 #
 # =============================================================================
 
@@ -79,6 +80,9 @@ API_PORT = 5001
 ROOT_DIR = Path(__file__).resolve().parent
 SETUP_DIR = ROOT_DIR / "setup"
 SERVER_MODE = os.environ.get("TRADE_SERVER") == "1"
+# Server 24/7: tắt reloader — trên Windows dễ có 2 process LISTEN cùng port,
+# TCP nối được nhưng không trả HTTP → trình duyệt AbortError "API timeout" sau 12s.
+USE_RELOADER = not SERVER_MODE
 
 app = Flask(__name__)
 CORS(app)
@@ -255,10 +259,9 @@ def _find_path_index(name):
 
 @app.get("/api/paths")
 def get_paths():
-    with _lock:
-        mt5app.ensure_paths_fresh()
-        paths = list(mt5app.PATHS)
-    return jsonify({"paths": paths})
+    # Không lấy _lock MT5 — chỉ đọc XML; tránh treo khi watcher đang connect.
+    mt5app.ensure_paths_fresh()
+    return jsonify({"paths": list(mt5app.PATHS)})
 
 
 @app.post("/api/paths")
@@ -312,9 +315,9 @@ def update_path_endpoint(name):
 
 @app.get("/api/accounts")
 def get_accounts():
-    with _lock:
-        mt5app.ensure_accounts_fresh()
-        accounts = [_account_public(acc) for acc in mt5app.ACCOUNTS]
+    # Không lấy _lock MT5 — trang web / trình duyệt mở URL này không bị watcher chặn.
+    mt5app.ensure_accounts_fresh()
+    accounts = [_account_public(acc) for acc in mt5app.ACCOUNTS]
     return jsonify({"accounts": accounts})
 
 
@@ -669,8 +672,8 @@ def setup_static(filename="index.html"):
 
 @app.get("/api/setup/week")
 def setup_week_endpoint():
-    with _lock:
-        week, weekday, is_weekend = day_trade.ensure_current_week()
+    # Không lấy _lock MT5 — chỉ XML tuần; tránh treo khi watcher đang connect.
+    week, weekday, is_weekend = day_trade.ensure_current_week()
     monday_complete = bool(week) and day_trade.monday_session_complete(week)
     return jsonify({
         "week": week,
@@ -764,9 +767,7 @@ def setup_delete_endpoint(setup_id):
 
 @app.get("/api/setup/timer")
 def setup_timer_list_endpoint():
-    with _lock:
-        alerts = timer_alerts.load_alerts()
-    return jsonify({"alerts": alerts})
+    return jsonify({"alerts": timer_alerts.load_alerts()})
 
 
 @app.put("/api/setup/timer")
@@ -814,7 +815,8 @@ def setup_telegram_test_endpoint():
 
 
 def _should_start_watcher():
-    if SERVER_MODE:
+    # Không reloader: start ngay. Có reloader: chỉ process con (WERKZEUG_RUN_MAIN=true).
+    if not USE_RELOADER:
         return True
     return os.environ.get("WERKZEUG_RUN_MAIN") == "true"
 
@@ -822,12 +824,9 @@ def _should_start_watcher():
 if __name__ == "__main__":
     if _should_start_watcher():
         watch.start_watcher(_lock)
-
-    # Process mẹ của reloader có WERKZEUG_RUN_MAIN=false — bỏ qua banner trùng.
-    if os.environ.get("WERKZEUG_RUN_MAIN") != "false":
         print(f"Đang chạy MT5 API tại http://{API_HOST}:{API_PORT} (chỉ localhost)")
         if SERVER_MODE:
-            print("Chế độ server 24/7: tắt auto-reload, bật watcher Timer + lệnh → Telegram.")
+            print("Chế độ server 24/7: watcher Timer + lệnh → Telegram (không Flask-reloader).")
         else:
             print("Auto-reload: sửa .py hoặc .xml → process restart và nạp lại nội dung.")
 
@@ -835,6 +834,6 @@ if __name__ == "__main__":
         host=API_HOST,
         port=API_PORT,
         threaded=True,
-        use_reloader=not SERVER_MODE,
-        extra_files=_watch_extra_files() if not SERVER_MODE else None,
+        use_reloader=USE_RELOADER,
+        extra_files=_watch_extra_files() if USE_RELOADER else None,
     )

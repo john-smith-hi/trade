@@ -525,9 +525,21 @@ def _recent_deal_for_order(order_ticket, position_ticket=None, entry=None):
     return None
 
 
+# Status lệnh thành công → Telegram + cập nhật watch_state.
+_TELEGRAM_OK = {"SUCCESS", "PENDING_SUCCESS", "CLOSE_SUCCESS"}
+# Terminal không thực hiện được (retcode lỗi / không phản hồi) → Telegram cảnh báo.
+_TELEGRAM_FAIL = {
+    "FAILED": "LỖI MỞ LỆNH",
+    "PENDING_FAILED": "LỖI ĐẶT LỆNH CHỜ",
+    "CANCEL_PENDING_FAILED": "LỖI HỦY LỆNH CHỜ",
+    "CLOSE_FAILED": "LỖI ĐÓNG LỆNH",
+    "MODIFY_FAILED": "LỖI SỬA TP/SL",
+}
+
+
 def _notify_trade_telegram(symbol, lot, result, request, status, detail, profit=None, position=None):
     """Cảnh báo ngay sau lệnh do web/CLI/copy thực hiện. Lỗi Telegram không raise."""
-    if status not in ("SUCCESS", "PENDING_SUCCESS", "CLOSE_SUCCESS"):
+    if status not in _TELEGRAM_OK and status not in _TELEGRAM_FAIL:
         return
     try:
         import telegram_notify
@@ -536,7 +548,7 @@ def _notify_trade_telegram(symbol, lot, result, request, status, detail, profit=
         return
 
     account = CURRENT_ACCOUNT_NAME or "-"
-    order_ticket = getattr(result, "order", None)
+    order_ticket = getattr(result, "order", None) if result is not None else None
     pos_ticket = getattr(position, "ticket", None) if position is not None else None
     side = _request_side_label(request, position)
     prefix = "[COPY] " if TELEGRAM_IS_COPY else ""
@@ -545,7 +557,22 @@ def _notify_trade_telegram(symbol, lot, result, request, status, detail, profit=
         f"{symbol} {side} {lot}".strip(),
     ]
 
-    if status == "SUCCESS":
+    if status in _TELEGRAM_FAIL:
+        title = f"{prefix}{_TELEGRAM_FAIL[status]}"
+        retcode = getattr(result, "retcode", None) if result is not None else None
+        term_comment = getattr(result, "comment", None) if result is not None else None
+        if retcode is not None:
+            lines.append(f"retcode: {retcode}")
+        if term_comment:
+            lines.append(f"terminal: {term_comment}")
+        if detail:
+            lines.append(detail)
+        if pos_ticket is not None:
+            lines.append(f"ticket: {pos_ticket}")
+        elif order_ticket is not None:
+            lines.append(f"ticket: {order_ticket}")
+
+    elif status == "SUCCESS":
         title = f"{prefix}MỞ LỆNH"
         price = request.get("price") if isinstance(request, dict) else None
         if price not in (None, ""):
@@ -596,7 +623,7 @@ def confirm_action(message):
     return False
 
 
-def connect_mt5(account, quiet=False):
+def connect_mt5(account, quiet=False, timeout_ms=None):
     global CURRENT_ACCOUNT_NAME
 
     terminal_path = resolve_terminal_path(account)
@@ -605,13 +632,17 @@ def connect_mt5(account, quiet=False):
     # Nếu không shutdown, tick/symbol có thể còn cache từ terminal trước -> giá vào sai.
     mt5.shutdown()
 
+    # Watcher/quiet: timeout ngắn để không giữ API lock quá lâu.
+    if timeout_ms is None:
+        timeout_ms = 8000 if quiet else 60000
+
     # Với các broker/prop-firm khác (VD: FTMO), phải chỉ định path tới terminal MT5 riêng của họ,
     # vì terminal MT5 mặc định (thường là bản Exness) không có server tương ứng nên sẽ bị IPC timeout.
     init_kwargs = {
         "login": account["login"],
         "password": account["password"],
         "server": account["server"],
-        "timeout": 60000,
+        "timeout": int(timeout_ms),
     }
     if terminal_path:
         init_kwargs["path"] = terminal_path
@@ -1035,7 +1066,12 @@ def open_trade(account, symbol, side, lot, tp_price=None, sl_price=None, comment
     result = mt5.order_send(request)
 
     if result is None:
-        print(f"Đặt lệnh thất bại nặng! Không nhận được phản hồi từ terminal. Lỗi hệ thống: {mt5.last_error()}")
+        err = mt5.last_error()
+        print(f"Đặt lệnh thất bại nặng! Không nhận được phản hồi từ terminal. Lỗi hệ thống: {err}")
+        save_trade_history(
+            symbol, lot, None, request, "FAILED",
+            f"không phản hồi từ terminal | last_error={err}",
+        )
         return None
 
     if result.retcode != mt5.TRADE_RETCODE_DONE:
@@ -1206,7 +1242,12 @@ def open_pending_trade(account, symbol, side, pending_type, price, lot,
     result = mt5.order_send(request)
 
     if result is None:
-        print(f"Đặt lệnh chờ thất bại nặng! Không nhận được phản hồi từ terminal. Lỗi hệ thống: {mt5.last_error()}")
+        err = mt5.last_error()
+        print(f"Đặt lệnh chờ thất bại nặng! Không nhận được phản hồi từ terminal. Lỗi hệ thống: {err}")
+        save_trade_history(
+            symbol, lot, None, request, "PENDING_FAILED",
+            f"không phản hồi từ terminal | last_error={err} | type={type_label} | price={price}",
+        )
         return None
 
     if not is_order_send_success(result):
@@ -1245,7 +1286,12 @@ def cancel_pending_order(order, confirm=True):
     }
     result = mt5.order_send(request)
     if result is None:
+        err = mt5.last_error()
         print(f"Hủy lệnh chờ {order.ticket} thất bại! Không nhận được phản hồi.")
+        save_trade_history(
+            order.symbol, order.volume_current, None, request, "CANCEL_PENDING_FAILED",
+            f"ticket={order.ticket} | không phản hồi từ terminal | last_error={err}",
+        )
         return None
 
     if not is_order_send_success(result):
@@ -1323,12 +1369,22 @@ def close_position(position, confirm=True):
     request = build_close_request(position)
     result = mt5.order_send(request)
     if result is None:
+        err = mt5.last_error()
         print("Đóng lệnh thất bại! Không nhận được phản hồi.")
+        save_trade_history(
+            position.symbol, position.volume, None, request, "CLOSE_FAILED",
+            f"ticket={position.ticket} | không phản hồi từ terminal | last_error={err}",
+            position=position,
+        )
         return None
 
     if result.retcode != mt5.TRADE_RETCODE_DONE:
         print(f"Đóng lệnh thất bại! Mã lỗi: {result.retcode} ({result.comment})")
-        save_trade_history(position.symbol, position.volume, result, request, "CLOSE_FAILED", f"ticket={position.ticket} | {result.comment}")
+        save_trade_history(
+            position.symbol, position.volume, result, request, "CLOSE_FAILED",
+            f"ticket={position.ticket} | {result.comment}",
+            position=position,
+        )
         return None
 
     print(f"Đóng lệnh thành công! Ticket ID: {result.order}")
@@ -1513,13 +1569,23 @@ def modify_all_positions_tp_sl(tp_price=None, sl_price=None):
 
         result = mt5.order_send(request)
         if result is None:
+            err = mt5.last_error()
             print(f"Thay đổi TP/SL cho ticket {position.ticket} thất bại! Không nhận được phản hồi.")
+            save_trade_history(
+                position.symbol, position.volume, None, request, "MODIFY_FAILED",
+                f"ticket={position.ticket} | không phản hồi từ terminal | last_error={err}",
+                position=position,
+            )
             results.append(None)
             continue
 
         if result.retcode != mt5.TRADE_RETCODE_DONE:
             print(f"Thay đổi TP/SL cho ticket {position.ticket} thất bại! Mã lỗi: {result.retcode} ({result.comment})")
-            save_trade_history(position.symbol, position.volume, result, request, "MODIFY_FAILED", f"ticket={position.ticket} | {result.comment}")
+            save_trade_history(
+                position.symbol, position.volume, result, request, "MODIFY_FAILED",
+                f"ticket={position.ticket} | {result.comment}",
+                position=position,
+            )
         else:
             print(f"Thay đổi TP/SL cho ticket {position.ticket} thành công!")
             save_trade_history(position.symbol, position.volume, result, request, "MODIFY_SUCCESS", f"ticket={position.ticket}")

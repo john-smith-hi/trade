@@ -58,7 +58,7 @@ def _close_title(reason):
     return "ĐÓNG LỆNH"
 
 
-def poll_timer_alerts():
+def poll_timer_alerts(lock):
     """Poll nến M1 đã đóng, cập nhật xml/timer.xml, Telegram khi đi vào vùng."""
     try:
         alerts = timer_alerts.load_alerts()
@@ -79,24 +79,28 @@ def poll_timer_alerts():
     for account_name, group in groups.items():
         try:
             account = mt5app.get_account(account_name)
-            mt5app.connect_mt5(account, quiet=True)
-            seen_symbols = {}
-            for alert in group:
-                symbol = alert["symbol"]
-                if symbol not in seen_symbols:
+            with lock:
+                mt5app.connect_mt5(account, quiet=True)
+                seen_symbols = {}
+                try:
+                    for alert in group:
+                        symbol = alert["symbol"]
+                        if symbol not in seen_symbols:
+                            try:
+                                seen_symbols[symbol] = mt5app.fetch_last_m1_candle(
+                                    account, symbol, closed=True
+                                )
+                            except Exception as exc:
+                                seen_symbols[symbol] = {"error": str(exc)}
+                finally:
                     try:
-                        seen_symbols[symbol] = mt5app.fetch_last_m1_candle(account, symbol, closed=True)
-                    except Exception as exc:
-                        seen_symbols[symbol] = {"error": str(exc)}
+                        mt5.shutdown()
+                    except Exception:
+                        pass
             quotes[account_name] = seen_symbols
         except Exception as exc:
             quotes[account_name] = {alert["symbol"]: {"error": str(exc)} for alert in group}
             _log(f"timer account {account_name}: {exc}")
-        finally:
-            try:
-                mt5.shutdown()
-            except Exception:
-                pass
 
     changed = False
     next_alerts = []
@@ -219,7 +223,7 @@ def _process_account_deals(account, state):
     acc["positions"] = pos_tickets
 
 
-def poll_deals():
+def poll_deals(lock):
     try:
         mt5app.ensure_accounts_fresh()
         accounts = list(mt5app.ACCOUNTS or [])
@@ -232,29 +236,31 @@ def poll_deals():
         for account in accounts:
             name = account.get("name") or "?"
             try:
-                mt5app.connect_mt5(account, quiet=True)
-                _process_account_deals(account, state)
+                with lock:
+                    mt5app.connect_mt5(account, quiet=True)
+                    try:
+                        _process_account_deals(account, state)
+                    finally:
+                        try:
+                            mt5.shutdown()
+                        except Exception:
+                            pass
             except Exception as exc:
                 _log(f"deals {name}: {exc}")
-            finally:
-                try:
-                    mt5.shutdown()
-                except Exception:
-                    pass
         watch_state.save_state(state)
 
 
-def run_once():
-    poll_timer_alerts()
-    poll_deals()
+def run_once(lock):
+    poll_timer_alerts(lock)
+    poll_deals(lock)
 
 
 def _loop(lock):
     _log(f"bat dau watcher (moi {WATCH_INTERVAL_SEC}s) — Timer + TP/SL/pending")
     while True:
         try:
-            with lock:
-                run_once()
+            # Lock chỉ quanh từng lần connect MT5 — không khóa cả chu kỳ.
+            run_once(lock)
         except Exception:
             _log("loi watcher:\n" + traceback.format_exc())
         time.sleep(WATCH_INTERVAL_SEC)
