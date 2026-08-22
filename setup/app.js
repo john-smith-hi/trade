@@ -24,6 +24,7 @@ const state = {
   week: null,
   weekday: null,
   canTrade: false,
+  mondayComplete: false,
   editingSetupId: null,
   quoteSeq: 0,
 };
@@ -113,16 +114,29 @@ function fillObservationForm(week) {
   el("newsNotes").value = week.news_notes || "";
 }
 
-function setFormDisabled(disabled) {
-  [
-    "mondayHigh", "mondayLow", "prevHigh", "prevLow", "trendD1", "trendH4", "newsNotes",
-    "btnSaveWeek", "account", "symbol", "side", "tradeRange", "zoneConfirmed", "noChase",
-    "structureBreak", "entry", "btnFetchEntry", "sl", "tp", "newsOk", "commitClose",
-    "btnCheck", "btnReset",
-  ].forEach((id) => {
+function setFieldsDisabled(ids, disabled) {
+  ids.forEach((id) => {
     const node = el(id);
     if (node) node.disabled = disabled;
   });
+}
+
+function setObservationDisabled(disabled) {
+  setFieldsDisabled(
+    ["prevHigh", "prevLow", "trendD1", "trendH4", "newsNotes", "btnSaveWeek"],
+    disabled,
+  );
+}
+
+function setScoringDisabled(disabled) {
+  setFieldsDisabled(
+    [
+      "account", "symbol", "side", "tradeRange", "zoneConfirmed", "noChase",
+      "structureBreak", "entry", "btnFetchEntry", "sl", "tp", "newsOk", "commitClose",
+      "btnCheck", "btnReset",
+    ],
+    disabled,
+  );
   document.querySelectorAll(".reaction").forEach((node) => {
     node.disabled = disabled;
   });
@@ -224,7 +238,7 @@ function renderSetupsTable(setups) {
       `<td class="row-actions"></td>`;
 
     const actionsCell = tr.querySelector(".row-actions");
-    if (state.week.status === "active") {
+    if (state.week.status === "active" && state.canTrade) {
       const editBtn = document.createElement("button");
       editBtn.type = "button";
       editBtn.className = "btn btn-secondary";
@@ -248,12 +262,13 @@ function render(data) {
   state.week = data.week;
   state.weekday = data.weekday;
   state.canTrade = data.can_trade;
+  state.mondayComplete = !!data.monday_complete;
 
   el("weekendCard").classList.toggle("hidden", !!data.week);
   el("mainCard").classList.toggle("hidden", !data.week);
 
   if (!data.week) {
-    markApiOk("Kết nối OK — cuối tuần, chưa có tuần mới.");
+    markApiOk("Kết nối OK — chưa có tuần đang lên lịch.");
     return;
   }
 
@@ -264,13 +279,17 @@ function render(data) {
   renderSetupsTable(data.week.setups);
 
   const isClosed = data.week.status !== "active";
-  const isMonday = data.weekday === 1;
+  const canScore = !!data.can_trade;
+  const mondayReady = !!data.monday_complete;
 
   el("closedNotice").classList.toggle("hidden", !isClosed);
-  el("mondayNotice").classList.toggle("hidden", isClosed || !isMonday);
+  el("scoringNotice").classList.toggle("hidden", isClosed || canScore);
+  el("mondayNotice").classList.toggle("hidden", isClosed || !canScore || mondayReady);
 
-  setFormDisabled(isClosed);
-  el("btnCheck").disabled = isClosed || isMonday;
+  setObservationDisabled(isClosed);
+  setScoringDisabled(isClosed || !canScore);
+  el("mondayHigh").disabled = isClosed || !mondayReady;
+  el("mondayLow").disabled = isClosed || !mondayReady;
 }
 
 async function loadWeek() {
@@ -284,14 +303,16 @@ async function loadWeek() {
 
 async function saveWeekObservations() {
   const payload = {
-    monday_high: el("mondayHigh").value === "" ? null : parseFloat(el("mondayHigh").value),
-    monday_low: el("mondayLow").value === "" ? null : parseFloat(el("mondayLow").value),
     prev_week_high: el("prevHigh").value === "" ? null : parseFloat(el("prevHigh").value),
     prev_week_low: el("prevLow").value === "" ? null : parseFloat(el("prevLow").value),
     trend_d1: el("trendD1").value,
     trend_h4: el("trendH4").value,
     news_notes: el("newsNotes").value,
   };
+  if (state.mondayComplete) {
+    payload.monday_high = el("mondayHigh").value === "" ? null : parseFloat(el("mondayHigh").value);
+    payload.monday_low = el("mondayLow").value === "" ? null : parseFloat(el("mondayLow").value);
+  }
   el("weekSaveHint").textContent = "Đang lưu...";
   try {
     const data = await apiPut(`/api/setup/week/${encodeURIComponent(state.week.id)}`, payload);
@@ -339,6 +360,13 @@ function showResult(setup) {
 }
 
 async function submitSetup() {
+  if (!state.canTrade) {
+    el("resultBox").classList.remove("hidden", "pass");
+    el("resultBox").classList.add("fail");
+    el("resultTitle").textContent = "Chưa tới Thứ 2";
+    el("resultFails").innerHTML = "<li>Chưa chấm điểm setup. Previous Week / D1 / H4 vẫn nhập được.</li>";
+    return;
+  }
   const payload = collectSetupPayload();
   try {
     const data = state.editingSetupId

@@ -28,16 +28,19 @@
   <div class="week-banner" id="weekBanner">Đang tải tuần...</div>
 
   <section class="card hidden" id="weekendCard">
-    <h2>Cuối tuần</h2>
-    <p class="hint">Chưa có dữ liệu cho tuần mới. Theo quy tắc, Thứ 2 chỉ quan sát — tuần mới sẽ tự bắt đầu khi bạn mở lại trang vào Thứ 2.</p>
+    <h2>Chưa có tuần</h2>
+    <p class="hint">Chưa có tuần đang lên lịch. Mở lại trang — từ Thứ 7 sẽ tự tạo tuần T2–T6 kế tiếp.</p>
   </section>
 
   <section class="card hidden" id="mainCard">
+    <div class="notice notice-warn hidden" id="scoringNotice">
+      Chưa tới Thứ 2 — chưa <strong>chấm điểm setup</strong>. Previous Week, xu hướng D1/H4 và lịch tin vẫn nhập được.
+    </div>
     <div class="notice notice-warn hidden" id="mondayNotice">
-      ① Hôm nay là Thứ 2 — theo quy tắc <strong>chỉ quan sát, không vào lệnh</strong>. Vẫn có thể lưu quan sát tuần bên dưới.
+      Chưa hết Thứ 2 — chưa nhập <strong>Monday High / Low</strong>. Setup vẫn chấm điểm được từ hôm nay.
     </div>
     <div class="notice notice-muted hidden" id="closedNotice">
-      Tuần này đã đóng (đã qua Thứ 6) — chỉ xem lại, không sửa được nữa. Tuần mới sẽ bắt đầu vào Thứ 2.
+      Tuần này đã đóng (đã qua Thứ 6) — chỉ xem lại. Tuần mới mở từ Thứ 7 để nhập lịch tuần sau.
     </div>
 
     <div class="two-col">
@@ -45,12 +48,12 @@
         <h2>① Quan sát đầu tuần</h2>
         <div class="grid">
           <div class="field">
-            <label for="mondayHigh">Monday High</label>
-            <input type="number" id="mondayHigh" step="any" />
+            <label for="mondayHigh">Monday High (sau hết T2)</label>
+            <input type="number" id="mondayHigh" step="any" placeholder="Sau khi hết Thứ 2" />
           </div>
           <div class="field">
-            <label for="mondayLow">Monday Low</label>
-            <input type="number" id="mondayLow" step="any" />
+            <label for="mondayLow">Monday Low (sau hết T2)</label>
+            <input type="number" id="mondayLow" step="any" placeholder="Sau khi hết Thứ 2" />
           </div>
           <div class="field">
             <label for="prevHigh">Previous Week High</label>

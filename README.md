@@ -162,10 +162,9 @@ Hai request MT5 không chạy song song (`threading.Lock` trong `api.py`).
 
 Theo `day_trade_mindset.txt`. Dữ liệu tuần: `xml/day_trade_week.xml`. Báo thức Timer: `xml/timer.xml`.
 
-- Tuần T2–T6 (giờ VN): tuần `active`, ghi được
-- Thứ 2: chỉ quan sát, không vào lệnh
-- Qua T6: tuần `closed`
-- Thứ 2 tuần sau: tạo tuần mới
+- Thứ 7 / CN: tự tạo tuần T2–T6 kế tiếp (`active`) để nhập Previous Week, D1/H4, tin — chưa chấm điểm setup
+- Thứ 2 trở đi: chấm điểm / giao dịch bình thường; Monday High/Low chỉ nhập sau khi hết ngày Thứ 2
+- Qua T6: tuần `closed`; tuần mới đã mở từ Thứ 7
 
 Không gửi lệnh MT5 — chỉ chấm điểm setup thủ công.
 

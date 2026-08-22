@@ -6,12 +6,14 @@
 # chấm điểm setup thủ công (người dùng tự nhập), không giao dịch thật.
 #
 # Vòng đời tuần: Thứ 2 (week_start) -> Thứ 6 (week_end), giờ Việt Nam (UTC+7).
-#   - Trong tuần (T2-T6)      : tuần "active", cho ghi quan sát + thêm setup.
-#   - Đã qua Thứ 6 (T7/CN...) : tuần tự động chuyển "closed", chỉ xem lại.
-#   - Sang Thứ 2 tuần kế tiếp : tự tạo tuần "active" mới (tuần cũ vẫn giữ lại).
+#   - Thứ 7 / CN              : tạo tuần T2–T6 kế tiếp (active) để nhập lịch trước
+#                               (prev-week / D1 / H4). Chưa chấm điểm setup.
+#   - Trong tuần (T2-T6)      : tuần "active", chấm điểm / giao dịch được cả Thứ 2.
+#   - Monday High/Low         : chỉ nhập sau khi hết ngày Thứ 2.
+#   - Đã qua Thứ 6            : tuần tự động "closed"; tuần mới đã mở từ Thứ 7.
 #
 # Quy tắc chấm điểm lấy từ day_trade_mindset.txt (các bước ①-⑩, bỏ qua ⑨ vì
-# file gốc không có bước này).
+# file gốc không có bước này). Bước ① không còn chặn giao dịch Thứ 2.
 #
 # =============================================================================
 
@@ -30,7 +32,7 @@ SIDES = {"buy", "sell"}
 REACTIONS = {"rejection", "pinbar", "engulfing", "false_breakout"}
 
 STEP_LABELS = {
-    "1": "① Hôm nay là Thứ 2 — theo quy tắc chỉ quan sát, không vào lệnh",
+    "1": "① Quan sát tuần — Monday High/Low chỉ nhập sau khi hết Thứ 2",
     "2": "② Xu hướng D1 chưa khớp hướng lệnh (hoặc sideway nhưng chưa chấp nhận trade biên)",
     "3": "③ Chưa xác định vùng giá quan trọng",
     "4": "④ Giá chưa về vùng quan trọng (đang đuổi giá / giữa sideway)",
@@ -87,6 +89,38 @@ def week_bounds(day):
     iso_year, iso_week, _ = day.isocalendar()
     week_id = f"{iso_year}-W{iso_week:02d}"
     return week_id, monday, friday, weekday
+
+
+def planning_week_bounds(day):
+    """Tuần đang lên lịch: T2–T6 chứa `day`; Thứ 7/CN → tuần T2–T6 kế tiếp."""
+    weekday = day.isoweekday()
+    if weekday >= 6:
+        monday = day + timedelta(days=8 - weekday)
+        friday = monday + timedelta(days=4)
+        iso_year, iso_week, _ = monday.isocalendar()
+        week_id = f"{iso_year}-W{iso_week:02d}"
+        return week_id, monday, friday, weekday
+    return week_bounds(day)
+
+
+def week_session_started(week, now=None):
+    """True khi đã tới ngày Thứ 2 của tuần đó (VN) — cho phép chấm điểm setup."""
+    now = now or now_vn()
+    try:
+        monday = date.fromisoformat(week.get("week_start") or "")
+    except ValueError:
+        return False
+    return now.date() >= monday
+
+
+def monday_session_complete(week, now=None):
+    """True khi đã qua ngày Thứ 2 của tuần đó (VN)."""
+    now = now or now_vn()
+    try:
+        monday = date.fromisoformat(week.get("week_start") or "")
+    except ValueError:
+        return False
+    return now.date() > monday
 
 
 def _new_week(week_id, monday, friday):
@@ -236,13 +270,13 @@ def save_weeks(weeks):
 
 
 def ensure_current_week(now=None):
-    """Đóng tuần đã qua Thứ 6 và tạo tuần T2 mới nếu đang trong tuần làm việc.
+    """Đóng tuần đã qua Thứ 6; từ Thứ 7 tạo tuần T2–T6 kế tiếp.
 
-    Trả về (week hoặc None, weekday 1..7, is_weekend).
+    Trả về (week, weekday 1..7, is_weekend).
     """
     now = now or now_vn()
     today = now.date()
-    week_id, monday, friday, weekday = week_bounds(today)
+    week_id, monday, friday, weekday = planning_week_bounds(today)
     is_weekend = weekday > 5
 
     weeks = load_weeks()
@@ -258,7 +292,7 @@ def ensure_current_week(now=None):
                 changed = True
 
     week = next((w for w in weeks if w["id"] == week_id), None)
-    if week is None and not is_weekend:
+    if week is None:
         week = _new_week(week_id, monday, friday)
         weeks.append(week)
         changed = True
@@ -283,10 +317,14 @@ def update_week_observations(week_id, data):
     if week.get("status") != "active":
         raise ValueError("Tuần đã đóng, không thể sửa quan sát.")
 
-    if "monday_high" in data:
-        week["monday_high"] = _to_float_or_none(data["monday_high"])
-    if "monday_low" in data:
-        week["monday_low"] = _to_float_or_none(data["monday_low"])
+    monday_ready = monday_session_complete(week)
+    if monday_ready:
+        if "monday_high" in data:
+            week["monday_high"] = _to_float_or_none(data["monday_high"])
+        if "monday_low" in data:
+            week["monday_low"] = _to_float_or_none(data["monday_low"])
+    elif data.get("monday_high") not in (None, "") or data.get("monday_low") not in (None, ""):
+        raise ValueError("Chưa hết Thứ 2 — chưa nhập Monday High/Low. Previous Week vẫn lưu được.")
     if "prev_week_high" in data:
         week["prev_week_high"] = _to_float_or_none(data["prev_week_high"])
     if "prev_week_low" in data:
@@ -325,8 +363,8 @@ def evaluate_setup(week, payload, weekday):
         if not ok:
             fails.append(label or STEP_LABELS.get(str(n), f"Bước {n}"))
 
-    # ① Thứ 2 luôn đứng ngoài — chấm theo weekday hiện tại (server), không phải input.
-    mark(1, weekday != 1)
+    # ① Quan sát tuần — không chặn giao dịch Thứ 2.
+    mark(1, True)
 
     # ② Xu hướng D1 (lưu ở quan sát tuần) phải khớp hướng lệnh; sideway cần tick trade_range.
     trend = (week.get("trend_d1") or "").strip().lower()
@@ -408,6 +446,8 @@ def add_setup(week_id, symbol, side, trade_range, evaluated, created_at=None):
         raise ValueError(f"Không tìm thấy tuần '{week_id}'")
     if week.get("status") != "active":
         raise ValueError("Tuần đã đóng, không thể thêm setup mới.")
+    if not week_session_started(week):
+        raise ValueError("Chưa tới Thứ 2 — chưa chấm điểm setup. Previous Week / D1 / H4 vẫn nhập được.")
 
     setup = {
         "id": _next_setup_id(week),
@@ -435,6 +475,8 @@ def update_setup(week_id, setup_id, symbol, side, trade_range, evaluated):
         raise ValueError(f"Không tìm thấy tuần '{week_id}'")
     if week.get("status") != "active":
         raise ValueError("Tuần đã đóng, không thể sửa setup.")
+    if not week_session_started(week):
+        raise ValueError("Chưa tới Thứ 2 — chưa chấm điểm setup. Previous Week / D1 / H4 vẫn nhập được.")
 
     idx = next((i for i, s in enumerate(week["setups"]) if s["id"] == str(setup_id)), None)
     if idx is None:
@@ -467,6 +509,8 @@ def delete_setup(week_id, setup_id):
         raise ValueError(f"Không tìm thấy tuần '{week_id}'")
     if week.get("status") != "active":
         raise ValueError("Tuần đã đóng, không thể xóa setup.")
+    if not week_session_started(week):
+        raise ValueError("Chưa tới Thứ 2 — chưa chấm điểm setup.")
 
     before = len(week["setups"])
     week["setups"] = [s for s in week["setups"] if s["id"] != str(setup_id)]

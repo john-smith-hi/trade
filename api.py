@@ -42,7 +42,7 @@
 # CHECKLIST SETUP (day_trade.py)
 #   UI WAMP: D:\wamp64\www\setup → http://localhost/setup/ (proxy.php → api.py)
 #   Mã nguồn UI cũng có trong repo setup/ (cùng pattern mt5/: common.js + proxy.php)
-#   GET    /api/setup/week              -> tuần hiện tại (auto đóng/tạo) + weekday + can_trade
+#   GET    /api/setup/week              -> tuần hiện tại (auto đóng/tạo) + weekday + can_trade + monday_complete
 #   PUT    /api/setup/week/<week_id>    -> lưu quan sát ① (H/L, tin) + xu hướng ②
 #   POST   /api/setup/setups            -> chấm điểm + lưu 1 setup mới
 #   PUT    /api/setup/setups/<id>       -> chấm điểm lại + sửa 1 setup (tuần active)
@@ -671,11 +671,13 @@ def setup_static(filename="index.html"):
 def setup_week_endpoint():
     with _lock:
         week, weekday, is_weekend = day_trade.ensure_current_week()
+    monday_complete = bool(week) and day_trade.monday_session_complete(week)
     return jsonify({
         "week": week,
         "weekday": weekday,
         "is_weekend": is_weekend,
-        "can_trade": bool(week) and week.get("status") == "active" and weekday != 1,
+        "monday_complete": monday_complete,
+        "can_trade": bool(week) and week.get("status") == "active" and day_trade.week_session_started(week),
     })
 
 
