@@ -300,10 +300,6 @@ main {
   line-height: 1.4;
 }
 
-.reaction-hint {
-  margin: 0 0 10px 28px;
-}
-
 .grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

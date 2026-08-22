@@ -1652,45 +1652,6 @@ def fetch_last_m1_candle(account, symbol, closed=True):
     }
 
 
-def fetch_h1_candles(account, symbol, count=10):
-    """Lấy `count` nến H1 đã CHẠY XONG gần nhất, cũ -> mới.
-
-    Xác định "đã đóng" theo thời gian thực tại lúc gọi (bar_time + 3600s <= now),
-    KHÔNG dựa vào việc MT5 báo pos nào là "hiện tại" — tránh trường hợp market
-    ít tick, terminal chưa kịp lật bar mà vẫn lẫn nến đang chạy giữa chừng vào.
-    Dùng cho check_wick_rejection/check_engulf_rejection/check_zone_sweep_rejection
-    (day_trade.py) — kiểm tra phản ứng giá tại vùng cản trước khi vào lệnh.
-    """
-    symbol = select_symbol(symbol, account)
-    now_epoch = time.time()
-    # Lấy dư vài nến (buffer) để sau khi lọc theo thời gian thực vẫn đủ `count`.
-    rates = mt5.copy_rates_from_pos(symbol, mt5.TIMEFRAME_H1, 0, count + 3)
-    if rates is None or len(rates) == 0:
-        raise RuntimeError(f"Không lấy được nến H1 cho {symbol}: {mt5.last_error()}")
-
-    # rates[0] = pos 0 (nến mới nhất, có thể đang chạy) -> đảo lại cũ -> mới trước khi lọc.
-    rates_asc = list(reversed(rates))
-    closed_bars = [bar for bar in rates_asc if int(bar["time"]) + 3600 <= now_epoch]
-    closed_bars = closed_bars[-count:]
-    if not closed_bars:
-        raise RuntimeError(f"Chưa có nến H1 nào đã đóng cho {symbol}")
-
-    candles = []
-    for bar in closed_bars:
-        bar_time = int(bar["time"])
-        candles.append({
-            "symbol": symbol,
-            "timeframe": "H1",
-            "time": bar_time,
-            "time_str": datetime.fromtimestamp(bar_time).strftime("%Y-%m-%d %H:%M"),
-            "open": float(bar["open"]),
-            "high": float(bar["high"]),
-            "low": float(bar["low"]),
-            "close": float(bar["close"]),
-        })
-    return candles
-
-
 def list_open_positions_data():
     """Snapshot lệnh mở (JSON-friendly) — dùng cho UI điền SL/TP từ status."""
     positions = mt5.positions_get()
