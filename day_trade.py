@@ -15,13 +15,17 @@
 # Quy tắc chấm điểm lấy từ day_trade_mindset.txt (các bước ①-⑩, bỏ qua ⑨ vì
 # file gốc không có bước này). Bước ① không còn chặn giao dịch Thứ 2.
 #
-# ⑤ Phản ứng tại vùng giá — 3 kiểu rejection (REACTIONS), chọn tối thiểu 1:
-#   - wick_1candle : giá đâm qua cản nhưng bị rút chân mạnh, để lại râu nến dài.
-#   - engulf_2candle: nến sau đóng cửa phủ kín toàn bộ thân nến trước.
-#   - zone_sweep    : giá cố vượt cản để dụ FOMO/quét SL rồi lập tức quay đầu.
-# check_wick_rejection/check_engulf_rejection/check_zone_sweep_rejection kiểm tra
-# tự động theo nến H1 (api /api/setup/reaction-check) — chỉ để gợi ý, người dùng
-# vẫn tự tick/sửa checkbox, không bị API ép buộc.
+# ⑤ Phản ứng tại vùng giá — 3 kiểu rejection (REACTIONS), chọn tối thiểu 1.
+# Mỗi kiểu chỉ xét đúng 1 hoặc 2 nến H1 gần nhất (không lookback dài):
+#   - wick_1candle  (1 nến): giá đâm qua cản nhưng bị rút chân mạnh, để lại râu dài.
+#   - engulf_2candle (2 nến): nến sau đóng cửa phủ kín toàn bộ thân nến trước.
+#   - zone_sweep     (2 nến): nến trước đóng cửa vượt hẳn qua cản (dụ FOMO/quét SL),
+#     nến sau lập tức đóng cửa quay đầu.
+# check_wick_rejection/check_engulf_rejection/check_zone_sweep_rejection +
+# resolve_zone_info (chọn vùng giá gần giá hiện tại) đều xử lý ở BACKEND để dễ mở
+# rộng sau này — giao diện (api /api/setup/reaction-zone, /api/setup/reaction-check)
+# chỉ hiển thị dữ liệu trả về, không tự tính toán. Kết quả chỉ để gợi ý, người
+# dùng vẫn tự tick/sửa checkbox, không bị API ép buộc.
 #
 # =============================================================================
 
@@ -360,26 +364,39 @@ def update_week_observations(week_id, data):
     return week
 
 
-def resolve_zone_price(week, side, current_price=None):
+def resolve_zone_info(week, side, current_price=None):
     """Vùng giá 'hỗ trợ' theo hướng lệnh (đợi giá phản ứng tại đây trước khi vào lệnh).
 
-    BUY  -> vùng dưới là hỗ trợ: lấy đáy Thứ 2 hoặc đáy tuần trước.
-    SELL -> vùng trên là hỗ trợ (ngược lại): lấy đỉnh Thứ 2 hoặc đỉnh tuần trước.
+    BUY  -> vùng dưới là hỗ trợ: đáy Thứ 2 hoặc đáy tuần trước.
+    SELL -> vùng trên là hỗ trợ (ngược lại): đỉnh Thứ 2 hoặc đỉnh tuần trước.
     Có cả 2 mốc -> không ưu tiên mốc nào, chọn mốc nào GẦN giá hiện tại hơn
     (current_price). Không có current_price -> tạm lấy mốc có sẵn đầu tiên.
+
+    Xử lý ở backend để giao diện chỉ hiển thị dữ liệu (dict trả về), không tự
+    tính toán — dễ mở rộng thêm nguồn vùng giá khác sau này mà không phải sửa UI.
+
+    Trả về dict {value, source, label, by_distance} hoặc None nếu chưa có mốc nào.
     """
     if not week:
         return None
     if side == "buy":
-        candidates = [week.get("monday_low"), week.get("prev_week_low")]
+        candidates = [
+            ("monday_low", "Thứ 2", week.get("monday_low")),
+            ("prev_week_low", "tuần trước", week.get("prev_week_low")),
+        ]
     else:
-        candidates = [week.get("monday_high"), week.get("prev_week_high")]
-    candidates = [v for v in candidates if v is not None]
+        candidates = [
+            ("monday_high", "Thứ 2", week.get("monday_high")),
+            ("prev_week_high", "tuần trước", week.get("prev_week_high")),
+        ]
+    candidates = [c for c in candidates if c[2] is not None]
     if not candidates:
         return None
     if len(candidates) == 1 or current_price is None:
-        return candidates[0]
-    return min(candidates, key=lambda v: abs(v - current_price))
+        source, label, value = candidates[0]
+        return {"value": value, "source": source, "label": label, "by_distance": False}
+    source, label, value = min(candidates, key=lambda c: abs(c[2] - current_price))
+    return {"value": value, "source": source, "label": label, "by_distance": True}
 
 
 def _candle_body(c):
@@ -440,29 +457,25 @@ def check_engulf_rejection(candles, side, zone):
     return {"matched": matched, "detail": detail}
 
 
-def check_zone_sweep_rejection(candles, side, zone, lookback=8):
-    """③ Rejection ở quy mô vùng giá: trong `lookback` nến gần nhất, giá cố vượt
-    qua vùng cản (dụ FOMO / quét SL) rồi nến hiện tại lập tức đóng cửa quay đầu
-    trở lại vùng an toàn.
+def check_zone_sweep_rejection(candles, side, zone):
+    """③ Rejection ở quy mô vùng giá: đúng 2 nến — nến trước ĐÓNG CỬA vượt hẳn
+    qua vùng cản (như 1 breakout thật, dụ FOMO / quét SL, khác wick_1candle chỉ
+    chạm bằng râu), nến ngay sau đó lập tức đóng cửa quay đầu về vùng an toàn.
     """
-    window = candles[-lookback:]
-    if len(window) < 3:
-        return {"matched": False, "detail": "Chưa đủ nến H1 để xét quy mô vùng giá."}
-    cur = window[-1]
-    prior = window[:-1]
+    if len(candles) < 2:
+        return {"matched": False, "detail": "Chưa đủ 2 nến H1 đã đóng."}
+    prev, cur = candles[-2], candles[-1]
     if side == "buy":
-        extreme = min(c["low"] for c in prior)
-        breached = extreme < zone
-        reclaimed = cur["close"] > zone
+        swept = prev["close"] < zone
+        reversed_back = cur["close"] > zone
     else:
-        extreme = max(c["high"] for c in prior)
-        breached = extreme > zone
-        reclaimed = cur["close"] < zone
-    matched = breached and reclaimed
+        swept = prev["close"] > zone
+        reversed_back = cur["close"] < zone
+    matched = swept and reversed_back
     detail = (
-        f"Trong {len(prior)} nến trước, giá {'đã quét' if breached else 'chưa quét'} qua vùng {zone:g} "
-        f"(đỉnh/đáy chạm tới {extreme:.5g}); nến hiện tại {cur['time_str']} "
-        f"{'đã đóng cửa quay lại' if reclaimed else 'chưa đóng cửa quay lại'} vùng an toàn."
+        f"Nến trước {prev['time_str']} {'đã đóng cửa vượt' if swept else 'chưa đóng cửa vượt'} vùng {zone:g} "
+        f"(close={prev['close']:.5g}); nến sau {cur['time_str']} "
+        f"{'lập tức quay đầu' if reversed_back else 'chưa quay đầu'} (close={cur['close']:.5g})."
     )
     return {"matched": matched, "detail": detail}
 

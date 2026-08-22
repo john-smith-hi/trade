@@ -44,6 +44,7 @@
 #   Mã nguồn UI cũng có trong repo setup/ (cùng pattern mt5/: common.js + proxy.php)
 #   GET    /api/setup/week              -> tuần hiện tại (auto đóng/tạo) + weekday + can_trade + monday_complete
 #   PUT    /api/setup/week/<week_id>    -> lưu quan sát ① (H/L, tin) + xu hướng ②
+#   GET    /api/setup/reaction-zone     -> ⑤ vùng giá 'hỗ trợ' gợi ý theo tuần + hướng lệnh (không cần MT5)
 #   GET    /api/setup/reaction-check    -> ⑤ kiểm tra rejection 1 nến/2 nến/vùng giá theo nến H1 (gợi ý)
 #   POST   /api/setup/setups            -> chấm điểm + lưu 1 setup mới
 #   PUT    /api/setup/setups/<id>       -> chấm điểm lại + sửa 1 setup (tuần active)
@@ -735,6 +736,28 @@ def setup_week_endpoint():
         "monday_complete": monday_complete,
         "can_trade": bool(week) and week.get("status") == "active" and day_trade.week_session_started(week),
     })
+
+
+@app.get("/api/setup/reaction-zone")
+def setup_reaction_zone_endpoint():
+    """⑤ Vùng giá 'hỗ trợ' gợi ý theo tuần hiện tại + hướng lệnh (không cần MT5).
+
+    Xử lý (chọn mốc Thứ 2 hay tuần trước, gần giá hiện tại hơn) ở backend
+    (day_trade.resolve_zone_info) — giao diện chỉ hiển thị kết quả trả về.
+    """
+    side = (request.args.get("side") or "buy").strip().lower()
+    if side not in ("buy", "sell"):
+        return jsonify({"error": "'side' phải là buy hoặc sell"}), 400
+    price_raw = (request.args.get("price") or "").strip()
+    current_price = None
+    if price_raw:
+        try:
+            current_price = float(price_raw)
+        except ValueError:
+            return jsonify({"error": "'price' không hợp lệ"}), 400
+
+    week, _, _ = day_trade.ensure_current_week()
+    return jsonify({"zone": day_trade.resolve_zone_info(week, side, current_price)})
 
 
 @app.put("/api/setup/week/<week_id>")

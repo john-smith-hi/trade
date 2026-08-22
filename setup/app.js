@@ -29,6 +29,7 @@ const state = {
   editingSetupId: null,
   quoteSeq: 0,
   reactionCheckSeq: 0,
+  zoneFetchSeq: 0,
   zoneAuto: true,
 };
 
@@ -72,38 +73,31 @@ function updateTradeRangeVisibility() {
   el("tradeRangeField").classList.toggle("hidden", !isSideway);
 }
 
-function defaultReactionZone(side, currentPrice) {
-  const week = state.week;
-  if (!week) return null;
-  const candidates = (side === "buy"
-    ? [["Thứ 2", week.monday_low], ["tuần trước", week.prev_week_low]]
-    : [["Thứ 2", week.monday_high], ["tuần trước", week.prev_week_high]]
-  ).filter(([, value]) => value !== null && value !== undefined && value !== "");
-
-  if (!candidates.length) return null;
-  if (candidates.length === 1 || !Number.isFinite(currentPrice)) {
-    const [label, value] = candidates[0];
-    return { label, value, byDistance: false };
-  }
-  // Không ưu tiên mốc nào — chọn mốc nào gần giá hiện tại hơn.
-  const [label, value] = candidates.reduce((best, cand) =>
-    Math.abs(cand[1] - currentPrice) < Math.abs(best[1] - currentPrice) ? cand : best);
-  return { label, value, byDistance: true };
-}
-
-function refreshReactionZoneDefault() {
+async function refreshReactionZoneDefault() {
+  // Chọn mốc Thứ 2 / tuần trước xử lý ở backend (day_trade.resolve_zone_info) —
+  // ở đây chỉ gọi API rồi hiển thị đúng dữ liệu trả về, không tự tính toán.
   const zoneInput = el("reactionZone");
   if (!zoneInput || !state.zoneAuto) return;
   const currentPrice = parseFloat(el("entry").value);
-  const picked = defaultReactionZone(el("side").value, currentPrice);
-  if (picked) {
-    zoneInput.value = picked.value;
-    el("reactionZoneHint").textContent = picked.byDistance
-      ? `Tự lấy mốc ${picked.label} = ${picked.value} (gần giá hiện tại nhất). Có thể sửa tay.`
-      : `Tự lấy từ ${picked.label} = ${picked.value} (hỗ trợ theo hướng lệnh). Có thể sửa tay.`;
-  } else {
-    zoneInput.value = "";
-    el("reactionZoneHint").textContent = "Chưa có Monday/Previous Week High-Low trong quan sát tuần — nhập tay vùng giá.";
+  const seq = ++state.zoneFetchSeq;
+  try {
+    const q = new URLSearchParams({ side: el("side").value });
+    if (Number.isFinite(currentPrice)) q.set("price", currentPrice);
+    const data = await apiGet(`/api/setup/reaction-zone?${q}`, { useCache: false });
+    if (seq !== state.zoneFetchSeq || !state.zoneAuto) return;
+    const info = data.zone;
+    if (info) {
+      zoneInput.value = info.value;
+      el("reactionZoneHint").textContent = info.by_distance
+        ? `Tự lấy mốc ${info.label} = ${info.value} (gần giá hiện tại nhất). Có thể sửa tay.`
+        : `Tự lấy từ ${info.label} = ${info.value} (hỗ trợ theo hướng lệnh). Có thể sửa tay.`;
+    } else {
+      zoneInput.value = "";
+      el("reactionZoneHint").textContent = "Chưa có Monday/Previous Week High-Low trong quan sát tuần — nhập tay vùng giá.";
+    }
+  } catch (err) {
+    if (seq !== state.zoneFetchSeq) return;
+    el("reactionZoneHint").textContent = `Không lấy được vùng giá gợi ý: ${err.message || err}`;
   }
 }
 
