@@ -131,12 +131,45 @@
 
         <div class="subheading">⑤–⑥ Phản ứng &amp; xác nhận</div>
         <div class="field">
-          <label>⑤ Phản ứng tại vùng giá</label>
-          <div class="checkbox-row">
-            <label><input type="checkbox" class="reaction" value="rejection" /> Rejection</label>
-            <label><input type="checkbox" class="reaction" value="pinbar" /> Pin bar</label>
-            <label><input type="checkbox" class="reaction" value="engulfing" /> Engulfing</label>
-            <label><input type="checkbox" class="reaction" value="false_breakout" /> False breakout</label>
+          <label>⑤ Phản ứng tại vùng giá — chọn tối thiểu 1 (có thể tự sửa tay, không bắt buộc theo kết quả kiểm tra)</label>
+
+          <div class="field">
+            <label for="reactionZone">Vùng giá kiểm tra (hỗ trợ theo hướng lệnh — BUY: đáy, SELL: đỉnh của Thứ 2 / tuần trước)</label>
+            <div class="row entry-row">
+              <input type="number" id="reactionZone" step="any" />
+              <button type="button" id="btnCheckReaction" class="btn btn-secondary">Kiểm tra ngay (H1)</button>
+            </div>
+            <p class="hint" id="reactionZoneHint"></p>
+            <p class="hint" id="reactionCheckHint"></p>
+          </div>
+
+          <div class="reaction-list">
+            <label class="reaction-item">
+              <input type="checkbox" class="reaction" value="wick_1candle" />
+              <span class="reaction-text">
+                <strong>1. Rejection qua 1 nến</strong>
+                <small>Giá đâm qua cản nhưng bị rút chân mạnh, để lại râu nến dài.</small>
+              </span>
+            </label>
+            <p class="hint reaction-hint" id="reactionHint-wick_1candle"></p>
+
+            <label class="reaction-item">
+              <input type="checkbox" class="reaction" value="engulf_2candle" />
+              <span class="reaction-text">
+                <strong>2. Rejection qua 2 nến</strong>
+                <small>Nến sau đóng cửa phủ kín toàn bộ thân nến trước.</small>
+              </span>
+            </label>
+            <p class="hint reaction-hint" id="reactionHint-engulf_2candle"></p>
+
+            <label class="reaction-item">
+              <input type="checkbox" class="reaction" value="zone_sweep" />
+              <span class="reaction-text">
+                <strong>3. Rejection ở quy mô vùng giá</strong>
+                <small>Giá cố vượt qua cản để dụ phe FOMO và quét Stop Loss, sau đó lập tức quay đầu.</small>
+              </span>
+            </label>
+            <p class="hint reaction-hint" id="reactionHint-zone_sweep"></p>
           </div>
         </div>
         <div class="field checkbox-field">

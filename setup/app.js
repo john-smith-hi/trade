@@ -19,6 +19,7 @@ const WEEKDAY_LABELS = {
 
 const ACCOUNT_KEY = "setup-quote-account";
 const DEFAULT_QUOTE_ACCOUNT = "real";
+const REACTION_TYPES = ["wick_1candle", "engulf_2candle", "zone_sweep"];
 
 const state = {
   week: null,
@@ -27,6 +28,8 @@ const state = {
   mondayComplete: false,
   editingSetupId: null,
   quoteSeq: 0,
+  reactionCheckSeq: 0,
+  zoneAuto: true,
 };
 
 function formatDate(iso) {
@@ -67,6 +70,101 @@ function updateStructureHint() {
 function updateTradeRangeVisibility() {
   const isSideway = (state.week && state.week.trend_d1) === "sideway";
   el("tradeRangeField").classList.toggle("hidden", !isSideway);
+}
+
+function defaultReactionZone(side, currentPrice) {
+  const week = state.week;
+  if (!week) return null;
+  const candidates = (side === "buy"
+    ? [["Thứ 2", week.monday_low], ["tuần trước", week.prev_week_low]]
+    : [["Thứ 2", week.monday_high], ["tuần trước", week.prev_week_high]]
+  ).filter(([, value]) => value !== null && value !== undefined && value !== "");
+
+  if (!candidates.length) return null;
+  if (candidates.length === 1 || !Number.isFinite(currentPrice)) {
+    const [label, value] = candidates[0];
+    return { label, value, byDistance: false };
+  }
+  // Không ưu tiên mốc nào — chọn mốc nào gần giá hiện tại hơn.
+  const [label, value] = candidates.reduce((best, cand) =>
+    Math.abs(cand[1] - currentPrice) < Math.abs(best[1] - currentPrice) ? cand : best);
+  return { label, value, byDistance: true };
+}
+
+function refreshReactionZoneDefault() {
+  const zoneInput = el("reactionZone");
+  if (!zoneInput || !state.zoneAuto) return;
+  const currentPrice = parseFloat(el("entry").value);
+  const picked = defaultReactionZone(el("side").value, currentPrice);
+  if (picked) {
+    zoneInput.value = picked.value;
+    el("reactionZoneHint").textContent = picked.byDistance
+      ? `Tự lấy mốc ${picked.label} = ${picked.value} (gần giá hiện tại nhất). Có thể sửa tay.`
+      : `Tự lấy từ ${picked.label} = ${picked.value} (hỗ trợ theo hướng lệnh). Có thể sửa tay.`;
+  } else {
+    zoneInput.value = "";
+    el("reactionZoneHint").textContent = "Chưa có Monday/Previous Week High-Low trong quan sát tuần — nhập tay vùng giá.";
+  }
+}
+
+function clearReactionHints() {
+  REACTION_TYPES.forEach((type) => {
+    const node = el(`reactionHint-${type}`);
+    if (node) {
+      node.textContent = "";
+      node.classList.remove("hint-error");
+    }
+  });
+  el("reactionCheckHint").textContent = "";
+}
+
+async function checkReactionZone() {
+  const account = el("account").value;
+  const symbol = (el("symbol").value || "").trim();
+  const side = el("side").value;
+  const zoneRaw = el("reactionZone").value;
+  if (!account || !symbol) {
+    el("reactionCheckHint").textContent = "Chọn account + nhập symbol trước.";
+    return;
+  }
+  if (zoneRaw === "") {
+    el("reactionCheckHint").textContent = "Nhập vùng giá (hoặc lưu Monday/Previous Week ở quan sát tuần để tự lấy).";
+    return;
+  }
+
+  const seq = ++state.reactionCheckSeq;
+  el("btnCheckReaction").disabled = true;
+  el("reactionCheckHint").textContent = "Đang kiểm tra nến H1...";
+
+  try {
+    const q = new URLSearchParams({ account, symbol, side, zone: zoneRaw });
+    const data = await withBusy(
+      () => apiGet(`/api/setup/reaction-check?${q}`, { useCache: false, timeoutMs: 30000 }),
+      "Đang kiểm tra nến H1...",
+    );
+    if (seq !== state.reactionCheckSeq) return;
+
+    REACTION_TYPES.forEach((type) => {
+      const info = data.checks && data.checks[type];
+      const hintNode = el(`reactionHint-${type}`);
+      const checkbox = document.querySelector(`.reaction[value="${type}"]`);
+      if (checkbox && info) checkbox.checked = !!info.matched;
+      if (hintNode) {
+        hintNode.textContent = info ? `${info.matched ? "✓ Thỏa điều kiện" : "✗ Chưa thỏa"} — ${info.detail}` : "";
+        hintNode.classList.toggle("hint-error", !!info && !info.matched);
+      }
+    });
+    const lastCandle = data.candles && data.candles.length ? data.candles[data.candles.length - 1].time_str : "--";
+    el("reactionCheckHint").textContent = `Đã kiểm tra lúc ${new Date().toLocaleTimeString("vi-VN")} (nến H1 gần nhất: ${lastCandle}). Kết quả chỉ là gợi ý — vẫn tự sửa được.`;
+    markApiOk("Đã kiểm tra phản ứng tại vùng giá");
+  } catch (err) {
+    if (seq !== state.reactionCheckSeq) return;
+    el("reactionCheckHint").textContent = `Lỗi: ${err.message || err}`;
+  } finally {
+    if (seq === state.reactionCheckSeq) {
+      el("btnCheckReaction").disabled = false;
+    }
+  }
 }
 
 function updateRRPreview() {
@@ -201,6 +299,7 @@ async function fetchEntryQuote() {
     if (seq !== state.quoteSeq) return;
     el("entry").value = data.entry;
     updateRRPreview();
+    refreshReactionZoneDefault();
     setEntryHint(
       `Quote ${data.symbol}: bid=${data.bid} ask=${data.ask} → entry ${side.toUpperCase()}=${data.entry}`,
     );
@@ -276,6 +375,7 @@ function render(data) {
   renderWeekBanner();
   fillObservationForm(data.week);
   updateTradeRangeVisibility();
+  refreshReactionZoneDefault();
   renderSetupsTable(data.week.setups);
 
   const isClosed = data.week.status !== "active";
@@ -402,6 +502,7 @@ function loadSetupIntoForm(setup) {
   el("sl").value = numOrEmpty(setup.sl);
   el("tp").value = numOrEmpty(setup.tp);
   document.querySelectorAll(".reaction").forEach((node) => { node.checked = false; });
+  clearReactionHints();
   updateStructureHint();
   updateRRPreview();
   el("resultBox").classList.add("hidden");
@@ -436,6 +537,9 @@ function resetForm() {
   el("commitClose").checked = false;
   el("tradeRange").checked = false;
   document.querySelectorAll(".reaction").forEach((node) => { node.checked = false; });
+  clearReactionHints();
+  state.zoneAuto = true;
+  refreshReactionZoneDefault();
   el("entry").value = "";
   el("sl").value = "";
   el("tp").value = "";
@@ -458,12 +562,17 @@ function bindEvents() {
   el("side").addEventListener("change", () => {
     updateStructureHint();
     updateRRPreview();
+    refreshReactionZoneDefault();
     fetchEntryQuote();
   });
   el("symbol").addEventListener("change", fetchEntryQuote);
   ["entry", "sl", "tp"].forEach((id) => {
     el(id).addEventListener("input", updateRRPreview);
   });
+  el("reactionZone").addEventListener("input", () => {
+    state.zoneAuto = false;
+  });
+  el("btnCheckReaction").addEventListener("click", checkReactionZone);
 }
 
 document.addEventListener("DOMContentLoaded", async () => {

@@ -44,6 +44,7 @@
 #   Mã nguồn UI cũng có trong repo setup/ (cùng pattern mt5/: common.js + proxy.php)
 #   GET    /api/setup/week              -> tuần hiện tại (auto đóng/tạo) + weekday + can_trade + monday_complete
 #   PUT    /api/setup/week/<week_id>    -> lưu quan sát ① (H/L, tin) + xu hướng ②
+#   GET    /api/setup/reaction-check    -> ⑤ kiểm tra rejection 1 nến/2 nến/vùng giá theo nến H1 (gợi ý)
 #   POST   /api/setup/setups            -> chấm điểm + lưu 1 setup mới
 #   PUT    /api/setup/setups/<id>       -> chấm điểm lại + sửa 1 setup (tuần active)
 #   DELETE /api/setup/setups/<id>?week_id=  -> xóa 1 setup (tuần active)
@@ -543,6 +544,58 @@ def candle_endpoint():
                 pass
 
     return jsonify(candle)
+
+
+@app.get("/api/setup/reaction-check")
+def setup_reaction_check_endpoint():
+    """Kiểm tra tự động 3 kiểu rejection (⑤) tại 1 vùng giá, dựa trên nến H1 live.
+
+    Chỉ để gợi ý — không ép buộc checkbox, người dùng vẫn tự tick/sửa trên UI.
+    """
+    account_name = (request.args.get("account") or "").strip()
+    symbol = (request.args.get("symbol") or "XAUUSD").strip()
+    side = (request.args.get("side") or "buy").strip().lower()
+    zone_raw = (request.args.get("zone") or "").strip()
+    if not account_name:
+        return jsonify({"error": "Thiếu 'account'"}), 400
+    if side not in ("buy", "sell"):
+        return jsonify({"error": "'side' phải là buy hoặc sell"}), 400
+    try:
+        zone = float(zone_raw)
+    except (TypeError, ValueError):
+        return jsonify({"error": "Thiếu hoặc sai 'zone' (giá vùng cần kiểm tra)"}), 400
+
+    buf = io.StringIO()
+    with _lock:
+        mt5app.ensure_accounts_fresh()
+        try:
+            account = mt5app.get_account(account_name)
+        except Exception as exc:
+            return jsonify({"error": str(exc)}), 404
+        try:
+            with contextlib.redirect_stdout(buf):
+                mt5app.connect_mt5(account)
+                candles = mt5app.fetch_h1_candles(account, symbol, count=10)
+        except Exception as exc:
+            return jsonify({"error": str(exc), "detail": buf.getvalue()}), 500
+        finally:
+            try:
+                mt5app.mt5.shutdown()
+            except Exception:
+                pass
+
+    checks = {
+        "wick_1candle": day_trade.check_wick_rejection(candles, side, zone),
+        "engulf_2candle": day_trade.check_engulf_rejection(candles, side, zone),
+        "zone_sweep": day_trade.check_zone_sweep_rejection(candles, side, zone),
+    }
+    return jsonify({
+        "symbol": candles[-1]["symbol"] if candles else symbol,
+        "side": side,
+        "zone": zone,
+        "checks": checks,
+        "candles": candles[-6:],
+    })
 
 
 @app.get("/api/positions")
