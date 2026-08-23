@@ -15,12 +15,10 @@
 # Quy tắc chấm điểm lấy từ day_trade_mindset.txt (các bước ①-⑩, bỏ qua ⑨ vì
 # file gốc không có bước này). Bước ① không còn chặn giao dịch Thứ 2.
 #
-# ⑤ Phản ứng tại vùng giá — 3 kiểu rejection (REACTIONS), chọn tối thiểu 1.
-# Người dùng tự quan sát chart và tick tay, không có kiểm tra tự động:
-#   - wick_1candle  (1 nến): giá đâm qua cản nhưng bị rút chân mạnh, để lại râu dài.
-#   - engulf_2candle (2 nến): nến sau đóng cửa phủ kín toàn bộ thân nến trước.
-#   - zone_sweep     (2 nến): nến trước đóng cửa vượt hẳn qua cản (dụ FOMO/quét SL),
-#     nến sau lập tức đóng cửa quay đầu.
+# ⑤ Phản ứng tại vùng giá — chọn tối thiểu 1 (tự quan sát chart, tick tay):
+#   - pinbar          Pinbar / Hammer H1 (Rejection 1 nến)
+#   - engulfing       Bullish Engulfing / Morning Star H1 (Rejection 2-3 nến)
+#   - false_breakout  Liquidity Sweep / False Break H1 (Quét cản)
 #
 # =============================================================================
 
@@ -36,14 +34,14 @@ WEEK_EXAMPLE_FILE = XML_DIR / "day_trade_week.example.xml"
 
 TRENDS = {"uptrend", "downtrend", "sideway"}
 SIDES = {"buy", "sell"}
-REACTIONS = {"wick_1candle", "engulf_2candle", "zone_sweep"}
+REACTIONS = {"pinbar", "engulfing", "false_breakout"}
 
 STEP_LABELS = {
     "1": "① Quan sát tuần — Monday High/Low chỉ nhập sau khi hết Thứ 2",
     "2": "② Xu hướng D1 chưa khớp hướng lệnh (hoặc sideway nhưng chưa chấp nhận trade biên)",
     "3": "③ Chưa xác định vùng giá quan trọng",
     "4": "④ Giá chưa về vùng quan trọng (đang đuổi giá / giữa sideway)",
-    "5": "⑤ Chưa có phản ứng tại vùng giá (Rejection 1 nến / 2 nến / quy mô vùng giá)",
+    "5": "⑤ Chưa có phản ứng tại vùng giá (Pinbar/Hammer, Engulfing/Morning Star, Liquidity Sweep H1)",
     "7": "⑦ RR chưa đạt tối thiểu 1:2 (hoặc thiếu Entry/SL/TP hợp lệ)",
     "8": "⑧ Chưa xác nhận không có tin Tier-1 / có thể giữ lệnh qua tin mạnh",
     "10": "⑩ Chưa cam kết đặt đủ SL/TP và đóng lệnh trước cuối tuần nếu cần",
