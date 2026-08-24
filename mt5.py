@@ -1113,6 +1113,24 @@ def normalize_price(symbol, price):
     return round(float(price), digits)
 
 
+def sltp_price(symbol, price):
+    """Giá SL/TP cho order_send: luôn Python float. 0.0 = không đặt.
+
+    Wrapper MetaTrader5 từ chối int (kể cả 0) và numpy scalar → last_error
+    (-2, 'Invalid "tp" argument') / Invalid "sl" — order_send trả None, terminal
+    không nhận lệnh.
+    """
+    if price is None:
+        return 0.0
+    try:
+        value = float(price)
+    except (TypeError, ValueError):
+        return 0.0
+    if value <= 0:
+        return 0.0
+    return normalize_price(symbol, value)
+
+
 def validate_pending_price(symbol, side, pending_type, price):
     """Kiểm tra giá chờ so với thị trường + khoảng stops_level của symbol."""
     tick = get_current_price(symbol)
@@ -1550,19 +1568,21 @@ def modify_all_positions_tp_sl(tp_price=None, sl_price=None):
 
         new_tp = tp_price if tp_price is not None else position.tp
         new_sl = sl_price if sl_price is not None else position.sl
-        check_tp = tp_price if tp_price is not None else (new_tp if new_tp and new_tp > 0 else None)
-        check_sl = sl_price if sl_price is not None else (new_sl if new_sl and new_sl > 0 else None)
+        send_tp = sltp_price(position.symbol, new_tp)
+        send_sl = sltp_price(position.symbol, new_sl)
+        check_tp = send_tp if send_tp > 0 else None
+        check_sl = send_sl if send_sl > 0 else None
         validate_tp_sl_modify(side, check_tp, check_sl)
 
-        if new_sl is not None and new_sl > 0:
-            validate_xauusd_max_loss(position.symbol, side, position.price_open, new_sl, position.volume)
+        if send_sl > 0:
+            validate_xauusd_max_loss(position.symbol, side, position.price_open, send_sl, position.volume)
 
         request = {
             "action": mt5.TRADE_ACTION_SLTP,
             "symbol": position.symbol,
-            "position": position.ticket,
-            "tp": new_tp if new_tp > 0 else 0,
-            "sl": new_sl if new_sl > 0 else 0,
+            "position": int(position.ticket),
+            "tp": send_tp,
+            "sl": send_sl,
             "magic": DEFAULT_MAGIC,
             "comment": "Modified TP/SL",
         }
