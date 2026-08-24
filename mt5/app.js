@@ -72,6 +72,8 @@ function updateAccountInfo(accounts) {
 }
 
 let lastAccounts = [];
+/** Account đã gắn default_lot vào ô Lot — tránh ghi đè khi refresh danh sách (vd. Xem trước). */
+let lotBoundToAccount = null;
 let fillSeq = 0;
 /** null = không áp dụng; false = action cần lệnh nhưng không có */
 let actionHasPositions = null;
@@ -106,12 +108,17 @@ function resolveLot() {
   return accountDefaultLot(el("account").value);
 }
 
-function applyDefaultLot() {
+function applyDefaultLot({ force = false } = {}) {
   const lotInput = el("lot");
   if (!lotInput) return;
-  const lot = accountDefaultLot(el("account").value);
+  const accountName = el("account").value;
+  const lot = accountDefaultLot(accountName);
+  lotInput.placeholder = "default_lot";
+  // Chỉ điền mặc định khi đổi account (hoặc force). Refresh accounts sau
+  // Xem trước / tab visible không được đè số lot người dùng đã nhập.
+  if (!force && lotBoundToAccount === accountName) return;
   lotInput.value = String(lot);
-  lotInput.placeholder = `default_lot`;
+  lotBoundToAccount = accountName;
 }
 
 function actionNeedsOpenPositions(action = el("action").value) {
