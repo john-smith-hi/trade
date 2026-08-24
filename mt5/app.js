@@ -80,6 +80,8 @@ let actionHasPositions = null;
 let actionHasOrders = null;
 let previewValid = false;
 let previewSnapshot = null;
+/** true khi JS đang ghi form — không được coi là người dùng sửa thông số. */
+let fillingForm = false;
 
 function getSide() {
   return el("side").value === "sell" ? "sell" : "buy";
@@ -134,6 +136,7 @@ function actionUsesQuote(action = el("action").value) {
 }
 
 function invalidatePreview() {
+  if (fillingForm) return;
   previewValid = false;
   previewSnapshot = null;
   syncConfirmEnabled();
@@ -192,8 +195,13 @@ function setPriceHint(text, { asError = false } = {}) {
 }
 
 function setTpSl(tp, sl) {
-  el("tpPrice").value = tp != null && tp !== "" ? tp : "";
-  el("slPrice").value = sl != null && sl !== "" ? sl : "";
+  fillingForm = true;
+  try {
+    el("tpPrice").value = tp != null && tp !== "" ? tp : "";
+    el("slPrice").value = sl != null && sl !== "" ? sl : "";
+  } finally {
+    fillingForm = false;
+  }
 }
 
 async function autofillFromQuote() {
@@ -245,7 +253,7 @@ async function autofillFromQuote() {
   }
 }
 
-async function checkOpenPositionsForAction() {
+async function checkOpenPositionsForAction({ fillLevels = false } = {}) {
   const action = el("action").value;
   const account = el("account").value;
   if (!account) {
@@ -257,7 +265,7 @@ async function checkOpenPositionsForAction() {
 
   const seq = ++fillSeq;
   setPriceHint("Đang lấy lệnh mở...");
-  setPreviewEnabled(false);
+  if (fillLevels) setPreviewEnabled(false);
   try {
     const q = new URLSearchParams({ account });
     const data = await apiGet(`/api/positions?${q}`, { useCache: false, timeoutMs: 30000 });
@@ -266,7 +274,7 @@ async function checkOpenPositionsForAction() {
 
     if (!positions.length) {
       actionHasPositions = false;
-      if (action === "modify-all") setTpSl("", "");
+      if (fillLevels && action === "modify-all") setTpSl("", "");
       setPriceHint(
         `Không có lệnh đang mở — ${action} không làm gì được. Chọn status/open hoặc mở lệnh trước.`,
         { asError: true },
@@ -281,13 +289,17 @@ async function checkOpenPositionsForAction() {
     if (action === "modify-all") {
       const withLevels = positions.find((p) => p.tp != null || p.sl != null);
       const pos = withLevels || positions[0];
-      setTpSl(pos.tp != null ? pos.tp : "", pos.sl != null ? pos.sl : "");
+      if (fillLevels) {
+        setTpSl(pos.tp != null ? pos.tp : "", pos.sl != null ? pos.sl : "");
+      }
+      const source = fillLevels ? "Đã điền từ" : "Tham chiếu";
       setPriceHint(
-        `Đã điền từ lệnh #${pos.ticket} (${pos.side} ${pos.symbol}): SL=${pos.sl ?? "chưa đặt"} | TP=${pos.tp ?? "chưa đặt"} | mở=${pos.price_open}`
+        `${source} lệnh #${pos.ticket} (${pos.side} ${pos.symbol}): SL=${pos.sl ?? "chưa đặt"} | TP=${pos.tp ?? "chưa đặt"} | mở=${pos.price_open}`
         + (positions.length > 1 ? ` — tổng ${positions.length} lệnh mở` : "")
-        + (pos.sl == null ? " — cần nhập Stop loss trước khi sửa" : ""),
+        + (fillLevels && pos.sl == null ? " — cần nhập Stop loss trước khi sửa" : "")
+        + (!fillLevels ? " — SL/TP trên form sẽ áp dụng cho tất cả lệnh" : ""),
       );
-      markApiOk("Đã lấy SL/TP từ lệnh mở");
+      markApiOk(fillLevels ? "Đã lấy SL/TP từ lệnh mở" : `Có ${positions.length} lệnh mở`);
     } else {
       // close-all
       const summary = positions
@@ -301,13 +313,14 @@ async function checkOpenPositionsForAction() {
     syncExecuteForAction();
   } catch (err) {
     if (seq !== fillSeq) return;
-    actionHasPositions = false;
+    // Refresh sau xem trước thất bại không được coi là "không có lệnh" — giữ trạng thái cũ.
+    if (fillLevels) actionHasPositions = false;
     setPriceHint(`Không lấy được lệnh mở: ${err.message || err}`, { asError: true });
     syncExecuteForAction();
   }
 }
 
-async function checkPendingOrdersForAction() {
+async function checkPendingOrdersForAction({ lockButtons = false } = {}) {
   const account = el("account").value;
   if (!account) {
     actionHasOrders = false;
@@ -318,7 +331,7 @@ async function checkPendingOrdersForAction() {
 
   const seq = ++fillSeq;
   setPriceHint("Đang lấy lệnh chờ...");
-  setPreviewEnabled(false);
+  if (lockButtons) setPreviewEnabled(false);
   try {
     const q = new URLSearchParams({ account });
     const data = await apiGet(`/api/orders?${q}`, { useCache: false, timeoutMs: 30000 });
@@ -347,7 +360,7 @@ async function checkPendingOrdersForAction() {
     syncExecuteForAction();
   } catch (err) {
     if (seq !== fillSeq) return;
-    actionHasOrders = false;
+    if (lockButtons) actionHasOrders = false;
     setPriceHint(`Không lấy được lệnh chờ: ${err.message || err}`, { asError: true });
     syncExecuteForAction();
   }
@@ -358,9 +371,9 @@ async function autofillTpSl() {
   if (actionUsesQuote(action)) {
     await withBusy(() => autofillFromQuote(), "Đang lấy giá...", { block: false });
   } else if (actionNeedsOpenPositions(action)) {
-    await withBusy(() => checkOpenPositionsForAction(), "Đang lấy lệnh mở...", { block: false });
+    await withBusy(() => checkOpenPositionsForAction({ fillLevels: true }), "Đang lấy lệnh mở...", { block: false });
   } else if (actionNeedsPendingOrders(action)) {
-    await withBusy(() => checkPendingOrdersForAction(), "Đang lấy lệnh chờ...", { block: false });
+    await withBusy(() => checkPendingOrdersForAction({ lockButtons: true }), "Đang lấy lệnh chờ...", { block: false });
   } else {
     actionHasPositions = null;
     actionHasOrders = null;
@@ -494,10 +507,16 @@ async function submitAction(noAsk, triggerBtn) {
     } else {
       markPreviewOk();
     }
-    if (actionNeedsOpenPositions()) {
-      await checkOpenPositionsForAction();
-    } else if (actionNeedsPendingOrders()) {
-      await checkPendingOrdersForAction();
+    // Chỉ làm mới trạng thái lệnh mở/chờ. Không điền lại quote/TP/SL —
+    // ghi đè form sẽ làm lệch snapshot → mất nút xác nhận và kéo giá cũ vào.
+    try {
+      if (actionNeedsOpenPositions()) {
+        await checkOpenPositionsForAction({ fillLevels: false });
+      } else if (actionNeedsPendingOrders()) {
+        await checkPendingOrdersForAction({ lockButtons: false });
+      }
+    } catch (refreshErr) {
+      setPriceHint(`Không làm mới danh sách lệnh: ${refreshErr.message || refreshErr}`, { asError: true });
     }
   } catch (err) {
     output.textContent = `Lỗi: ${err.message}`;
