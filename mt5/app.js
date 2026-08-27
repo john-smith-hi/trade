@@ -124,7 +124,7 @@ function applyDefaultLot({ force = false } = {}) {
 }
 
 function actionNeedsOpenPositions(action = el("action").value) {
-  return action === "modify-all" || action === "close-all";
+  return action === "modify-all" || action === "close-all" || action === "modify-all-if";
 }
 
 function actionNeedsPendingOrders(action = el("action").value) {
@@ -133,6 +133,14 @@ function actionNeedsPendingOrders(action = el("action").value) {
 
 function actionUsesQuote(action = el("action").value) {
   return action === "open" || action === "pending";
+}
+
+function actionIsModifyIf(action = el("action").value) {
+  return action === "modify-all-if";
+}
+
+function actionCancelsModifyIf(action = el("action").value) {
+  return action === "cancel-modify-if";
 }
 
 function invalidatePreview() {
@@ -263,7 +271,7 @@ async function checkOpenPositionsForAction({ fillLevels = false } = {}) {
 
     if (!positions.length) {
       actionHasPositions = false;
-      if (fillLevels && action === "modify-all") setTpSl("", "");
+      if (fillLevels && (action === "modify-all" || action === "modify-all-if")) setTpSl("", "");
       setPriceHint(
         `Không có lệnh đang mở — ${action} không làm gì được. Chọn status/open hoặc mở lệnh trước.`,
         { asError: true },
@@ -275,7 +283,7 @@ async function checkOpenPositionsForAction({ fillLevels = false } = {}) {
 
     actionHasPositions = true;
 
-    if (action === "modify-all") {
+    if (action === "modify-all" || action === "modify-all-if") {
       const withLevels = positions.find((p) => p.tp != null || p.sl != null);
       const pos = withLevels || positions[0];
       if (fillLevels) {
@@ -289,6 +297,9 @@ async function checkOpenPositionsForAction({ fillLevels = false } = {}) {
         + (!fillLevels ? " — SL/TP trên form sẽ áp dụng cho tất cả lệnh" : ""),
       );
       markApiOk(fillLevels ? "Đã lấy SL/TP từ lệnh mở" : `Có ${positions.length} lệnh mở`);
+      if (action === "modify-all-if") {
+        await appendModifyIfQuoteHint(account, positions.length);
+      }
     } else {
       // close-all
       const summary = positions
@@ -306,6 +317,54 @@ async function checkOpenPositionsForAction({ fillLevels = false } = {}) {
     if (fillLevels) actionHasPositions = false;
     setPriceHint(`Không lấy được lệnh mở: ${err.message || err}`, { asError: true });
     syncExecuteForAction();
+  }
+}
+
+async function appendModifyIfQuoteHint(account, posCount) {
+  const hint = el("priceFillHint");
+  const base = hint ? hint.textContent : "";
+  const symbol = (el("symbol").value || "XAUUSD").trim();
+  try {
+    const q = new URLSearchParams({ account, symbol, side: getSide() });
+    const quote = await apiGet(`/api/quote?${q}`, { useCache: false, timeoutMs: 30000 });
+    const jobsData = await apiGet(`/api/modify-if?${new URLSearchParams({ account })}`, { useCache: false });
+    const jobs = jobsData.jobs || [];
+    const jobLine = jobs.length
+      ? ` Job đang chờ: ${jobs.map((j) => `${j.symbol} ${j.zoneLow}–${j.zoneHigh} SL=${j.slPrice}`).join("; ")}.`
+      : " Chưa có job modify-all-if.";
+    setPriceHint(
+      `${base} Quote ${quote.symbol}: bid=${quote.bid} ask=${quote.ask}. `
+      + `Nhập vùng kích hoạt (một mức cũng được). Khi giá đi vào vùng, watcher (~30s) sẽ sửa SL/TP ${posCount} lệnh.`
+      + jobLine,
+    );
+  } catch (err) {
+    setPriceHint(`${base} (không lấy được giá/job: ${err.message || err})`);
+  }
+}
+
+async function checkModifyIfJobsForAction() {
+  const account = el("account").value;
+  if (!account) {
+    setPriceHint("Chọn account để xem job modify-all-if.", { asError: true });
+    return;
+  }
+  const seq = ++fillSeq;
+  setPriceHint("Đang lấy job modify-all-if...");
+  try {
+    const data = await apiGet(`/api/modify-if?${new URLSearchParams({ account })}`, { useCache: false });
+    if (seq !== fillSeq) return;
+    const jobs = data.jobs || [];
+    if (!jobs.length) {
+      setPriceHint("Không có job modify-all-if đang chờ.");
+      markApiOk("Không có job modify-all-if");
+      return;
+    }
+    const summary = jobs.map((j) => `${j.symbol} ${j.zoneLow}–${j.zoneHigh} SL=${j.slPrice}`).join("; ");
+    setPriceHint(`Sẽ hủy ${jobs.length} job: ${summary}`);
+    markApiOk(`Có ${jobs.length} job modify-all-if`);
+  } catch (err) {
+    if (seq !== fillSeq) return;
+    setPriceHint(`Không lấy được job: ${err.message || err}`, { asError: true });
   }
 }
 
@@ -363,6 +422,8 @@ async function autofillTpSl() {
     await withBusy(() => checkOpenPositionsForAction({ fillLevels: true }), "Đang lấy lệnh mở...", { block: false });
   } else if (actionNeedsPendingOrders(action)) {
     await withBusy(() => checkPendingOrdersForAction({ lockButtons: true }), "Đang lấy lệnh chờ...", { block: false });
+  } else if (actionCancelsModifyIf(action)) {
+    await withBusy(() => checkModifyIfJobsForAction(), "Đang lấy job modify-all-if...", { block: false });
   } else {
     actionHasPositions = null;
     actionHasOrders = null;
@@ -430,6 +491,8 @@ function buildPayload(noAsk) {
     pending_type: isVisible("pendingType") ? el("pendingType").value : undefined,
     price: isVisible("price") ? el("price").value : undefined,
     lot: isVisible("lot") ? resolveLot() : undefined,
+    zone_low: isVisible("zoneLow") ? el("zoneLow").value : undefined,
+    zone_high: isVisible("zoneHigh") ? el("zoneHigh").value : undefined,
     tp_price: isVisible("tpPrice") ? el("tpPrice").value : "",
     sl_price: isVisible("slPrice") ? el("slPrice").value : "",
     comment: isVisible("comment") ? el("comment").value : undefined,
@@ -461,8 +524,17 @@ async function submitAction(noAsk, triggerBtn) {
     alert("Lệnh pending cần nhập Giá chờ.");
     return;
   }
+  if (el("action").value === "modify-all-if") {
+    const low = el("zoneLow").value.trim();
+    const high = el("zoneHigh").value.trim();
+    if (!low && !high) {
+      alert("modify-all-if cần nhập vùng kích hoạt (một mức cũng được).");
+      el("zoneLow").focus();
+      return;
+    }
+  }
   const action = el("action").value;
-  if (action === "open" || action === "pending" || action === "modify-all") {
+  if (action === "open" || action === "pending" || action === "modify-all" || action === "modify-all-if") {
     const slRaw = el("slPrice").value.trim();
     const sl = Number(slRaw);
     if (!slRaw || !Number.isFinite(sl) || sl <= 0) {
@@ -529,17 +601,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
   el("symbol").addEventListener("change", () => {
     invalidatePreview();
-    if (actionUsesQuote()) autofillTpSl();
+    if (actionUsesQuote() || actionIsModifyIf()) autofillTpSl();
   });
   el("symbol").addEventListener("blur", () => {
     invalidatePreview();
-    if (actionUsesQuote()) autofillTpSl();
+    if (actionUsesQuote() || actionIsModifyIf()) autofillTpSl();
   });
   el("pendingType").addEventListener("change", () => {
     invalidatePreview();
     if (el("action").value === "pending") autofillTpSl();
   });
-  ["price", "lot", "tpPrice", "slPrice", "comment", "copy"].forEach((id) => {
+  ["price", "lot", "tpPrice", "slPrice", "comment", "copy", "zoneLow", "zoneHigh"].forEach((id) => {
     const node = el(id);
     if (!node) return;
     node.addEventListener("input", invalidatePreview);

@@ -26,7 +26,7 @@
 #
 # THAM SỐ BẮT BUỘC
 #   --account   tên account khai báo trong xml/accounts.xml (vd: fake, real, prop_demo)
-#   --action    status | open | pending | cancel-pending | close-all | modify-all
+#   --action    status | open | pending | cancel-pending | close-all | modify-all | modify-all-if | cancel-modify-if
 #
 # THAM SỐ KHÁC
 #   --symbol --side --lot --tp-price --sl-price --price --pending-type --comment --copy --no-ask
@@ -39,6 +39,10 @@
 #     Limit/Stop tự chọn theo giá chờ so với thị trường (không bắt phải nhỏ/lớn hơn).
 #     BUY:  giá < ask → LIMIT, còn lại STOP.
 #     SELL: giá > bid → LIMIT, còn lại STOP.
+#   action=modify-all-if: khi giá chạm vùng thì sửa SL/TP mọi lệnh mở cùng symbol.
+#     Bắt buộc --sl-price; --tp-price tùy chọn; vùng = --price hoặc --zone-low/--zone-high.
+#     Watcher (start_server.bat) poll tick ~30s. Lần poll đầu chỉ ghi nhận, không kích hoạt.
+#   action=cancel-modify-if: hủy mọi job modify-all-if đang chờ của account.
 #   Không truyền --copy → tự dùng auto_copy_enabled/auto_copy_targets của account (nếu có).
 #   Truyền --copy "tên1,tên2" → copy đúng danh sách này (override auto-copy).
 #   Truyền --copy "" → tắt hẳn copy cho lần chạy đó (bỏ qua cả auto-copy).
@@ -65,6 +69,12 @@
 #   # Sửa TP/SL tất cả lệnh đang mở (hiện ước tính lời/lỗ so giá mở)
 #   python mt5.py --account fake --action modify-all --tp-price 60000 --sl-price 58000 --no-ask
 #
+#   # Khi giá chạm 3400 thì sửa SL/TP mọi lệnh XAUUSD đang mở (cần API watcher)
+#   python mt5.py --account fake --action modify-all-if --symbol XAUUSD --price 3400 --sl-price 3380 --tp-price 3450 --no-ask
+#
+#   # Hủy job modify-all-if đang chờ
+#   python mt5.py --account fake --action cancel-modify-if --no-ask
+#
 #   # Đóng toàn bộ lệnh (hiện P/L hiện tại từng lệnh + tổng)
 #   python mt5.py --account fake --action close-all --no-ask
 #
@@ -89,6 +99,8 @@ from pathlib import Path
 
 import MetaTrader5 as mt5
 
+import modify_if
+
 # Console Windows (PowerShell/cmd) thường dùng codepage cp1252/cp850, không encode được
 # tiếng Việt có dấu -> ép stdout/stderr sang UTF-8 để tránh crash khi print() thông báo lỗi.
 for _stream in (sys.stdout, sys.stderr):
@@ -104,7 +116,10 @@ ACCOUNTS_EXAMPLE_FILE = XML_DIR / "accounts.example.xml"
 PATHS_FILE = XML_DIR / "paths.xml"
 PATHS_EXAMPLE_FILE = XML_DIR / "paths.example.xml"
 
-COPYABLE_ACTIONS = {"open", "pending", "cancel-pending", "close-all", "modify-all"}
+COPYABLE_ACTIONS = {
+    "open", "pending", "cancel-pending", "close-all", "modify-all",
+    "modify-all-if", "cancel-modify-if",
+}
 PENDING_TYPES = {"limit", "stop"}
 ORDER_TYPE_LABELS = {
     0: "BUY",
@@ -1542,9 +1557,12 @@ def print_pending_orders():
 
 
 
-def modify_all_positions_tp_sl(tp_price=None, sl_price=None):
-    """Thay đổi take profit và stop loss của tất cả các lệnh đang mở"""
+def modify_all_positions_tp_sl(tp_price=None, sl_price=None, symbol=None):
+    """Thay đổi take profit và stop loss của các lệnh đang mở (lọc symbol nếu có)."""
     positions = mt5.positions_get()
+    if positions and symbol:
+        want = str(symbol).strip()
+        positions = tuple(p for p in positions if p.symbol == want)
     if not positions:
         print("Không có lệnh nào đang mở để thay đổi.")
         return []
@@ -1625,6 +1643,104 @@ def modify_all_positions_tp_sl(tp_price=None, sl_price=None):
         results.append(result)
 
     return results
+
+
+def _print_modify_if_jobs(account_name):
+    jobs = modify_if.waiting_jobs(account_name)
+    if not jobs:
+        print("Không có job modify-all-if đang chờ.")
+        return jobs
+    print(f"Job modify-all-if đang chờ ({len(jobs)}):")
+    for job in jobs:
+        tp = job["tpPrice"] if job.get("tpPrice") is not None else "không đặt"
+        print(
+            f"- {job['symbol']} vùng {job['zoneLow']} – {job['zoneHigh']} "
+            f"| SL mới={job['slPrice']} | TP mới={tp}"
+        )
+    return jobs
+
+
+def register_modify_all_if(account, symbol, sl_price, tp_price=None, price=None,
+                           zone_low=None, zone_high=None):
+    """Lưu job: khi giá chạm vùng thì watcher sửa SL/TP các lệnh mở cùng symbol."""
+    if sl_price is None or sl_price <= 0:
+        raise RuntimeError("modify-all-if bắt buộc --sl-price > 0")
+    symbol = select_symbol(symbol, account)
+    zone_low, zone_high = modify_if.resolve_zone(price, zone_low, zone_high)
+    quote = fetch_quote(account, symbol, "buy")
+    positions = list_open_positions_data()
+    matched = [p for p in positions if p["symbol"] == symbol]
+
+    print(f"Sẽ đặt modify-all-if cho {account['name']} / {symbol}")
+    print(f"Vùng kích hoạt: {zone_low} – {zone_high}")
+    print(f"Giá hiện tại: bid={quote['bid']} ask={quote['ask']}")
+    print(f"Khi chạm vùng → SL mới={sl_price} | TP mới={tp_price if tp_price is not None else 'không đặt'}")
+    print(f"Lệnh mở cùng symbol sẽ bị sửa: {len(matched)}")
+    for pos in matched:
+        print(f"- Ticket: {pos['ticket']} | {pos['side'].upper()} {pos['volume']} | mở={pos['price_open']}")
+    print("Cần start_server.bat (watcher) để job chạy. Lần poll đầu chỉ ghi nhận giá, không kích hoạt.")
+    _print_modify_if_jobs(account["name"])
+
+    if not confirm_action("Bạn có muốn đặt job modify-all-if này không?"):
+        print("Đã hủy đặt modify-all-if.")
+        return None
+
+    job = {
+        "id": modify_if.new_job_id(),
+        "account": account["name"],
+        "symbol": symbol,
+        "zoneLow": zone_low,
+        "zoneHigh": zone_high,
+        "slPrice": sl_price,
+        "tpPrice": tp_price,
+        "enabled": True,
+        "fired": False,
+        "primed": False,
+        "lastBid": quote["bid"],
+        "lastAsk": quote["ask"],
+        "lastSymbol": symbol,
+        "lastAt": int(time.time() * 1000),
+        "lastError": "",
+    }
+    replaced = modify_if.upsert_waiting_job(job)
+    if replaced:
+        print(f"Đã thay job modify-all-if cũ của {account['name']} / {symbol}.")
+    else:
+        print(f"Đã đặt job modify-all-if {job['id']}.")
+    return job
+
+
+def cancel_modify_if_jobs(account):
+    name = account["name"] if isinstance(account, dict) else str(account)
+    jobs = _print_modify_if_jobs(name)
+    if not jobs:
+        return []
+    if not confirm_action("Bạn có muốn hủy mọi job modify-all-if đang chờ của account này không?"):
+        print("Đã hủy thao tác cancel-modify-if.")
+        return []
+    cancelled = modify_if.cancel_waiting_jobs(name)
+    print(f"Đã hủy {len(cancelled)} job modify-all-if.")
+    return cancelled
+
+
+def apply_modify_if_job(account, job):
+    """Watcher gọi khi giá chạm vùng. Caller đã connect_mt5. Ép no-ask."""
+    global NO_ASK, _ACTIVE_XAUUSD_MAX_LOSS
+    prev_ask = NO_ASK
+    prev_loss = _ACTIVE_XAUUSD_MAX_LOSS
+    NO_ASK = True
+    _ACTIVE_XAUUSD_MAX_LOSS = account.get("xauusd_max_loss")
+    try:
+        resolved = job.get("lastSymbol") or select_symbol(job["symbol"], account)
+        print(
+            f"[MODIFY-ALL-IF] {account.get('name')} {resolved} "
+            f"vùng {job['zoneLow']}–{job['zoneHigh']} → SL={job['slPrice']} "
+            f"TP={job['tpPrice'] if job.get('tpPrice') is not None else 'không đặt'}"
+        )
+        return modify_all_positions_tp_sl(job.get("tpPrice"), job["slPrice"], symbol=resolved)
+    finally:
+        NO_ASK = prev_ask
+        _ACTIVE_XAUUSD_MAX_LOSS = prev_loss
 
 
 def fetch_quote(account, symbol, side="buy"):
@@ -1761,17 +1877,28 @@ def run_action_on_account(account, args, lot):
             if args.tp_price is None and args.sl_price is None:
                 raise RuntimeError("Cần cung cấp ít nhất --tp-price hoặc --sl-price để thay đổi")
             modify_all_positions_tp_sl(args.tp_price, args.sl_price)
+        elif args.action == "modify-all-if":
+            register_modify_all_if(
+                account, args.symbol, args.sl_price, args.tp_price,
+                price=getattr(args, "price", None),
+                zone_low=getattr(args, "zone_low", None),
+                zone_high=getattr(args, "zone_high", None),
+            )
+        elif args.action == "cancel-modify-if":
+            cancel_modify_if_jobs(account)
         else:
             print_account_info()
             print_open_positions()
             print_pending_orders()
+            _print_modify_if_jobs(account["name"])
     finally:
         _ACTIVE_XAUUSD_MAX_LOSS = _UNSET_MAX_LOSS
 
 
 def execute_request(account_name, action, symbol="XAUUSD", side="buy", lot=0.01,
                      tp_price=None, sl_price=None, comment="Python trader test",
-                     no_ask=False, copy_names=None, price=None, pending_type="limit"):
+                     no_ask=False, copy_names=None, price=None, pending_type="limit",
+                     zone_low=None, zone_high=None):
     """Thực thi 1 hành động cho account_name,
     kèm copy sang các account trong copy_names nếu action cho phép.
 
@@ -1804,6 +1931,8 @@ def execute_request(account_name, action, symbol="XAUUSD", side="buy", lot=0.01,
     args.comment = comment
     args.price = price
     args.pending_type = (pending_type or "limit").lower()
+    args.zone_low = zone_low
+    args.zone_high = zone_high
 
     lot_scale_actions = {"open", "pending"}
 
@@ -1815,8 +1944,8 @@ def execute_request(account_name, action, symbol="XAUUSD", side="buy", lot=0.01,
 
         if copy_names and action not in COPYABLE_ACTIONS:
             print(
-                f"Lưu ý: copy chỉ áp dụng cho action open/pending/cancel-pending/close-all/modify-all, "
-                f"bỏ qua sao chép cho action '{action}'."
+                f"Lưu ý: copy chỉ áp dụng cho action open/pending/cancel-pending/close-all/"
+                f"modify-all/modify-all-if/cancel-modify-if, bỏ qua sao chép cho action '{action}'."
             )
         elif copy_names:
             for copy_name in copy_names:
@@ -1862,7 +1991,7 @@ def main():
     )
     parser.add_argument(
         "--action",
-        choices=["open", "pending", "cancel-pending", "close-all", "modify-all", "status"],
+        choices=["open", "pending", "cancel-pending", "close-all", "modify-all", "modify-all-if", "cancel-modify-if", "status"],
         required=True,
     )
     parser.add_argument("--symbol", default="XAUUSD")
@@ -1870,7 +1999,9 @@ def main():
     parser.add_argument("--lot", type=float, default=0.01)
     parser.add_argument("--tp-price", type=float, default=None)
     parser.add_argument("--sl-price", type=float, default=None)
-    parser.add_argument("--price", type=float, default=None, help="Giá chờ cho action=pending")
+    parser.add_argument("--price", type=float, default=None, help="Giá chờ pending, hoặc mức kích hoạt modify-all-if")
+    parser.add_argument("--zone-low", type=float, default=None, help="Cạnh dưới vùng kích hoạt modify-all-if")
+    parser.add_argument("--zone-high", type=float, default=None, help="Cạnh trên vùng kích hoạt modify-all-if")
     parser.add_argument(
         "--pending-type", choices=["limit", "stop"], default="limit",
         help="Loại lệnh chờ: limit hoặc stop (mặc định limit)",
@@ -1897,6 +2028,12 @@ def main():
         if args.sl_price is None:
             parser.error("action=pending bắt buộc phải có --sl-price (stop loss); --tp-price tùy chọn")
 
+    if args.action == "modify-all-if":
+        if args.sl_price is None:
+            parser.error("action=modify-all-if bắt buộc phải có --sl-price; --tp-price tùy chọn")
+        if args.price is None and args.zone_low is None and args.zone_high is None:
+            parser.error("action=modify-all-if cần --price hoặc --zone-low/--zone-high")
+
     copy_names = None
     if args.copy is not None:
         copy_names = [t.strip() for t in args.copy.split(",") if t.strip()]
@@ -1905,6 +2042,7 @@ def main():
         args.account, args.action, args.symbol, args.side, args.lot,
         args.tp_price, args.sl_price, args.comment, args.no_ask, copy_names,
         price=args.price, pending_type=args.pending_type,
+        zone_low=args.zone_low, zone_high=args.zone_high,
     )
 
 

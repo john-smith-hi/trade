@@ -28,7 +28,8 @@
 #   POST /api/accounts          -> thêm account mới
 #   PUT  /api/accounts/<name>   -> sửa cấu hình (không đổi login/password/server/name)
 #   POST /api/reload-accounts   -> nạp lại xml/accounts.xml (ép buộc)
-#   POST /api/action            -> thực thi action (status/open/pending/cancel-pending/close-all/modify-all)
+#   POST /api/action            -> thực thi action (status/open/pending/cancel-pending/close-all/modify-all/modify-all-if)
+#   GET  /api/modify-if?account=           -> job modify-all-if đang chờ
 #   GET  /api/quote?account=&symbol=&side=  -> bid/ask/entry tick live (điền TP/SL)
 #   GET  /api/candle?account=&symbol=&closed=1  -> nến M1 (mặc định nến đã đóng)
 #   GET  /api/positions?account=            -> lệnh mở JSON (điền TP/SL khi modify-all)
@@ -69,6 +70,7 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 import day_trade
+import modify_if
 import mt5 as mt5app
 import telegram_notify
 import timer_alerts
@@ -101,6 +103,7 @@ def _watch_extra_files():
     skip = {
         day_trade.WEEK_FILE.resolve(),
         timer_alerts.ALERTS_FILE.resolve(),
+        modify_if.JOBS_FILE.resolve(),
         telegram_notify.CONFIG_FILE.resolve(),
         watch_state.WATCH_FILE.resolve(),
     }
@@ -447,6 +450,8 @@ def action_endpoint():
         tp_price = _to_float_or_none(data.get("tp_price"), "tp_price")
         sl_price = _to_float_or_none(data.get("sl_price"), "sl_price")
         price = _to_float_or_none(data.get("price"), "price")
+        zone_low = _to_float_or_none(data.get("zone_low") if data.get("zone_low") not in (None, "") else data.get("zoneLow"), "zone_low")
+        zone_high = _to_float_or_none(data.get("zone_high") if data.get("zone_high") not in (None, "") else data.get("zoneHigh"), "zone_high")
     except (TypeError, ValueError) as exc:
         return jsonify({"error": str(exc)}), 400
 
@@ -454,9 +459,12 @@ def action_endpoint():
     if pending_type not in ("limit", "stop"):
         return jsonify({"error": "'pending_type' phải là limit hoặc stop"}), 400
 
-    if action in ("open", "pending", "modify-all"):
+    if action in ("open", "pending", "modify-all", "modify-all-if"):
         if sl_price is None or sl_price <= 0:
             return jsonify({"error": "Stop loss là bắt buộc (sl_price > 0)"}), 400
+    if action == "modify-all-if":
+        if zone_low is None and zone_high is None and price is None:
+            return jsonify({"error": "modify-all-if cần vùng kích hoạt (zone_low/zone_high hoặc price)"}), 400
 
     copy_raw = data.get("copy", None)
     if copy_raw is None:
@@ -473,6 +481,7 @@ def action_endpoint():
                     account, action, symbol, side, lot,
                     tp_price, sl_price, comment, no_ask, copy_names,
                     price=price, pending_type=pending_type,
+                    zone_low=zone_low, zone_high=zone_high,
                 )
         except Exception as exc:
             print(f"Lỗi: {exc}", file=buf)
@@ -601,6 +610,17 @@ def orders_endpoint():
                 pass
 
     return jsonify({"orders": orders})
+
+
+@app.get("/api/modify-if")
+def modify_if_endpoint():
+    """Job modify-all-if đang chờ — UI hiển thị khi chọn modify-all-if / cancel-modify-if."""
+    account_name = (request.args.get("account") or "").strip()
+    try:
+        jobs = modify_if.waiting_jobs(account_name or None)
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+    return jsonify({"jobs": jobs})
 
 
 @app.get("/api/history")

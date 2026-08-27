@@ -18,6 +18,7 @@ import MetaTrader5 as mt5
 import mt5 as mt5app
 import telegram_notify
 import timer_alerts
+import modify_if
 import watch_state
 
 WATCH_INTERVAL_SEC = 30
@@ -161,6 +162,119 @@ def poll_timer_alerts(lock):
             _log(f"khong ghi timer.xml: {exc}")
 
 
+def poll_modify_if(lock):
+    """Poll tick; khi giá chạm vùng thì sửa SL/TP các lệnh mở cùng symbol."""
+    try:
+        jobs = modify_if.load_jobs()
+    except Exception as exc:
+        _log(f"khong doc modify_if.xml: {exc}")
+        return
+
+    waiting = [j for j in jobs if j.get("enabled") and not j.get("fired")]
+    if not waiting:
+        return
+
+    groups = defaultdict(list)
+    for job in waiting:
+        groups[job["account"]].append(job)
+
+    now_ms = int(time.time() * 1000)
+    quotes = {}
+    fired_results = {}
+    for account_name, group in groups.items():
+        try:
+            account = mt5app.get_account(account_name)
+            with lock:
+                mt5app.connect_mt5(account, quiet=True)
+                seen = {}
+                try:
+                    for job in group:
+                        symbol = job["symbol"]
+                        if symbol not in seen:
+                            try:
+                                seen[symbol] = mt5app.fetch_quote(account, symbol, "buy")
+                            except Exception as exc:
+                                seen[symbol] = {"error": str(exc)}
+                    quotes[account_name] = seen
+                    for job in group:
+                        quote = seen.get(job["symbol"]) or {"error": "no quote"}
+                        if quote.get("error"):
+                            continue
+                        if not job.get("primed"):
+                            continue
+                        hit = modify_if.tick_hits_zone(
+                            job, quote["bid"], quote["ask"],
+                            job.get("lastBid"), job.get("lastAsk"),
+                        )
+                        if hit:
+                            try:
+                                mt5app.apply_modify_if_job(account, {**job, "lastSymbol": quote.get("symbol")})
+                                fired_results[job["id"]] = {"ok": True, "quote": quote}
+                            except Exception as exc:
+                                fired_results[job["id"]] = {"ok": False, "error": str(exc), "quote": quote}
+                                _log(f"modify-if {account_name} {job['symbol']}: {exc}")
+                finally:
+                    try:
+                        mt5.shutdown()
+                    except Exception:
+                        pass
+        except Exception as exc:
+            quotes[account_name] = {job["symbol"]: {"error": str(exc)} for job in group}
+            _log(f"modify-if account {account_name}: {exc}")
+
+    changed = False
+    next_jobs = []
+    for job in jobs:
+        if not job.get("enabled") or job.get("fired"):
+            next_jobs.append(job)
+            continue
+        quote = (quotes.get(job["account"]) or {}).get(job["symbol"]) or {"error": "no quote"}
+        updated = dict(job)
+        updated["lastAt"] = now_ms
+        if quote.get("error"):
+            updated["lastError"] = quote.get("error") or "no quote"
+            next_jobs.append(updated)
+            changed = True
+            continue
+
+        updated["lastBid"] = quote.get("bid")
+        updated["lastAsk"] = quote.get("ask")
+        updated["lastSymbol"] = quote.get("symbol") or job["symbol"]
+        updated["lastError"] = ""
+
+        fire = fired_results.get(job["id"])
+        if not job.get("primed"):
+            updated["primed"] = True
+        elif fire is not None:
+            updated["fired"] = True
+            updated["enabled"] = False
+            updated["firedAt"] = now_ms
+            quote_f = fire.get("quote") or quote
+            _log(
+                f"MODIFY-IF {job['account']} {updated['lastSymbol']} "
+                f"{job['zoneLow']}-{job['zoneHigh']} bid={quote_f.get('bid')} ask={quote_f.get('ask')}"
+            )
+            tp = job["tpPrice"] if job.get("tpPrice") is not None else "không đặt"
+            telegram_notify.send_alert(telegram_notify.build_message(
+                "KÍCH HOẠT MODIFY-ALL-IF" if fire.get("ok") else "LỖI MODIFY-ALL-IF",
+                [
+                    f"account: {job['account']}",
+                    f"{updated['lastSymbol']} vùng {job['zoneLow']} – {job['zoneHigh']}",
+                    f"bid={quote_f.get('bid')} ask={quote_f.get('ask')}",
+                    f"SL mới: {job['slPrice']} | TP mới: {tp}",
+                    "" if fire.get("ok") else (fire.get("error") or ""),
+                ],
+            ))
+        next_jobs.append(updated)
+        changed = True
+
+    if changed:
+        try:
+            modify_if.save_jobs_locked(next_jobs)
+        except Exception as exc:
+            _log(f"khong ghi modify_if.xml: {exc}")
+
+
 def _process_account_deals(account, state):
     name = account.get("name") or ""
     acc = watch_state.account_state(state, name)
@@ -252,11 +366,12 @@ def poll_deals(lock):
 
 def run_once(lock):
     poll_timer_alerts(lock)
+    poll_modify_if(lock)
     poll_deals(lock)
 
 
 def _loop(lock):
-    _log(f"bat dau watcher (moi {WATCH_INTERVAL_SEC}s) — Timer + TP/SL/pending")
+    _log(f"bat dau watcher (moi {WATCH_INTERVAL_SEC}s) — Timer + modify-if + TP/SL/pending")
     while True:
         try:
             # Lock chỉ quanh từng lần connect MT5 — không khóa cả chu kỳ.

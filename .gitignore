@@ -21,6 +21,9 @@ xml/day_trade_week.xml
 # Báo thức vùng giá trang setup/timer/ (đổi khi đặt/poll), không commit.
 xml/timer.xml
 
+# Job modify-all-if (đổi khi đặt/poll), không commit.
+xml/modify_if.xml
+
 # Bot Telegram (token). Xem xml/telegram.example.xml.
 xml/telegram.xml
 

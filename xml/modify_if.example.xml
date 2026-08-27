@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    MẪU job modify-all-if: khi giá chạm vùng thì sửa SL/TP toàn bộ lệnh mở (cùng symbol).
+    Copy thành "modify_if.xml" (cùng thư mục xml/) — API tự làm khi chạy lần đầu.
+
+    job@id            : mã job.
+    job@account       : tên account trong accounts.xml.
+    job@symbol        : mã giao dịch theo dõi (vd XAUUSD).
+    job@zone_low      : cạnh dưới vùng kích hoạt.
+    job@zone_high     : cạnh trên vùng kích hoạt (một mức thì low = high).
+    job@sl_price      : SL mới khi kích hoạt (bắt buộc).
+    job@tp_price      : TP mới (rỗng = không đặt TP).
+    job@enabled       : true = đang theo dõi.
+    job@fired         : true = đã kích hoạt, không chạy lại.
+    job@primed        : true = đã có lần poll đầu (lần đầu chỉ ghi nhận giá).
+    last              : tick gần nhất.
+-->
+<modify_if_jobs>
+</modify_if_jobs>
