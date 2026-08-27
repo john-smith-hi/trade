@@ -33,7 +33,7 @@
 #   GET  /api/candle?account=&symbol=&closed=1  -> nến M1 (mặc định nến đã đóng)
 #   GET  /api/positions?account=            -> lệnh mở JSON (điền TP/SL khi modify-all)
 #   GET  /api/orders?account=               -> lệnh chờ JSON (cancel-pending)
-#   GET    /api/history?limit=50  -> lịch sử (lines + rows đã parse cho bảng)
+#   GET    /api/history?limit=50&offset=0  -> lịch sử (lines + rows + total cho phân trang)
 #   DELETE /api/history           -> xóa toàn bộ history_mt5.txt
 #
 # Kết quả của /api/action trả về đúng nguyên văn các dòng print() của mt5.py
@@ -606,25 +606,31 @@ def orders_endpoint():
 @app.get("/api/history")
 def history_endpoint():
     limit = request.args.get("limit", default=50, type=int)
+    offset = request.args.get("offset", default=0, type=int)
     if limit is None or limit < 1:
         limit = 50
     limit = min(limit, 500)
+    if offset is None or offset < 0:
+        offset = 0
 
     if not mt5app.HISTORY_FILE.exists():
-        return jsonify({"lines": [], "rows": []})
+        return jsonify({"lines": [], "rows": [], "total": 0, "limit": limit, "offset": offset})
 
     text = mt5app.HISTORY_FILE.read_text(encoding="utf-8")
-    lines = [line for line in text.splitlines() if line.strip()]
-    lines = lines[:limit]
+    all_lines = [line for line in text.splitlines() if line.strip()]
+    total = len(all_lines)
+    if offset >= total and total > 0:
+        offset = max(0, (total - 1) // limit * limit)
+    lines = all_lines[offset:offset + limit]
     rows = [_parse_history_line(line) for line in lines]
-    return jsonify({"lines": lines, "rows": rows})
+    return jsonify({"lines": lines, "rows": rows, "total": total, "limit": limit, "offset": offset})
 
 
 @app.delete("/api/history")
 def history_delete_endpoint():
     with _lock:
         mt5app.HISTORY_FILE.write_text("", encoding="utf-8")
-    return jsonify({"ok": True, "lines": [], "rows": []})
+    return jsonify({"ok": True, "lines": [], "rows": [], "total": 0, "limit": 50, "offset": 0})
 
 
 def _parse_history_line(line):
