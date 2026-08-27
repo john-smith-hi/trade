@@ -227,19 +227,8 @@ async function autofillFromQuote() {
     // SL bắt buộc — điền tạm = entry; TP tùy chọn — để trống.
     setTpSl("", price);
     if (action === "pending") {
-      const pendingType = el("pendingType").value;
-      let tip;
-      if (side === "buy" && pendingType === "limit") {
-        tip = `Buy Limit: nhập giá chờ < ask ${data.ask}`;
-      } else if (side === "buy" && pendingType === "stop") {
-        tip = `Buy Stop: nhập giá chờ > ask ${data.ask}`;
-      } else if (side === "sell" && pendingType === "limit") {
-        tip = `Sell Limit: nhập giá chờ > bid ${data.bid}`;
-      } else {
-        tip = `Sell Stop: nhập giá chờ < bid ${data.bid}`;
-      }
       setPriceHint(
-        `Quote ${data.symbol}: bid=${data.bid} ask=${data.ask}. ${tip}. Đã điền SL tạm = entry — hãy chỉnh SL (TP tùy chọn).`,
+        `Quote ${data.symbol}: bid=${data.bid} ask=${data.ask}. Nhập giá chờ bất kỳ — Limit/Stop sẽ tự chọn (BUY dưới ask = Limit, trên ask = Stop; SELL ngược lại). Đã điền SL tạm = entry — hãy chỉnh SL (TP tùy chọn).`,
       );
     } else {
       setPriceHint(

@@ -35,10 +35,10 @@
 #   action=open BẮT BUỘC --sl-price; --tp-price tùy chọn.
 #     BUY : SL < giá mở (< TP nếu có)
 #     SELL: (TP nếu có <) giá mở < SL
-#   action=pending BẮT BUỘC --price (giá chờ) + --sl-price; --tp-price tùy chọn;
-#     --pending-type = limit | stop.
-#     BUY  LIMIT: giá chờ < ask | BUY  STOP: giá chờ > ask
-#     SELL LIMIT: giá chờ > bid | SELL STOP: giá chờ < bid
+#   action=pending BẮT BUỘC --price (giá chờ) + --sl-price; --tp-price tùy chọn.
+#     Limit/Stop tự chọn theo giá chờ so với thị trường (không bắt phải nhỏ/lớn hơn).
+#     BUY:  giá < ask → LIMIT, còn lại STOP.
+#     SELL: giá > bid → LIMIT, còn lại STOP.
 #   Không truyền --copy → tự dùng auto_copy_enabled/auto_copy_targets của account (nếu có).
 #   Truyền --copy "tên1,tên2" → copy đúng danh sách này (override auto-copy).
 #   Truyền --copy "" → tắt hẳn copy cho lần chạy đó (bỏ qua cả auto-copy).
@@ -526,7 +526,7 @@ def _recent_deal_for_order(order_ticket, position_ticket=None, entry=None):
 
 
 # Status lệnh thành công → Telegram + cập nhật watch_state.
-_TELEGRAM_OK = {"SUCCESS", "PENDING_SUCCESS", "CLOSE_SUCCESS"}
+_TELEGRAM_OK = {"SUCCESS", "PENDING_SUCCESS", "CLOSE_SUCCESS", "MODIFY_SUCCESS"}
 # Terminal không thực hiện được (retcode lỗi / không phản hồi) → Telegram cảnh báo.
 _TELEGRAM_FAIL = {
     "FAILED": "LỖI MỞ LỆNH",
@@ -589,6 +589,22 @@ def _notify_trade_telegram(symbol, lot, result, request, status, detail, profit=
             lines.append(detail)
         lines.append(f"ticket: {order_ticket if order_ticket is not None else '-'}")
         watch_state.add_pending_ticket(account, order_ticket)
+
+    elif status == "MODIFY_SUCCESS":
+        title = f"{prefix}SỬA TP/SL"
+        sl = request.get("sl") if isinstance(request, dict) else None
+        tp = request.get("tp") if isinstance(request, dict) else None
+        try:
+            sl_n = float(sl) if sl is not None else 0.0
+        except (TypeError, ValueError):
+            sl_n = 0.0
+        try:
+            tp_n = float(tp) if tp is not None else 0.0
+        except (TypeError, ValueError):
+            tp_n = 0.0
+        lines.append(f"SL: {sl_n if sl_n > 0 else 'không đặt'}")
+        lines.append(f"TP: {tp_n if tp_n > 0 else 'không đặt'}")
+        lines.append(f"ticket: {pos_ticket if pos_ticket is not None else '-'}")
 
     else:
         title = f"{prefix}ĐÓNG LỆNH (tay)"
@@ -1131,58 +1147,49 @@ def sltp_price(symbol, price):
     return normalize_price(symbol, value)
 
 
-def validate_pending_price(symbol, side, pending_type, price):
-    """Kiểm tra giá chờ so với thị trường + khoảng stops_level của symbol."""
+def pending_market_info(symbol):
     tick = get_current_price(symbol)
     symbol_info = mt5.symbol_info(symbol)
     if symbol_info is None:
         raise RuntimeError(f"Không lấy được thông tin symbol {symbol}")
-
-    side_l = (side or "").lower()
-    kind = (pending_type or "").lower()
-    price = float(price)
-    ask = float(tick.ask)
-    bid = float(tick.bid)
     point = float(getattr(symbol_info, "point", 0) or 0) or 0.0
     stops_level = int(getattr(symbol_info, "trade_stops_level", 0) or 0)
-    min_distance = stops_level * point
+    return {
+        "bid": float(tick.bid),
+        "ask": float(tick.ask),
+        "min_distance": stops_level * point,
+        "stops_level": stops_level,
+    }
 
-    if side_l == "buy" and kind == "limit":
-        if price >= ask:
-            raise RuntimeError(f"BUY LIMIT: giá chờ {price} phải nhỏ hơn ask hiện tại {ask}")
-        if min_distance and (ask - price) < min_distance:
-            raise RuntimeError(
-                f"BUY LIMIT: giá chờ cách ask tối thiểu {min_distance} (stops_level={stops_level}), "
-                f"hiện ask-price={ask - price}"
-            )
-    elif side_l == "buy" and kind == "stop":
-        if price <= ask:
-            raise RuntimeError(f"BUY STOP: giá chờ {price} phải lớn hơn ask hiện tại {ask}")
-        if min_distance and (price - ask) < min_distance:
-            raise RuntimeError(
-                f"BUY STOP: giá chờ cách ask tối thiểu {min_distance} (stops_level={stops_level}), "
-                f"hiện price-ask={price - ask}"
-            )
-    elif side_l == "sell" and kind == "limit":
-        if price <= bid:
-            raise RuntimeError(f"SELL LIMIT: giá chờ {price} phải lớn hơn bid hiện tại {bid}")
-        if min_distance and (price - bid) < min_distance:
-            raise RuntimeError(
-                f"SELL LIMIT: giá chờ cách bid tối thiểu {min_distance} (stops_level={stops_level}), "
-                f"hiện price-bid={price - bid}"
-            )
-    elif side_l == "sell" and kind == "stop":
-        if price >= bid:
-            raise RuntimeError(f"SELL STOP: giá chờ {price} phải nhỏ hơn bid hiện tại {bid}")
-        if min_distance and (bid - price) < min_distance:
-            raise RuntimeError(
-                f"SELL STOP: giá chờ cách bid tối thiểu {min_distance} (stops_level={stops_level}), "
-                f"hiện bid-price={bid - price}"
-            )
-    else:
+
+def infer_pending_type(side, price, bid, ask):
+    """Limit hay Stop theo giá chờ so với thị trường — không bắt user chọn đúng hướng."""
+    side_l = (side or "").lower()
+    price = float(price)
+    if side_l == "buy":
+        return "limit" if price < float(ask) else "stop"
+    if side_l == "sell":
+        return "limit" if price > float(bid) else "stop"
+    raise RuntimeError("side phải là buy hoặc sell")
+
+
+def resolve_pending_kind(symbol, side, price, pending_type=None):
+    """Chọn limit/stop theo giá, bỏ qua pending_type nếu lệch hướng thị trường."""
+    market = pending_market_info(symbol)
+    inferred = infer_pending_type(side, price, market["bid"], market["ask"])
+    requested = (pending_type or "").strip().lower()
+    if requested and requested not in PENDING_TYPES:
         raise RuntimeError("pending-type phải là limit hoặc stop")
+    market["requested_type"] = requested or None
+    market["inferred_type"] = inferred
+    market["type_overridden"] = bool(requested) and requested != inferred
+    return inferred, market
 
-    return {"bid": bid, "ask": ask, "min_distance": min_distance}
+
+def validate_pending_price(symbol, side, pending_type, price):
+    """Giữ tên cũ: không còn chặn giá chờ bé/lớn hơn thị trường."""
+    _kind, market = resolve_pending_kind(symbol, side, price, pending_type)
+    return market
 
 
 def is_order_send_success(result):
@@ -1197,9 +1204,9 @@ def is_order_send_success(result):
 
 def build_pending_request(symbol, side, pending_type, price, lot, tp_price=None, sl_price=None,
                           comment="Python pending"):
-    order_type, _label = resolve_pending_order_type(side, pending_type)
     price = normalize_price(symbol, price)
-    validate_pending_price(symbol, side, pending_type, price)
+    pending_type, _market = resolve_pending_kind(symbol, side, price, pending_type)
+    order_type, _label = resolve_pending_order_type(side, pending_type)
     validate_tp_sl(side, price, tp_price, sl_price)
 
     filling_policy = get_filling_mode(symbol)
@@ -1231,14 +1238,19 @@ def open_pending_trade(account, symbol, side, pending_type, price, lot,
 
     symbol = select_symbol(symbol, account)
     price = normalize_price(symbol, price)
+    pending_type, market = resolve_pending_kind(symbol, side, price, pending_type)
     _order_type, type_label = resolve_pending_order_type(side, pending_type)
-    market = validate_pending_price(symbol, side, pending_type, price)
     validate_tp_sl(side, price, tp_price, sl_price)
 
     print(f"Sẽ đặt lệnh chờ {type_label} trên {symbol} với khối lượng {lot} lot")
     print(f"Giá chờ: {price} | bid={market['bid']} ask={market['ask']}")
+    if market.get("type_overridden"):
+        print(
+            f"Đã tự chọn {type_label} theo giá chờ so với thị trường "
+            f"(bỏ qua pending-type={market.get('requested_type')})."
+        )
     if market["min_distance"]:
-        print(f"Khoảng cách tối thiểu (stops_level): {market['min_distance']}")
+        print(f"Khoảng cách stops_level của symbol: {market['min_distance']} (terminal có thể từ chối nếu quá sát).")
     print(f"TP: {tp_price if tp_price is not None else 'không đặt'} | SL: {sl_price}")
 
     contract_size = resolve_contract_size(symbol)
