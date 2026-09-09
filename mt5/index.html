@@ -46,6 +46,7 @@
         <option value="open">open — mở lệnh mới (thị trường)</option>
         <option value="pending">pending — đặt lệnh chờ tại giá</option>
         <option value="cancel-pending">cancel-pending — hủy toàn bộ lệnh chờ</option>
+        <option value="close">close — đóng một phần theo lot</option>
         <option value="close-all">close-all — đóng toàn bộ lệnh</option>
         <option value="modify-all">modify-all — sửa TP/SL toàn bộ lệnh</option>
         <option value="modify-all-if">modify-all-if — chạm vùng thì sửa TP/SL</option>
@@ -59,11 +60,11 @@
     <p class="hint" id="paramsEmptyHint">Action này không cần thêm tham số nào.</p>
 
     <div class="grid">
-      <div class="field" data-actions="open,pending,modify-all-if">
+      <div class="field" data-actions="open,pending,close,modify-all-if">
         <label for="symbol">Symbol</label>
         <input type="text" id="symbol" value="XAUUSD" />
       </div>
-      <div class="field" data-actions="open,pending">
+      <div class="field" data-actions="open,pending,close">
         <label>Side</label>
         <div class="side-toggle" id="sideToggle">
           <button type="button" class="btn btn-buy active" data-side="buy">Buy</button>
@@ -82,7 +83,7 @@
         <label for="price">Giá chờ</label>
         <input type="number" id="price" step="any" placeholder="giá kích hoạt lệnh chờ" />
       </div>
-      <div class="field field-wide" data-actions="open,pending">
+      <div class="field field-wide" data-actions="open,pending,close">
         <label for="lot">Lot</label>
         <input type="number" id="lot" step="0.01" min="0" placeholder="default_lot" />
       </div>
@@ -106,12 +107,12 @@
           <input type="number" id="tpPrice" step="any" placeholder="để trống nếu không đặt" />
         </div>
       </div>
-      <p class="hint field-wide hidden" id="priceFillHint" data-actions="open,pending,cancel-pending,close-all,modify-all,modify-all-if,cancel-modify-if"></p>
+      <p class="hint field-wide hidden" id="priceFillHint" data-actions="open,pending,cancel-pending,close,close-all,modify-all,modify-all-if,cancel-modify-if"></p>
       <div class="field field-wide" data-actions="open,pending">
         <label for="comment">Comment</label>
         <input type="text" id="comment" value="Python trader test" />
       </div>
-      <div class="field field-wide" data-actions="open,pending,cancel-pending,close-all,modify-all,modify-all-if,cancel-modify-if">
+      <div class="field field-wide" data-actions="open,pending,cancel-pending,close,close-all,modify-all,modify-all-if,cancel-modify-if">
         <label for="copy">Copy sang account (phân tách bằng dấu phẩy)</label>
         <input type="text" id="copy" placeholder="để trống = dùng auto-copy cấu hình sẵn trong accounts.xml" />
       </div>
