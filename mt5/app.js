@@ -36,6 +36,7 @@ function renderAccounts(accounts) {
   if (!accounts.length) {
     select.innerHTML = '<option value="">(không có account nào trong accounts.xml)</option>';
     el("accountInfo").textContent = "";
+    renderOpenPositionWarn([]);
     return;
   }
 
@@ -51,14 +52,102 @@ function renderAccounts(accounts) {
   select.onchange = () => {
     updateAccountInfo(accounts);
     invalidatePreview();
+    renderOpenPositionWarn([]);
     autofillTpSl();
+    if (!actionNeedsOpenPositions()) refreshOpenPositionWarn();
   };
+}
+
+function fmtPrice(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return "—";
+  if (Number.isInteger(x)) return String(x);
+  return x.toFixed(5).replace(/0+$/, "").replace(/\.$/, "");
+}
+
+function fmtLevel(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x) || x <= 0) return "chưa đặt";
+  return fmtPrice(x);
+}
+
+function fmtPnl(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return "0.00";
+  const abs = Math.abs(x).toFixed(2);
+  if (x > 0) return `+${abs}`;
+  if (x < 0) return `-${abs}`;
+  return "0.00";
+}
+
+function fmtVol(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return String(n ?? "");
+  return String(x);
+}
+
+function positionHeadline(p) {
+  const side = String(p.side || "").toUpperCase();
+  return `${side} ${p.symbol || "?"} ${fmtVol(p.volume)} lot`;
+}
+
+function positionLevels(p) {
+  return `Giá mở cửa ${fmtPrice(p.price_open)} · Stop loss ${fmtLevel(p.sl)} · Take profit ${fmtLevel(p.tp)} · Lời/Lỗ ${fmtPnl(p.profit)}`;
+}
+
+function renderOpenPositionWarn(positions) {
+  const box = el("openPositionWarn");
+  const line1 = el("openPositionWarnL1");
+  const line2 = el("openPositionWarnL2");
+  if (!box || !line1 || !line2) return;
+  const list = Array.isArray(positions) ? positions : [];
+  if (!list.length) {
+    box.classList.add("hidden");
+    line1.textContent = "";
+    line2.textContent = "";
+    return;
+  }
+  if (list.length === 1) {
+    line1.textContent = `Có 1 lệnh đang chạy ${positionHeadline(list[0])}`;
+    line2.textContent = positionLevels(list[0]);
+  } else {
+    const total = list.reduce((sum, p) => sum + (Number(p.profit) || 0), 0);
+    line1.textContent = `Có ${list.length} lệnh đang chạy: ${list.map(positionHeadline).join(", ")}`;
+    line2.textContent = `${list.map(positionLevels).join(" | ")} · Tổng ${fmtPnl(total)}`;
+  }
+  box.classList.remove("hidden");
+}
+
+let warnSeq = 0;
+
+async function refreshOpenPositionWarn({ positions = null } = {}) {
+  if (Array.isArray(positions)) {
+    renderOpenPositionWarn(positions);
+    return;
+  }
+  const account = el("account").value;
+  if (!account) {
+    renderOpenPositionWarn([]);
+    return;
+  }
+  const seq = ++warnSeq;
+  try {
+    const q = new URLSearchParams({ account });
+    const data = await apiGet(`/api/positions?${q}`, { useCache: false, timeoutMs: 30000 });
+    if (seq !== warnSeq) return;
+    const list = data.positions || [];
+    lastFetchedPositions = list;
+    renderOpenPositionWarn(list);
+  } catch {
+    if (seq !== warnSeq) return;
+  }
 }
 
 function updateAccountInfo(accounts) {
   const acc = accounts.find((a) => a.name === el("account").value);
   if (!acc) {
     el("accountInfo").textContent = "";
+    renderOpenPositionWarn([]);
     return;
   }
   const autoCopy = acc.auto_copy_enabled && acc.auto_copy_targets.length
@@ -315,6 +404,7 @@ async function checkOpenPositionsForAction({ fillLevels = false } = {}) {
     actionHasPositions = false;
     syncExecuteForAction();
     setPriceHint("Chọn account để kiểm tra lệnh đang mở.", { asError: true });
+    renderOpenPositionWarn([]);
     return;
   }
 
@@ -327,6 +417,8 @@ async function checkOpenPositionsForAction({ fillLevels = false } = {}) {
     if (seq !== fillSeq) return;
     const positions = data.positions || [];
     lastFetchedPositions = positions;
+    warnSeq += 1;
+    renderOpenPositionWarn(positions);
 
     if (!positions.length) {
       actionHasPositions = false;
@@ -524,6 +616,7 @@ async function reloadAccounts() {
       markApiOk("Đã nạp lại accounts.xml");
     }, "Đang nạp lại accounts...");
     await autofillTpSl();
+    if (!actionNeedsOpenPositions()) await refreshOpenPositionWarn();
   } catch (err) {
     alert(`Lỗi tải lại account: ${err.message}`);
   }
@@ -648,6 +741,9 @@ async function submitAction(noAsk, triggerBtn) {
         await checkOpenPositionsForAction({ fillLevels: false });
       } else if (actionNeedsPendingOrders()) {
         await checkPendingOrdersForAction({ lockButtons: false });
+        await refreshOpenPositionWarn();
+      } else {
+        await refreshOpenPositionWarn();
       }
     } catch (refreshErr) {
       setPriceHint(`Không làm mới danh sách lệnh: ${refreshErr.message || refreshErr}`, { asError: true });
@@ -665,6 +761,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   updateParamsVisibility();
   await loadAccounts({ useCache: false });
   syncConfirmEnabled();
+  refreshOpenPositionWarn();
 
   el("themeToggle").addEventListener("click", toggleTheme);
   el("action").addEventListener("change", () => {
@@ -712,5 +809,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   el("btnPreview").addEventListener("click", (e) => submitAction(false, e.target));
   el("btnConfirm").addEventListener("click", (e) => submitAction(true, e.target));
 
-  onVisibleRefresh(() => loadAccounts({ silent: true, useCache: true }), { minIntervalMs: 20000 });
+  onVisibleRefresh(() => {
+    loadAccounts({ silent: true, useCache: true });
+    refreshOpenPositionWarn();
+  }, { minIntervalMs: 20000 });
 });

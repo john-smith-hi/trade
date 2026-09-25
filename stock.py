@@ -25,29 +25,33 @@ Ví dụ:
   python stock.py BTC,ETH,BNB 20 1H -o out.txt
 """
 
-import sys
-import pandas as pd
-from datetime import datetime, timedelta
-import os
-import time
-import re
-import io
 import argparse
+import os
+import re
+import sys
+import time
+from contextlib import redirect_stdout
+from datetime import datetime, timedelta
+
+import pandas as pd
 
 # Cố gắng import các thư viện phụ nếu có
 try:
     from tvDatafeed import TvDatafeed, Interval
 except ImportError:
     TvDatafeed = None
-    
+
 try:
     import yfinance as yf
 except ImportError:
     yf = None
 
-# Đảm bảo đầu ra (stdout) luôn sử dụng UTF-8 (fix lỗi Unicode trên Windows)
-if sys.stdout.encoding != 'utf-8':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+# Console Windows thường không encode được tiếng Việt -> ép UTF-8.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 
 # Mapping cấu hình
 TV_MAPPING = {
@@ -69,6 +73,9 @@ VN_INDICES = {
     'VNINDEX', 'VN30', 'VN100', 'VNMID', 'VNSML',
     'HNX', 'HNXINDEX', 'HNX30', 'UPCOM',
 }
+
+# Ticker Yahoo ngắn (< 4 ký tự); mặc định len < 4 đi vnstock
+YF_SHORT_TICKERS = {'AMD', 'IBM', 'INTC', 'KO', 'DIS', 'NKE'}
 
 # Định nghĩa các phiên giao dịch (giờ VN, UTC+7)
 # Giá trị: tập hợp các giờ (hour) thuộc phiên đó
@@ -98,16 +105,16 @@ def clean_data(df):
     """Chuẩn hóa cấu trúc dữ liệu cho tất cả các nguồn."""
     if df is None or df.empty:
         return pd.DataFrame()
-    
+
     df = df.copy()
-    
+
     # Chuẩn hóa tên cột thời gian
     time_cols = ['datetime', 'Date', 'Datetime', 'time', 'date']
     for col in time_cols:
         if col in df.columns:
             df.rename(columns={col: 'time'}, inplace=True)
             break
-            
+
     if 'time' not in df.columns and isinstance(df.index, pd.DatetimeIndex):
         df = df.reset_index().rename(columns={df.index.name or 'index': 'time'})
 
@@ -117,14 +124,14 @@ def clean_data(df):
         'open': 'open', 'high': 'high', 'low': 'low', 'close': 'close', 'volume': 'volume'
     }
     df.rename(columns={k: v for k, v in col_map.items() if k in df.columns}, inplace=True)
-    
+
     # Chuyển đổi kiểu dữ liệu
     df['time'] = pd.to_datetime(df['time'])
     numeric_cols = ['open', 'high', 'low', 'close', 'volume']
     for col in numeric_cols:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce')
-            
+
     # Sắp xếp và xóa trùng
     df = df.sort_values('time').drop_duplicates('time', keep='last')
     return df
@@ -132,30 +139,58 @@ def clean_data(df):
 def resample_data(df, target_interval):
     """Resample dataframe sang khung thời gian đích."""
     df = clean_data(df)
-    if df.empty: return df
-    
+    if df.empty:
+        return df
+
     value, unit = parse_interval(target_interval)
     pd_unit = {'m': 'min', 'M': 'ME'}.get(unit, unit)
     rule = f"{value}{pd_unit}"
-    
+
     df = df.set_index('time')
-    
+
     ohlc_dict = {
         'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'volume': 'sum'
     }
     # Giữ lại các cột khác nếu có
     for col in df.columns:
-        if col not in ohlc_dict: ohlc_dict[col] = 'last'
-            
+        if col not in ohlc_dict:
+            ohlc_dict[col] = 'last'
+
     resampled = df.resample(rule, label='left', closed='left').agg(ohlc_dict)
     return resampled.dropna(subset=['close']).reset_index()
 
+def time_vn_series(df):
+    """Đổi cột time sang giờ Việt Nam (naive)."""
+    if df['time'].dt.tz is not None:
+        return df['time'].dt.tz_convert('Asia/Ho_Chi_Minh').dt.tz_localize(None)
+    return df['time']
+
+def apply_session_filter(df, session):
+    """Lọc nến theo phiên Á/Âu/Mỹ (giờ VN)."""
+    if df is None or df.empty or not session or session not in SESSION_HOURS:
+        return df if df is not None else pd.DataFrame()
+    hours = SESSION_HOURS[session]
+    return df[time_vn_series(df).dt.hour.isin(hours)]
+
+def symbol_full_name(sym):
+    """Tên hiển thị cho header, theo cùng thứ tự router với fetch_stock_df."""
+    if sym in TV_MAPPING:
+        return TV_MAPPING[sym][2]
+    if sym in YF_MAPPING:
+        return YF_MAPPING[sym][1]
+    if sym in VN_INDICES:
+        return ""
+    if len(sym) >= 4 or sym in YF_SHORT_TICKERS:
+        return f"{sym} (Yahoo Finance)"
+    return ""
+
 def print_header(sym, full_name, interval):
-    print(f"\n" + "="*50)
-    print(f"      PHÂN TÍCH MÃ: {sym} {f'({full_name})' if full_name else ''} ")
+    print("\n" + "=" * 50)
+    name_part = f" ({full_name})" if full_name else ""
+    print(f"      PHÂN TÍCH MÃ: {sym}{name_part}")
     if interval:
         print(f"      Khung thời gian: {interval}")
-    print("="*50)
+    print("=" * 50)
 
 def format_and_display_data(df, sym, limit, unit, session=None):
     """Hiển thị bảng dữ liệu đã được xử lý."""
@@ -164,17 +199,14 @@ def format_and_display_data(df, sym, limit, unit, session=None):
         print(f"Không tìm thấy dữ liệu cho mã {sym}.")
         return
 
-    # Tính toán giờ Việt Nam (UTC+7)
-    if df['time'].dt.tz is not None:
-        df['time_vn'] = df['time'].dt.tz_convert('Asia/Ho_Chi_Minh').dt.tz_localize(None)
-    else:
-        df['time_vn'] = df['time']
-        
-    # Lọc theo phiên nếu có
-    if session and session in SESSION_HOURS:
-        hours = SESSION_HOURS[session]
-        df = df[df['time_vn'].dt.hour.isin(hours)]
-    
+    df = apply_session_filter(df, session)
+    if df.empty:
+        print(f"Không tìm thấy dữ liệu cho mã {sym}.")
+        return
+
+    df = df.copy()
+    df['time_vn'] = time_vn_series(df)
+
     df['change'] = df['close'].diff().fillna(0.0)
     # Thân / râu nến: thân = C-O (âm nếu giảm); trên = high - max(O,C); dưới = min(O,C) - low
     body_top = df[['open', 'close']].max(axis=1)
@@ -182,26 +214,21 @@ def format_and_display_data(df, sym, limit, unit, session=None):
     df['body'] = df['close'] - df['open']
     df['wick_up'] = df['high'] - body_top
     df['wick_dn'] = body_bot - df['low']
-    
+
     fmt = '%Y-%m-%d %H:%M:%S' if unit in ['m', 'H'] else '%Y-%m-%d'
-    pd.options.display.float_format = '{:,.2f}'.format
-    pd.options.display.max_rows = None
-    pd.options.display.max_columns = None
-    pd.options.display.width = None
-    pd.options.display.max_colwidth = None
-    
+
     session_label = f"({SESSION_LABELS[session]})" if session and session in SESSION_LABELS else ''
     print(f"\n--- [ LỊCH SỬ GIÁ {sym} {session_label} ] ---")
-    
+
     show_df = df.tail(limit).copy()
     show_df['time'] = show_df['time_vn'].dt.strftime(fmt)
-    
+
     cols = ['time', 'symbol', 'open', 'high', 'low', 'close', 'change', 'wick_up', 'body', 'wick_dn', 'volume']
     cols_available = [c for c in cols if c in show_df.columns]
-    
-    print(show_df[cols_available].reset_index(drop=True))
+    table = show_df[cols_available].reset_index(drop=True)
+    print(table.to_string(index=False, float_format=lambda x: f'{x:,.2f}'))
 
-def fetch_tv_df(sym, tv_config, interval, limit, value, unit, session=None):
+def fetch_tv_df(sym, tv_config, limit, value, unit, session=None):
     """Lấy OHLC từ TradingView, trả về DataFrame đã clean (có thể rỗng)."""
     tv_sym, tv_exc, _full_name = tv_config
     if not TvDatafeed:
@@ -324,90 +351,64 @@ def fetch_vnstock_df(sym, limit, interval, value, unit, session=None):
 def fetch_stock_df(sym, limit=20, interval='1D', session=None):
     """
     Lấy OHLC cho một mã, trả về DataFrame đã clean (không in ra console).
-    Router giống analyze_stock. DataFrame rỗng nếu nguồn không trả dữ liệu.
+    DataFrame rỗng nếu nguồn không trả dữ liệu.
+    session: TV lấy thêm nến; sau đó lọc giờ phiên (Á/Âu/Mỹ) trên mọi nguồn.
+    NAS100: TradingView trước, Yahoo (NQ=F) nếu TV lỗi hoặc rỗng.
     """
     value, unit = parse_interval(interval)
     sym = sym.upper()
 
+    df = pd.DataFrame()
     if sym in TV_MAPPING:
-        return fetch_tv_df(sym, TV_MAPPING[sym], interval, limit, value, unit, session=session)
-    if sym in YF_MAPPING:
-        return fetch_yf_df(sym, YF_MAPPING[sym], interval, limit, value, unit, session=session)
-    if sym in VN_INDICES:
-        return fetch_vnstock_df(sym, limit, interval, value, unit, session=session)
-    if len(sym) >= 4 or sym in ['AMD', 'IBM', 'INTC', 'KO', 'DIS', 'NKE']:
-        return fetch_yf_df(sym, None, interval, limit, value, unit, session=session)
-    return fetch_vnstock_df(sym, limit, interval, value, unit, session=session)
-
-
-def analyze_tv(sym, tv_config, interval, limit, value, unit, session=None):
-    tv_sym, tv_exc, full_name = tv_config
-    if not TvDatafeed:
-        print(f"Bỏ qua {sym}: Thư viện tvDatafeed chưa được cài đặt.")
-        return
-
-    print_header(sym, full_name, interval)
-    try:
-        df = fetch_tv_df(sym, tv_config, interval, limit, value, unit, session=session)
-        if not df.empty:
-            format_and_display_data(df, sym, limit, unit, session=session)
-            return True
-        print(f"Không nhận được dữ liệu từ TradingView cho {sym}.")
-        return False
-    except Exception as e:
-        print(f"Lỗi TradingView cho {sym}: {e}")
-        return False
-
-def analyze_yf(sym, yf_config, interval, limit, value, unit, session=None):
-    if yf_config:
-        yf_sym, full_name = yf_config
-    else:
-        yf_sym, full_name = sym, f"{sym} (Yahoo Finance)"
-
-    if not yf:
-        print(f"Bỏ qua {sym}: Thư viện yfinance chưa được cài đặt.")
-        return
-
-    print_header(sym, full_name, interval)
-    try:
-        df = fetch_yf_df(sym, yf_config, interval, limit, value, unit, session=session)
-        if not df.empty:
-            format_and_display_data(df, sym, limit, unit, session=session)
-    except Exception as e:
-        print(f"Lỗi yfinance cho {sym}: {e}")
-
-def analyze_vnstock(sym, limit, interval, value, unit, session=None):
-    print_header(sym, "", interval)
-    try:
+        try:
+            df = fetch_tv_df(sym, TV_MAPPING[sym], limit, value, unit, session=session)
+        except Exception:
+            if sym not in YF_MAPPING:
+                raise
+            df = pd.DataFrame()
+        if df.empty and sym in YF_MAPPING:
+            df = fetch_yf_df(sym, YF_MAPPING[sym], interval, limit, value, unit, session=session)
+    elif sym in YF_MAPPING:
+        df = fetch_yf_df(sym, YF_MAPPING[sym], interval, limit, value, unit, session=session)
+    elif sym in VN_INDICES:
         df = fetch_vnstock_df(sym, limit, interval, value, unit, session=session)
+    elif len(sym) >= 4 or sym in YF_SHORT_TICKERS:
+        df = fetch_yf_df(sym, None, interval, limit, value, unit, session=session)
+    else:
+        df = fetch_vnstock_df(sym, limit, interval, value, unit, session=session)
+
+    return apply_session_filter(df, session)
+
+
+def analyze_stock(sym, limit, interval='1D', session=None):
+    """In OHLC một mã: header + bảng. Nguồn do fetch_stock_df chọn."""
+    value, unit = parse_interval(interval)
+    print_header(sym, symbol_full_name(sym), interval)
+    try:
+        df = fetch_stock_df(sym, limit=limit, interval=interval, session=session)
         if not df.empty:
             format_and_display_data(df, sym, limit, unit, session=session)
         else:
             print(f"Không tìm thấy dữ liệu cho {sym}.")
     except Exception as e:
-        print(f"Lỗi vnstock cho {sym}: {e}")
-
-def analyze_stock(sym, limit, interval='1D', session=None):
-    """
-    Hàm phân tích một mã cổ phiếu cụ thể với hỗ trợ khung thời gian linh hoạt.
-    Bộ điều hướng (Router) cho các loại tài sản khác nhau.
-    """
-    try:
-        value, unit = parse_interval(interval)
-
-        if sym in TV_MAPPING:
-            analyze_tv(sym, TV_MAPPING[sym], interval, limit, value, unit, session=session)
-        elif sym in YF_MAPPING:
-            analyze_yf(sym, YF_MAPPING[sym], interval, limit, value, unit, session=session)
-        elif sym in VN_INDICES:
-            analyze_vnstock(sym, limit, interval, value, unit, session=session)
-        elif len(sym) >= 4 or sym in ['AMD', 'IBM', 'INTC', 'KO', 'DIS', 'NKE']:  # Global stocks fallback
-            analyze_yf(sym, None, interval, limit, value, unit, session=session)
-        else:
-            analyze_vnstock(sym, limit, interval, value, unit, session=session)
-
-    except Exception as e:
         print(f"\nLỗi khởi tạo phân tích cho mã {sym}: {e}")
+
+def run_report(symbols_list, limit, interval, session):
+    session_label = f" | {SESSION_LABELS[session]}" if session and session in SESSION_LABELS else ''
+    print("=" * 50)
+    print("      VNSTOCK & GLOBAL MARKET ANALYZER")
+    print(f"      Danh sách: {', '.join(symbols_list)}")
+    print(f"      Khung: {interval}, Số lượng: {limit}{session_label}")
+    print("=" * 50)
+
+    for sym in symbols_list:
+        if not sym:
+            continue
+        analyze_stock(sym.upper(), limit, interval, session=session)
+
+    print("\n" + "=" * 50)
+    print("      HOÀN THÀNH PHÂN TÍCH")
+    print("=" * 50)
 
 def main():
     parser = argparse.ArgumentParser(description="VNSTOCK & Global Market Analyzer")
@@ -421,7 +422,7 @@ def main():
         help="Lọc phiên: A = Phiên Á (05-14h), Au = Phiên Âu (14-20h), M = Phiên Mỹ (20-03h)"
     )
     parser.add_argument("-o", "--output", help="Đường dẫn file để xuất kết quả")
-    
+
     args = parser.parse_args()
 
     symbols_list = args.symbols.replace(',', ' ').split()
@@ -448,35 +449,16 @@ def main():
         cleaned_symbols.append(sym)
     symbols_list = cleaned_symbols
 
-    # Redirect stdout sang file nếu có tham số -o
-    original_stdout = sys.stdout
-    f_output = None
     if args.output:
         output_dir = os.path.dirname(args.output)
-        if output_dir: os.makedirs(output_dir, exist_ok=True)
-        f_output = open(args.output, 'w', encoding='utf-8')
-        sys.stdout = f_output
-
-    try:
-        session_label = f" | {SESSION_LABELS[session]}" if session and session in SESSION_LABELS else ''
-        print("="*50)
-        print(f"      VNSTOCK 4.x OPTIMIZED ANALYZER")
-        print(f"      Danh sách: {', '.join(symbols_list)}")
-        print(f"      Khung: {interval}, Số lượng: {limit}{session_label}")
-        print("="*50)
-
-        for sym in symbols_list:
-            if not sym: continue
-            analyze_stock(sym.upper(), limit, interval, session=session)
-
-        print("\n" + "="*50)
-        print("      HOÀN THÀNH PHÂN TÍCH          ")
-        print("="*50)
-    finally:
-        if f_output is not None:
-            sys.stdout = original_stdout
-            f_output.close()
-            print(f"Kết quả lưu tại: {args.output}")
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
+        with open(args.output, 'w', encoding='utf-8') as f_output:
+            with redirect_stdout(f_output):
+                run_report(symbols_list, limit, interval, session)
+        print(f"Kết quả lưu tại: {args.output}")
+    else:
+        run_report(symbols_list, limit, interval, session)
 
 if __name__ == "__main__":
     main()

@@ -227,6 +227,26 @@ main {
   font-weight: 600;
 }
 
+.open-position-warn {
+  margin: 0 0 14px;
+  padding: 8px 10px;
+  border: 1px solid var(--danger);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.open-position-warn p {
+  margin: 0;
+}
+
+.open-position-warn p + p {
+  margin-top: 3px;
+}
+
 .btn {
   border: none;
   border-radius: 6px;
