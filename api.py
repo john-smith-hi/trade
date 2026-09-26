@@ -28,7 +28,7 @@
 #   POST /api/accounts          -> thêm account mới
 #   PUT  /api/accounts/<name>   -> sửa cấu hình (không đổi login/password/server/name)
 #   POST /api/reload-accounts   -> nạp lại xml/accounts.xml (ép buộc)
-#   POST /api/action            -> thực thi action (status/open/pending/cancel-pending/close-all/modify-all/modify-all-if)
+#   POST /api/action            -> thực thi action (status/open/pending/cancel-pending/close/close-all/modify-all/modify-all-if)
 #   GET  /api/modify-if?account=           -> job modify-all-if đang chờ
 #   GET  /api/quote?account=&symbol=&side=  -> bid/ask/entry tick live (điền TP/SL)
 #   GET  /api/candle?account=&symbol=&closed=1  -> nến M1 (mặc định nến đã đóng)

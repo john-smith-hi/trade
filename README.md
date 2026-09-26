@@ -188,18 +188,18 @@ Watcher gửi tin: mở/đóng lệnh (web/CLI + auto_copy), pending khớp, đ�
 ## 4. Phân tích giá (`stock.py`)
 
 ```bash
-python stock.py "<MÃ>" [SỐ_NẾN] [INTERVAL] [-o FILE]
+python stock.py "<MÃ>" [SỐ_NẾN] [INTERVAL] [-s PHIÊN] [-o FILE]
 ```
 
 - Cổ phiếu VN: `FPT`, `VNM`, `VNINDEX`, …
 - Global: `GOLD`, `WTI`, `BRENT`, `NAS100`, `BTC`, `ETH`, `BNB`
 - Nhiều mã: `"GOLD WTI"` hoặc `BTC,ETH,BNB`
-- Hậu tố `m`: lọc phiên Mỹ 20:00–03:00 VN (ví dụ `GOLDm`, `NAS100M`)
+- `-s`: lọc phiên giờ VN — `A` Á (05–14h), `Au` Âu (14–20h), `M` Mỹ (20–03h)
 - Interval: `1m`, `5m`, `15m`, `1H`, `1D`, `1W`, `1M` (mặc định `1D`)
 
 ```bash
 python stock.py GOLD 10 1H
-python stock.py NAS100M 100 1H
+python stock.py NAS100 100 1H -s M
 python stock.py BTC,ETH,BNB 20 1H -o out.txt
 ```
 

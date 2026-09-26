@@ -26,7 +26,7 @@
 #
 # THAM SỐ BẮT BUỘC
 #   --account   tên account khai báo trong xml/accounts.xml (vd: fake, real, prop_demo)
-#   --action    status | open | pending | cancel-pending | close-all | modify-all | modify-all-if | cancel-modify-if
+#   --action    status | open | pending | cancel-pending | close | close-all | modify-all | modify-all-if | cancel-modify-if
 #
 # THAM SỐ KHÁC
 #   --symbol --side --lot --tp-price --sl-price --price --pending-type --comment --copy --no-ask
@@ -42,6 +42,8 @@
 #   action=modify-all-if: khi giá chạm vùng thì sửa SL/TP mọi lệnh mở cùng symbol.
 #     Bắt buộc --sl-price; --tp-price tùy chọn; vùng = --price hoặc --zone-low/--zone-high.
 #     Watcher (start_server.bat) poll tick ~30s. Lần poll đầu chỉ ghi nhận, không kích hoạt.
+#   action=close: đóng một phần (hoặc hết) theo --lot, chỉ lệnh cùng --symbol + --side.
+#     Lot copy = lot gốc × multi. Nếu --lot lớn hơn tổng đang mở thì đóng hết phần khớp.
 #   action=cancel-modify-if: hủy mọi job modify-all-if đang chờ của account.
 #   Không truyền --copy → tự dùng auto_copy_enabled/auto_copy_targets của account (nếu có).
 #   Truyền --copy "tên1,tên2" → copy đúng danh sách này (override auto-copy).
@@ -75,6 +77,9 @@
 #   # Hủy job modify-all-if đang chờ
 #   python mt5.py --account fake --action cancel-modify-if --no-ask
 #
+#   # Đóng một phần 0.01 lot BUY XAUUSD (giữ phần còn lại)
+#   python mt5.py --account fake --action close --symbol XAUUSD --side buy --lot 0.01 --no-ask
+#
 #   # Đóng toàn bộ lệnh (hiện P/L hiện tại từng lệnh + tổng)
 #   python mt5.py --account fake --action close-all --no-ask
 #
@@ -91,6 +96,7 @@
 # =============================================================================
 
 import argparse
+import math
 import sys
 import time
 import xml.etree.ElementTree as ET
@@ -117,7 +123,7 @@ PATHS_FILE = XML_DIR / "paths.xml"
 PATHS_EXAMPLE_FILE = XML_DIR / "paths.example.xml"
 
 COPYABLE_ACTIONS = {
-    "open", "pending", "cancel-pending", "close-all", "modify-all",
+    "open", "pending", "cancel-pending", "close", "close-all", "modify-all",
     "modify-all-if", "cancel-modify-if",
 }
 PENDING_TYPES = {"limit", "stop"}
@@ -622,7 +628,17 @@ def _notify_trade_telegram(symbol, lot, result, request, status, detail, profit=
         lines.append(f"ticket: {pos_ticket if pos_ticket is not None else '-'}")
 
     else:
-        title = f"{prefix}ĐÓNG LỆNH (tay)"
+        req_vol = None
+        if isinstance(request, dict) and request.get("volume") is not None:
+            try:
+                req_vol = float(request.get("volume"))
+            except (TypeError, ValueError):
+                req_vol = None
+        pos_vol = float(getattr(position, "volume", 0) or 0) if position is not None else 0.0
+        if req_vol is not None and pos_vol > 0 and req_vol + 1e-12 < pos_vol:
+            title = f"{prefix}ĐÓNG MỘT PHẦN"
+        else:
+            title = f"{prefix}ĐÓNG LỆNH (tay)"
         lines.append(f"ticket: {pos_ticket if pos_ticket is not None else order_ticket}")
         deal = _recent_deal_for_order(
             order_ticket,
@@ -1379,45 +1395,152 @@ def cancel_all_pending_orders():
     return results
 
 
-def build_close_request(position):
+def symbol_volume_limits(symbol):
+    info = mt5.symbol_info(symbol)
+    vmin = 0.01
+    vmax = 100.0
+    step = 0.01
+    if info is not None:
+        vmin = float(getattr(info, "volume_min", vmin) or vmin)
+        vmax = float(getattr(info, "volume_max", vmax) or vmax)
+        step = float(getattr(info, "volume_step", step) or step)
+    if vmin <= 0:
+        vmin = 0.01
+    if vmax <= 0:
+        vmax = 100.0
+    if step <= 0:
+        step = vmin
+    return vmin, vmax, step
+
+
+def round_volume_down(volume, step):
+    volume = float(volume)
+    step = float(step)
+    if step <= 0:
+        return volume
+    steps = math.floor((volume + 1e-12) / step)
+    return round(steps * step, 8)
+
+
+def clip_close_volume(symbol, want, position_volume):
+    """Khối lượng đóng hợp lệ: không vượt vị thế, khớp step, không để dư < volume_min."""
+    vmin, vmax, step = symbol_volume_limits(symbol)
+    pos = float(position_volume)
+    want = float(want)
+    if want <= 0 or pos <= 0:
+        return 0.0
+    want = min(want, pos, vmax)
+    vol = round_volume_down(want, step)
+    leftover = round(pos - vol, 8)
+    if leftover > 1e-12 and leftover < vmin:
+        vol = round_volume_down(pos - vmin, step)
+        leftover = round(pos - vol, 8)
+        if leftover < vmin - 1e-12:
+            if want + 1e-12 >= pos:
+                return pos
+            return 0.0
+    if vol + 1e-12 < vmin:
+        if want + 1e-12 >= pos:
+            return pos
+        return 0.0
+    if vol > pos:
+        return pos
+    return vol
+
+
+def find_position_by_ticket(ticket):
+    positions = mt5.positions_get()
+    if not positions:
+        return None
+    ticket = int(ticket)
+    for position in positions:
+        if int(position.ticket) == ticket:
+            return position
+    return None
+
+
+def list_positions_for_close(symbol, side):
+    want_type = mt5.ORDER_TYPE_BUY if (side or "").lower() == "buy" else mt5.ORDER_TYPE_SELL
+    positions = mt5.positions_get(symbol=symbol)
+    if not positions:
+        all_pos = mt5.positions_get() or []
+        positions = tuple(p for p in all_pos if p.symbol == symbol)
+    matched = [p for p in positions if p.type == want_type]
+    matched.sort(key=lambda p: (int(getattr(p, "time", 0) or 0), int(p.ticket)))
+    return matched
+
+
+def plan_close_volume(positions, lot):
+    remaining = float(lot)
+    plan = []
+    for position in positions:
+        if remaining <= 1e-12:
+            break
+        vol = clip_close_volume(position.symbol, remaining, position.volume)
+        if vol <= 0:
+            continue
+        plan.append((position, vol))
+        remaining = round(remaining - vol, 8)
+    return plan, remaining
+
+
+def build_close_request(position, volume=None):
     symbol = position.symbol
     tick = get_current_price(symbol)
     close_type = mt5.ORDER_TYPE_SELL if position.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
     close_price = tick.bid if close_type == mt5.ORDER_TYPE_SELL else tick.ask
     filling_policy = get_filling_mode(symbol)
+    close_volume = float(position.volume if volume is None else volume)
+    is_partial = close_volume + 1e-12 < float(position.volume)
 
     return {
         "action": mt5.TRADE_ACTION_DEAL,
         "symbol": symbol,
-        "volume": position.volume,
+        "volume": close_volume,
         "type": close_type,
         "position": position.ticket,
         "price": close_price,
         "deviation": DEFAULT_DEVIATION,
         "magic": DEFAULT_MAGIC,
-        "comment": "Close position",
+        "comment": "Partial close" if is_partial else "Close position",
         "type_time": mt5.ORDER_TIME_GTC,
         "type_filling": filling_policy,
     }
 
 
-def close_position(position, confirm=True):
+def close_position(position, confirm=True, volume=None):
+    close_vol = float(position.volume if volume is None else volume)
+    if close_vol <= 0:
+        print(f"Bỏ qua ticket {position.ticket}: volume đóng không hợp lệ ({close_vol}).")
+        return None
+    if close_vol > float(position.volume) + 1e-12:
+        close_vol = float(position.volume)
+    is_partial = close_vol + 1e-12 < float(position.volume)
+    remain = round(float(position.volume) - close_vol, 8)
+
     print(f"Lệnh hiện tại: ticket={position.ticket} | symbol={position.symbol}")
     print(f"Loại: {'BUY' if position.type == mt5.ORDER_TYPE_BUY else 'SELL'}")
     print(f"Giá vào: {position.price_open}")
-    print_position_pnl_lines(position, indent="")
+    if is_partial:
+        print(f"Đóng một phần: {close_vol} / {position.volume} lot (còn {remain})")
+    else:
+        print(f"Đóng toàn bộ: {close_vol} lot")
+    info = print_position_pnl_lines(position, indent="")
+    profit_frac = close_vol / float(position.volume) if position.volume else 1.0
+    if is_partial:
+        print(f"Ước tính P/L phần đóng: {info['mt5_profit'] * profit_frac:.6f}")
 
     if confirm and not confirm_action(f"Bạn có muốn đóng lệnh {position.ticket} này không?"):
         print("Đã hủy đóng lệnh.")
         return None
 
-    request = build_close_request(position)
+    request = build_close_request(position, close_vol)
     result = mt5.order_send(request)
     if result is None:
         err = mt5.last_error()
         print("Đóng lệnh thất bại! Không nhận được phản hồi.")
         save_trade_history(
-            position.symbol, position.volume, None, request, "CLOSE_FAILED",
+            position.symbol, close_vol, None, request, "CLOSE_FAILED",
             f"ticket={position.ticket} | không phản hồi từ terminal | last_error={err}",
             position=position,
         )
@@ -1426,17 +1549,20 @@ def close_position(position, confirm=True):
     if result.retcode != mt5.TRADE_RETCODE_DONE:
         print(f"Đóng lệnh thất bại! Mã lỗi: {result.retcode} ({result.comment})")
         save_trade_history(
-            position.symbol, position.volume, result, request, "CLOSE_FAILED",
+            position.symbol, close_vol, result, request, "CLOSE_FAILED",
             f"ticket={position.ticket} | {result.comment}",
             position=position,
         )
         return None
 
     print(f"Đóng lệnh thành công! Ticket ID: {result.order}")
+    detail = f"ticket={position.ticket}"
+    if is_partial:
+        detail += f" | partial={close_vol}/{position.volume}"
     save_trade_history(
-        position.symbol, position.volume, result, request, "CLOSE_SUCCESS",
-        f"ticket={position.ticket}",
-        profit=float(getattr(position, "profit", 0) or 0),
+        position.symbol, close_vol, result, request, "CLOSE_SUCCESS",
+        detail,
+        profit=float(getattr(position, "profit", 0) or 0) * profit_frac,
         position=position,
     )
     return result
@@ -1479,6 +1605,84 @@ def close_all_positions():
     for position in positions:
         result = close_position(position, confirm=False)
         results.append(result)
+    return results
+
+
+def close_positions_volume(account, symbol, side, lot):
+    """Đóng `lot` khối lượng các lệnh mở cùng symbol + side (cho phép đóng một phần)."""
+    if lot is None or float(lot) <= 0:
+        raise RuntimeError("Lệnh close bắt buộc --lot > 0 (số lot muốn đóng)")
+
+    symbol = select_symbol(symbol, account)
+    side_l = (side or "").lower()
+    if side_l not in ("buy", "sell"):
+        raise RuntimeError("side phải là buy hoặc sell")
+
+    matched = list_positions_for_close(symbol, side_l)
+    if not matched:
+        print(f"Không có lệnh {side_l.upper()} {symbol} đang mở để đóng.")
+        return []
+
+    total = round(sum(float(p.volume) for p in matched), 8)
+    requested = float(lot)
+    close_target = requested
+    if requested > total + 1e-12:
+        print(
+            f"[CẢNH BÁO] Lot yêu cầu {requested} lớn hơn tổng {side_l.upper()} {symbol} đang mở ({total}). "
+            f"Sẽ đóng hết {total} lot."
+        )
+        close_target = total
+
+    plan, leftover_want = plan_close_volume(matched, close_target)
+    planned_vol = round(sum(vol for _pos, vol in plan), 8)
+
+    print(
+        f"Sẽ đóng {planned_vol} lot lệnh {side_l.upper()} trên {symbol} "
+        f"(đang mở: {total} lot, {len(matched)} ticket)"
+    )
+    if leftover_want > 1e-12 and planned_vol + 1e-12 < close_target:
+        print(
+            f"[CẢNH BÁO] Không phân bổ hết {close_target} lot vì volume_min/step "
+            f"(còn {leftover_want} lot chưa đóng được mà không để dư nhỏ hơn lot tối thiểu)."
+        )
+
+    if not plan:
+        raise RuntimeError(
+            f"Không đóng được {requested} lot: không khớp volume_min/step, "
+            f"hoặc phần còn lại sẽ nhỏ hơn lot tối thiểu."
+        )
+
+    for position, vol in plan:
+        remain = round(float(position.volume) - vol, 8)
+        remain_text = "" if remain <= 1e-12 else f" (còn {remain})"
+        print(
+            f"- Ticket: {position.ticket} | đóng {vol} / {position.volume} lot{remain_text}"
+        )
+        print(f"  Giá vào: {position.price_open}")
+        info = print_position_pnl_lines(position)
+        frac = vol / float(position.volume) if position.volume else 1.0
+        print(f"  Ước tính P/L phần đóng: {info['mt5_profit'] * frac:.6f}")
+
+    if not confirm_action(f"Bạn có muốn đóng {planned_vol} lot {side_l.upper()} {symbol} không?"):
+        print("Đã hủy đóng một phần.")
+        return []
+
+    results = []
+    for position, vol in plan:
+        live = find_position_by_ticket(position.ticket)
+        if live is None:
+            print(f"Ticket {position.ticket} không còn mở — bỏ qua.")
+            results.append(None)
+            continue
+        live_vol = clip_close_volume(live.symbol, vol, live.volume)
+        if live_vol <= 0:
+            print(
+                f"Ticket {position.ticket}: không đóng được {vol} lot "
+                f"với volume hiện tại {live.volume}."
+            )
+            results.append(None)
+            continue
+        results.append(close_position(live, confirm=False, volume=live_vol))
     return results
 
 
@@ -1871,6 +2075,8 @@ def run_action_on_account(account, args, lot):
             )
         elif args.action == "cancel-pending":
             cancel_all_pending_orders()
+        elif args.action == "close":
+            close_positions_volume(account, args.symbol, args.side, lot)
         elif args.action == "close-all":
             close_all_positions()
         elif args.action == "modify-all":
@@ -1934,7 +2140,7 @@ def execute_request(account_name, action, symbol="XAUUSD", side="buy", lot=0.01,
     args.zone_low = zone_low
     args.zone_high = zone_high
 
-    lot_scale_actions = {"open", "pending"}
+    lot_scale_actions = {"open", "pending", "close"}
 
     try:
         run_action_on_account(primary_account, args, lot)
@@ -1944,7 +2150,7 @@ def execute_request(account_name, action, symbol="XAUUSD", side="buy", lot=0.01,
 
         if copy_names and action not in COPYABLE_ACTIONS:
             print(
-                f"Lưu ý: copy chỉ áp dụng cho action open/pending/cancel-pending/close-all/"
+                f"Lưu ý: copy chỉ áp dụng cho action open/pending/cancel-pending/close/close-all/"
                 f"modify-all/modify-all-if/cancel-modify-if, bỏ qua sao chép cho action '{action}'."
             )
         elif copy_names:
@@ -1991,7 +2197,7 @@ def main():
     )
     parser.add_argument(
         "--action",
-        choices=["open", "pending", "cancel-pending", "close-all", "modify-all", "modify-all-if", "cancel-modify-if", "status"],
+        choices=["open", "pending", "cancel-pending", "close", "close-all", "modify-all", "modify-all-if", "cancel-modify-if", "status"],
         required=True,
     )
     parser.add_argument("--symbol", default="XAUUSD")
@@ -2022,6 +2228,8 @@ def main():
 
     if args.action == "open" and args.sl_price is None:
         parser.error("action=open bắt buộc phải có --sl-price (stop loss); --tp-price tùy chọn")
+    if args.action == "close" and (args.lot is None or args.lot <= 0):
+        parser.error("action=close bắt buộc --lot > 0 (số lot muốn đóng, cho phép nhỏ hơn vị thế)")
     if args.action == "pending":
         if args.price is None:
             parser.error("action=pending bắt buộc phải có --price (giá chờ)")

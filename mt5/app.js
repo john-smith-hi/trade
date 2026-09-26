@@ -36,6 +36,7 @@ function renderAccounts(accounts) {
   if (!accounts.length) {
     select.innerHTML = '<option value="">(không có account nào trong accounts.xml)</option>';
     el("accountInfo").textContent = "";
+    renderOpenPositionWarn([]);
     return;
   }
 
@@ -51,14 +52,102 @@ function renderAccounts(accounts) {
   select.onchange = () => {
     updateAccountInfo(accounts);
     invalidatePreview();
+    renderOpenPositionWarn([]);
     autofillTpSl();
+    if (!actionNeedsOpenPositions()) refreshOpenPositionWarn();
   };
+}
+
+function fmtPrice(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return "—";
+  if (Number.isInteger(x)) return String(x);
+  return x.toFixed(5).replace(/0+$/, "").replace(/\.$/, "");
+}
+
+function fmtLevel(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x) || x <= 0) return "chưa đặt";
+  return fmtPrice(x);
+}
+
+function fmtPnl(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return "0.00";
+  const abs = Math.abs(x).toFixed(2);
+  if (x > 0) return `+${abs}`;
+  if (x < 0) return `-${abs}`;
+  return "0.00";
+}
+
+function fmtVol(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return String(n ?? "");
+  return String(x);
+}
+
+function positionHeadline(p) {
+  const side = String(p.side || "").toUpperCase();
+  return `${side} ${p.symbol || "?"} ${fmtVol(p.volume)} lot`;
+}
+
+function positionLevels(p) {
+  return `Giá mở cửa ${fmtPrice(p.price_open)} · Stop loss ${fmtLevel(p.sl)} · Take profit ${fmtLevel(p.tp)} · Lời/Lỗ ${fmtPnl(p.profit)}`;
+}
+
+function renderOpenPositionWarn(positions) {
+  const box = el("openPositionWarn");
+  const line1 = el("openPositionWarnL1");
+  const line2 = el("openPositionWarnL2");
+  if (!box || !line1 || !line2) return;
+  const list = Array.isArray(positions) ? positions : [];
+  if (!list.length) {
+    box.classList.add("hidden");
+    line1.textContent = "";
+    line2.textContent = "";
+    return;
+  }
+  if (list.length === 1) {
+    line1.textContent = `Có 1 lệnh đang chạy ${positionHeadline(list[0])}`;
+    line2.textContent = positionLevels(list[0]);
+  } else {
+    const total = list.reduce((sum, p) => sum + (Number(p.profit) || 0), 0);
+    line1.textContent = `Có ${list.length} lệnh đang chạy: ${list.map(positionHeadline).join(", ")}`;
+    line2.textContent = `${list.map(positionLevels).join(" | ")} · Tổng ${fmtPnl(total)}`;
+  }
+  box.classList.remove("hidden");
+}
+
+let warnSeq = 0;
+
+async function refreshOpenPositionWarn({ positions = null } = {}) {
+  if (Array.isArray(positions)) {
+    renderOpenPositionWarn(positions);
+    return;
+  }
+  const account = el("account").value;
+  if (!account) {
+    renderOpenPositionWarn([]);
+    return;
+  }
+  const seq = ++warnSeq;
+  try {
+    const q = new URLSearchParams({ account });
+    const data = await apiGet(`/api/positions?${q}`, { useCache: false, timeoutMs: 30000 });
+    if (seq !== warnSeq) return;
+    const list = data.positions || [];
+    lastFetchedPositions = list;
+    renderOpenPositionWarn(list);
+  } catch {
+    if (seq !== warnSeq) return;
+  }
 }
 
 function updateAccountInfo(accounts) {
   const acc = accounts.find((a) => a.name === el("account").value);
   if (!acc) {
     el("accountInfo").textContent = "";
+    renderOpenPositionWarn([]);
     return;
   }
   const autoCopy = acc.auto_copy_enabled && acc.auto_copy_targets.length
@@ -78,6 +167,7 @@ let fillSeq = 0;
 /** null = không áp dụng; false = action cần lệnh nhưng không có */
 let actionHasPositions = null;
 let actionHasOrders = null;
+let lastFetchedPositions = [];
 let previewValid = false;
 let previewSnapshot = null;
 /** true khi JS đang ghi form — không được coi là người dùng sửa thông số. */
@@ -124,7 +214,25 @@ function applyDefaultLot({ force = false } = {}) {
 }
 
 function actionNeedsOpenPositions(action = el("action").value) {
-  return action === "modify-all" || action === "close-all" || action === "modify-all-if";
+  return action === "modify-all" || action === "close" || action === "close-all" || action === "modify-all-if";
+}
+
+function actionIsClose(action = el("action").value) {
+  return action === "close";
+}
+
+function normalizeSymbol(sym) {
+  return String(sym || "").trim().toUpperCase().replace(/M$/, "");
+}
+
+function positionsForClose(positions) {
+  const wantSymbol = normalizeSymbol(el("symbol").value);
+  const wantSide = getSide();
+  return (positions || []).filter((p) => {
+    if (p.side !== wantSide) return false;
+    if (!wantSymbol) return true;
+    return normalizeSymbol(p.symbol) === wantSymbol;
+  });
 }
 
 function actionNeedsPendingOrders(action = el("action").value) {
@@ -141,6 +249,45 @@ function actionIsModifyIf(action = el("action").value) {
 
 function actionCancelsModifyIf(action = el("action").value) {
   return action === "cancel-modify-if";
+}
+
+function formatCloseHint(positions) {
+  const side = getSide();
+  const symbol = el("symbol").value.trim() || "XAUUSD";
+  const matched = positionsForClose(positions);
+  const others = (positions || []).filter((p) => !matched.includes(p));
+  if (!matched.length) {
+    const otherSameSymbol = others.filter((p) => normalizeSymbol(p.symbol) === normalizeSymbol(symbol));
+    if (otherSameSymbol.length) {
+      const summary = otherSameSymbol
+        .map((p) => `#${p.ticket} ${p.side.toUpperCase()} ${p.volume}lot`)
+        .join("; ");
+      return {
+        ok: false,
+        text: `Không có lệnh ${side.toUpperCase()} ${symbol} đang mở. Có lệnh khác cùng symbol: ${summary} — đổi Side nếu muốn đóng những lệnh đó.`,
+      };
+    }
+    return {
+      ok: false,
+      text: `Không có lệnh ${side.toUpperCase()} ${symbol} đang mở để đóng một phần.`,
+    };
+  }
+
+  const totalVol = matched.reduce((sum, p) => sum + Number(p.volume || 0), 0);
+  const lot = resolveLot();
+  const willClose = Math.min(lot, totalVol);
+  const remain = Math.max(0, Math.round((totalVol - willClose) * 1e8) / 1e8);
+  const summary = matched
+    .slice(0, 3)
+    .map((p) => `#${p.ticket} ${p.side} ${p.symbol} ${p.volume}lot`)
+    .join("; ");
+  const more = matched.length > 3 ? ` … (+${matched.length - 3})` : "";
+  const remainText = remain > 0 ? `còn ~${remain}` : "hết vị thế khớp";
+  const over = lot > totalVol + 1e-12 ? ` Lot nhập ${lot} > tổng ${totalVol} — sẽ đóng hết phần khớp.` : "";
+  return {
+    ok: true,
+    text: `Sẽ đóng ${willClose} lot ${side.toUpperCase()} ${symbol} (${remainText}). Khớp: ${summary}${more}.${over} Copy sẽ nhân multi.`,
+  };
 }
 
 function invalidatePreview() {
@@ -257,6 +404,7 @@ async function checkOpenPositionsForAction({ fillLevels = false } = {}) {
     actionHasPositions = false;
     syncExecuteForAction();
     setPriceHint("Chọn account để kiểm tra lệnh đang mở.", { asError: true });
+    renderOpenPositionWarn([]);
     return;
   }
 
@@ -268,6 +416,9 @@ async function checkOpenPositionsForAction({ fillLevels = false } = {}) {
     const data = await apiGet(`/api/positions?${q}`, { useCache: false, timeoutMs: 30000 });
     if (seq !== fillSeq) return;
     const positions = data.positions || [];
+    lastFetchedPositions = positions;
+    warnSeq += 1;
+    renderOpenPositionWarn(positions);
 
     if (!positions.length) {
       actionHasPositions = false;
@@ -277,6 +428,15 @@ async function checkOpenPositionsForAction({ fillLevels = false } = {}) {
         { asError: true },
       );
       markApiOk(`Không có lệnh mở — ${action} vô nghĩa`);
+      syncExecuteForAction();
+      return;
+    }
+
+    if (action === "close") {
+      const hint = formatCloseHint(positions);
+      actionHasPositions = hint.ok;
+      setPriceHint(hint.text, { asError: !hint.ok });
+      markApiOk(hint.ok ? "Có lệnh khớp để đóng một phần" : "Không có lệnh khớp để close");
       syncExecuteForAction();
       return;
     }
@@ -456,6 +616,7 @@ async function reloadAccounts() {
       markApiOk("Đã nạp lại accounts.xml");
     }, "Đang nạp lại accounts...");
     await autofillTpSl();
+    if (!actionNeedsOpenPositions()) await refreshOpenPositionWarn();
   } catch (err) {
     alert(`Lỗi tải lại account: ${err.message}`);
   }
@@ -474,6 +635,11 @@ function updateParamsVisibility() {
   });
 
   el("paramsEmptyHint").classList.toggle("hidden", visibleCount > 0);
+
+  const lotLabel = document.querySelector('label[for="lot"]');
+  if (lotLabel) {
+    lotLabel.textContent = action === "close" ? "Lot muốn đóng" : "Lot";
+  }
 }
 
 function buildPayload(noAsk) {
@@ -575,6 +741,9 @@ async function submitAction(noAsk, triggerBtn) {
         await checkOpenPositionsForAction({ fillLevels: false });
       } else if (actionNeedsPendingOrders()) {
         await checkPendingOrdersForAction({ lockButtons: false });
+        await refreshOpenPositionWarn();
+      } else {
+        await refreshOpenPositionWarn();
       }
     } catch (refreshErr) {
       setPriceHint(`Không làm mới danh sách lệnh: ${refreshErr.message || refreshErr}`, { asError: true });
@@ -592,6 +761,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   updateParamsVisibility();
   await loadAccounts({ useCache: false });
   syncConfirmEnabled();
+  refreshOpenPositionWarn();
 
   el("themeToggle").addEventListener("click", toggleTheme);
   el("action").addEventListener("change", () => {
@@ -601,11 +771,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
   el("symbol").addEventListener("change", () => {
     invalidatePreview();
-    if (actionUsesQuote() || actionIsModifyIf()) autofillTpSl();
+    if (actionUsesQuote() || actionIsModifyIf() || actionIsClose()) autofillTpSl();
   });
   el("symbol").addEventListener("blur", () => {
     invalidatePreview();
-    if (actionUsesQuote() || actionIsModifyIf()) autofillTpSl();
+    if (actionUsesQuote() || actionIsModifyIf() || actionIsClose()) autofillTpSl();
   });
   el("pendingType").addEventListener("change", () => {
     invalidatePreview();
@@ -614,7 +784,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   ["price", "lot", "tpPrice", "slPrice", "comment", "copy", "zoneLow", "zoneHigh"].forEach((id) => {
     const node = el(id);
     if (!node) return;
-    node.addEventListener("input", invalidatePreview);
+    node.addEventListener("input", () => {
+      invalidatePreview();
+      if (id === "lot" && actionIsClose() && lastFetchedPositions.length) {
+        const hint = formatCloseHint(lastFetchedPositions);
+        actionHasPositions = hint.ok;
+        setPriceHint(hint.text, { asError: !hint.ok });
+        syncExecuteForAction();
+      }
+    });
     node.addEventListener("change", invalidatePreview);
   });
   el("account").addEventListener("change", invalidatePreview);
@@ -624,12 +802,15 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (next === getSide()) return;
       setSide(next);
       invalidatePreview();
-      if (actionUsesQuote()) autofillTpSl();
+      if (actionUsesQuote() || actionIsClose()) autofillTpSl();
     });
   });
   el("btnReloadAccounts").addEventListener("click", reloadAccounts);
   el("btnPreview").addEventListener("click", (e) => submitAction(false, e.target));
   el("btnConfirm").addEventListener("click", (e) => submitAction(true, e.target));
 
-  onVisibleRefresh(() => loadAccounts({ silent: true, useCache: true }), { minIntervalMs: 20000 });
+  onVisibleRefresh(() => {
+    loadAccounts({ silent: true, useCache: true });
+    refreshOpenPositionWarn();
+  }, { minIntervalMs: 20000 });
 });
