@@ -6,12 +6,15 @@
 # (Flask/Werkzeug cần `from copy import deepcopy` → API không chạy được).
 #
 # Đường dẫn đích lấy từ xml/www.xml (gitignore). Chưa có thì copy từ
-# xml/www.example.xml. Folder đích (mt5/, setup/) được xóa sạch trước khi copy.
+# xml/www.example.xml. Folder đích (mt5/, setup/, history/) được xóa sạch
+# trước khi copy. CSV phân tích lệnh không nằm trong folder đó: trang history
+# import file trên trình duyệt.
 #
-#   python copy_www.py              # copy cả mt5 và setup
+#   python copy_www.py              # copy mt5, setup và history
 #   python copy_www.py mt5          # chỉ mt5
 #   python copy_www.py setup        # chỉ setup
-#   python copy_www.py mt5 setup    # cả hai (tường minh)
+#   python copy_www.py history      # chỉ trang phân tích CSV
+#   python copy_www.py mt5 setup    # tường minh từng app
 #   python copy_www.py --dest E:\www   # override xml/www.xml lần chạy này
 #
 # =============================================================================
@@ -34,7 +37,7 @@ ROOT = Path(__file__).resolve().parent
 XML_DIR = ROOT / "xml"
 WWW_FILE = XML_DIR / "www.xml"
 WWW_EXAMPLE_FILE = XML_DIR / "www.example.xml"
-KNOWN_APPS = ("mt5", "setup")
+KNOWN_APPS = ("mt5", "setup", "history")
 SKIP_DIR_NAMES = {"__pycache__", ".git"}
 
 
@@ -88,13 +91,13 @@ def copy_tree(src: Path, dest: Path) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Copy folder mt5/ hoac setup/ vao thu muc WAMP www (xml/www.xml).",
+        description="Copy folder mt5/, setup/ hoac history/ vao thu muc WAMP www (xml/www.xml).",
     )
     parser.add_argument(
         "apps",
         nargs="*",
         choices=KNOWN_APPS,
-        help="mt5 va/hoac setup. Bo trong = copy ca hai.",
+        help="mt5, setup va/hoac history. Bo trong = copy ca ba.",
     )
     parser.add_argument(
         "--dest",

@@ -13,9 +13,10 @@ Web UI chạy trên WAMP. Đường dẫn www khai báo trong `xml/www.xml` (git
 | `start_server.bat` | API 24/7 (watcher Telegram; không Flask-reloader; restart nếu crash) |
 | `telegram_notify.py` | Gửi cảnh báo Telegram (`xml/telegram.xml`) |
 | `watch.py` | Poll Timer + lệnh TP/SL/pending trên server |
-| `copy_www.py` | Xóa folder đích rồi copy UI `mt5/` / `setup/` theo `xml/www.xml` (không dùng tên `copy.py`) |
-| `mt5/` | Giao diện ra lệnh / account / path / lịch sử |
+| `copy_www.py` | Xóa folder đích rồi copy UI `mt5/` / `setup/` / `history/` theo `xml/www.xml` (không dùng tên `copy.py`) |
+| `mt5/` | Giao diện ra lệnh / account / path / lịch sử gửi lệnh |
 | `setup/` | Giao diện checklist vào lệnh theo tuần |
+| `history/` | Phân tích CSV lệnh đã đóng (import trên trình duyệt). Khác `mt5/history/` |
 | `day_trade.py` | Chấm điểm setup, đọc/ghi `xml/day_trade_week.xml` |
 | `stock.py` | Phân tích giá (vnstock / Yahoo / TradingView) |
 | `xml/` | Cấu hình account, path terminal, checklist tuần |
@@ -116,9 +117,10 @@ API: `http://127.0.0.1:5001` (chỉ localhost). Sửa `.py` hoặc `.xml` → pr
 ### Đưa UI lên WAMP
 
 ```bash
-python copy_www.py              # xóa mt5 + setup trong xml/www.xml rồi copy lại
+python copy_www.py              # xóa mt5 + setup + history trong xml/www.xml rồi copy lại
 python copy_www.py mt5          # chỉ giao diện ra lệnh
 python copy_www.py setup        # chỉ checklist
+python copy_www.py history      # chỉ phân tích CSV lệnh đã đóng
 python copy_www.py --dest E:\www   # override xml/www.xml lần này
 ```
 
@@ -127,11 +129,12 @@ Sau đó:
 - Ra lệnh: http://localhost/mt5/
 - Accounts: http://localhost/mt5/account/
 - Path terminal: http://localhost/mt5/path/
-- Lịch sử: http://localhost/mt5/history/
+- Lịch sử gửi lệnh: http://localhost/mt5/history/
 - Checklist tuần: http://localhost/setup/
 - Timer báo giá: http://localhost/setup/timer/
+- Phân tích CSV: http://localhost/history/
 
-Trình duyệt gọi `proxy.php` → `127.0.0.1:5001` (cần API đang chạy). CSS/JS gắn `?v=` từ `ver.php` (mtime) để cache đúng.
+Trang phân tích CSV tự tính trên trình duyệt, không cần API. Các trang mt5/setup gọi `proxy.php` → `127.0.0.1:5001` (cần API đang chạy). CSS/JS gắn `?v=` từ `ver.php` (mtime) để cache đúng.
 
 Trang ra lệnh: **Xem trước** không gửi lệnh; **Xác nhận gửi lệnh thật** = `--no-ask`.
 

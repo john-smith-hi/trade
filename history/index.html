@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'none'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" />
+<title>Phân tích lệnh</title>
+<script src="theme.js"></script>
+<script src="ver.php"></script>
+<script src="assets.js"></script>
+</head>
+<body>
+<header>
+  <button type="button" id="themeToggle" class="btn btn-secondary theme-toggle">Chế độ tối</button>
+</header>
+
+<main>
+  <section class="card" id="importCard">
+    <h2>Nạp CSV</h2>
+    <div id="dropzone" class="dropzone">
+      <p class="drop-title">Thả file CSV vào đây</p>
+      <p class="hint">Một hoặc nhiều file lịch sử lệnh đã đóng. Trùng ticket thì bản import sau được giữ. Dữ liệu nằm trong trình duyệt này, không ghi vào thư mục web — mỗi lần <code>copy_www.py</code> xóa folder history trên WAMP rồi copy lại code.</p>
+      <p class="hint">Cột bắt buộc: ticket, opening_time_utc, closing_time_utc, type, lots, symbol, opening_price, closing_price, profit. Dùng thêm nếu có: stop_loss, take_profit, commission, swap, close_reason, original_position_size.</p>
+      <button type="button" id="btnPick" class="btn btn-primary">Chọn file CSV</button>
+      <input id="fileInput" type="file" accept=".csv,text/csv" multiple hidden />
+    </div>
+    <label class="paste-label" for="csvPaste">Hoặc dán JSON</label>
+    <textarea id="csvPaste" placeholder="Dán JSON có mảng orders (position_id, symbol, action, open_time, close_time, volume_deal, ...)" spellcheck="false" autocomplete="off"></textarea>
+    <button type="button" id="btnPaste" class="btn btn-primary">Nạp nội dung đã dán</button>
+    <p id="importError" class="msg hidden"></p>
+    <p id="persistError" class="msg hidden"></p>
+    <div id="fileList"></div>
+    <button type="button" id="btnClear" class="btn btn-ghost hidden">Xóa dữ liệu đã import</button>
+  </section>
+
+  <section class="card" id="emptyHint">
+    <h2>Chưa có lệnh</h2>
+    <p class="hint">Chọn file CSV hoặc dán JSON orders ở trên. Net = profit + commission + swap. Giờ, thứ và khung trong ngày tính lúc mở lệnh. Ngày, tuần và tháng tính lúc đóng lệnh.</p>
+  </section>
+
+  <section id="dashboard" class="hidden">
+    <section class="card" id="filterCard">
+      <h2>Bộ lọc</h2>
+      <div class="filters">
+        <div class="field wide">
+          <label>Symbol</label>
+          <div id="symbolFilters" class="checks"></div>
+        </div>
+        <div class="field">
+          <label for="filterSide">Side</label>
+          <select id="filterSide">
+            <option value="">Tất cả</option>
+            <option value="buy">Buy</option>
+            <option value="sell">Sell</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="filterReason">Lý do đóng</label>
+          <select id="filterReason"></select>
+        </div>
+        <div class="field">
+          <label for="filterFile">File</label>
+          <select id="filterFile"></select>
+        </div>
+        <div class="field">
+          <label for="filterFrom">Đóng từ</label>
+          <input type="text" id="filterFrom" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" autocomplete="off" spellcheck="false" />
+        </div>
+        <div class="field">
+          <label for="filterTo">Đóng đến</label>
+          <input type="text" id="filterTo" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" autocomplete="off" spellcheck="false" />
+        </div>
+        <div class="field">
+          <label class="ghost-label">Lọc</label>
+          <button type="button" id="btnResetFilters" class="btn btn-secondary">Xóa lọc</button>
+        </div>
+      </div>
+      <p class="hint" id="filterMeta"></p>
+    </section>
+
+    <div id="stats"></div>
+
+    <section class="card" id="tradeCard">
+      <div class="row-head">
+        <h2>Từng lệnh</h2>
+        <input id="tradeSearch" type="search" placeholder="Tìm ticket, symbol, lý do" spellcheck="false" />
+      </div>
+      <div class="table-wrap" id="tradeTableWrap"></div>
+      <div class="pager" id="pager">
+        <button type="button" id="pagePrev" class="btn btn-secondary">Trước</button>
+        <span id="pageInfo"></span>
+        <button type="button" id="pageNext" class="btn btn-secondary">Sau</button>
+      </div>
+    </section>
+  </section>
+</main>
+
+<script src="load.js"></script>
+</body>
+</html>
