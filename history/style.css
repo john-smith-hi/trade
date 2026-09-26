@@ -181,12 +181,46 @@ h3 { margin: 18px 0 8px; font-size: 14px; }
   resize: vertical;
 }
 
+.paste-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
 .paste-label {
   display: block;
-  margin-top: 14px;
+  margin: 0;
   font-size: 13px;
   font-weight: 600;
 }
+
+.exness-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.exness-link label {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.exness-link input {
+  width: 118px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card-bg);
+  color: var(--text);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.exness-link input.date-bad { border-color: var(--danger); }
 
 #btnPaste { margin-top: 8px; }
 
@@ -344,6 +378,7 @@ details.glossary p { margin: 8px 0 0; font-size: 13px; color: var(--muted); line
 
 @media (max-width: 720px) {
   .filters, .kpi-grid, .split, dl.stats { grid-template-columns: 1fr; }
-  .btn, .field input, .field select, #tradeSearch, #csvPaste { font-size: 16px; }
+  .btn, .field input, .field select, #tradeSearch, #csvPaste, .exness-link input { font-size: 16px; }
+  .exness-link input { width: 9.2em; }
   #tradeSearch { max-width: none; }
 }

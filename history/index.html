@@ -24,7 +24,16 @@
       <button type="button" id="btnPick" class="btn btn-primary">Chọn file CSV</button>
       <input id="fileInput" type="file" accept=".csv,text/csv" multiple hidden />
     </div>
-    <label class="paste-label" for="csvPaste">Hoặc dán JSON</label>
+    <div class="paste-head">
+      <label class="paste-label" for="csvPaste">Hoặc dán JSON</label>
+      <div class="exness-link">
+        <label for="linkFrom">Từ</label>
+        <input id="linkFrom" type="text" inputmode="numeric" placeholder="01/01/2007" maxlength="10" autocomplete="off" spellcheck="false" />
+        <label for="linkTo">Đến</label>
+        <input id="linkTo" type="text" inputmode="numeric" placeholder="hôm nay" maxlength="10" autocomplete="off" spellcheck="false" />
+        <button type="button" id="btnOrders" class="btn btn-secondary">Mở orders</button>
+      </div>
+    </div>
     <textarea id="csvPaste" placeholder="Dán JSON có mảng orders (position_id, symbol, action, open_time, close_time, volume_deal, ...)" spellcheck="false" autocomplete="off"></textarea>
     <button type="button" id="btnPaste" class="btn btn-primary">Nạp nội dung đã dán</button>
     <p id="importError" class="msg hidden"></p>

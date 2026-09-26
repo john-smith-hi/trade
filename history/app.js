@@ -130,8 +130,7 @@
     renderResults();
   }
 
-  function onDateInput(id, keyName) {
-    const el = $(id);
+  function applyDateEdit(el) {
     const prev = el.dataset.prev || "";
     const raw = el.value;
     const start = el.selectionStart == null ? raw.length : el.selectionStart;
@@ -157,6 +156,14 @@
     const slash = !deleting && caretDigits === digits.length && (digits.length === 2 || digits.length === 4);
     const masked = maskDate(digits, slash);
     paintDate(el, masked, slash ? digits.length + 1 : caretDigits);
+    return { digits: digits, masked: masked };
+  }
+
+  function onDateInput(id, keyName) {
+    const el = $(id);
+    const edited = applyDateEdit(el);
+    const digits = edited.digits;
+    const masked = edited.masked;
     el.classList.remove("date-bad");
 
     if (!digits) {
@@ -208,6 +215,73 @@
     el.value = shown;
     el.dataset.prev = shown;
     el.classList.remove("date-bad");
+  }
+
+  const ORDERS_ACCOUNT = "201967146";
+  const ORDERS_FROM_DEFAULT = "2007-01-01";
+
+  function todayKey() {
+    const p = HistoryAnalyze.ictParts(Date.now());
+    return p.year + "-" + pad(p.month) + "-" + pad(p.day);
+  }
+
+  function linkDateKey(id) {
+    const el = $(id);
+    const raw = el.value.trim();
+    if (!raw) return "";
+    const key = parseDisplayDate(raw);
+    el.classList.toggle("date-bad", !key);
+    return key;
+  }
+
+  function ordersHistoryUrl() {
+    const fromRaw = $("linkFrom").value.trim();
+    const toRaw = $("linkTo").value.trim();
+    const fromKey = fromRaw ? linkDateKey("linkFrom") : ORDERS_FROM_DEFAULT;
+    const toKey = toRaw ? linkDateKey("linkTo") : todayKey();
+    if ((fromRaw && !fromKey) || (toRaw && !toKey)) {
+      setMsg("importError", "Ngày link phải theo dạng dd/mm/yyyy.");
+      return "";
+    }
+    if (fromKey > toKey) {
+      setMsg("importError", "Ngày bắt đầu link đang sau ngày kết thúc.");
+      return "";
+    }
+    setMsg("importError", "");
+    const url = new URL("https://my.ex-markets.pro/v4/orders-history/orders/" + ORDERS_ACCOUNT);
+    url.searchParams.set("limit", "100000");
+    url.searchParams.set("offset", "0");
+    url.searchParams.set("accountNumber", ORDERS_ACCOUNT);
+    url.searchParams.set("sort", "close_time_desc");
+    url.searchParams.set("closed", "1");
+    url.searchParams.set("close_time_from", fromKey + "T00:00:00.000Z");
+    url.searchParams.set("close_time_to", toKey + "T23:59:59.999Z");
+    url.searchParams.set("platform", "mt5");
+    return url.toString();
+  }
+
+  function onPlainDateInput(id) {
+    const el = $(id);
+    const edited = applyDateEdit(el);
+    if (!edited.digits || edited.digits.length < 8) {
+      el.classList.remove("date-bad");
+      return;
+    }
+    el.classList.toggle("date-bad", !parseDisplayDate(edited.masked));
+  }
+
+  function onPlainDateBlur(id) {
+    const el = $(id);
+    const raw = el.value.trim();
+    const key = raw ? parseDisplayDate(raw) : "";
+    if (key) {
+      const shown = toDisplayDate(key);
+      el.value = shown;
+      el.dataset.prev = shown;
+      el.classList.remove("date-bad");
+      return;
+    }
+    el.classList.toggle("date-bad", !!raw);
   }
 
   function setMsg(id, text) {
@@ -857,6 +931,42 @@
       applyTheme(next);
     });
     $("btnPaste").addEventListener("click", function () { ingestPastedCsv(); });
+    $("linkTo").placeholder = toDisplayDate(todayKey());
+    ["linkFrom", "linkTo"].forEach(function (id) {
+      const el = $(id);
+      el.dataset.prev = el.value || "";
+      el.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          onPlainDateBlur(id);
+          return;
+        }
+        if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+        const allow = ["Backspace", "Delete", "Tab", "ArrowLeft", "ArrowRight", "Home", "End"];
+        if (allow.indexOf(ev.key) >= 0) return;
+        if (!/^\d$/.test(ev.key)) ev.preventDefault();
+      });
+      el.addEventListener("paste", function (ev) {
+        const text = (ev.clipboardData && ev.clipboardData.getData("text")) || "";
+        const key = parseDisplayDate(String(text).trim());
+        if (!key) return;
+        ev.preventDefault();
+        const shown = toDisplayDate(key);
+        el.value = shown;
+        el.dataset.prev = shown;
+        el.classList.remove("date-bad");
+        el.setSelectionRange(shown.length, shown.length);
+      });
+      el.addEventListener("input", function () { onPlainDateInput(id); });
+      el.addEventListener("blur", function () { onPlainDateBlur(id); });
+    });
+    $("btnOrders").addEventListener("click", function () {
+      const url = ordersHistoryUrl();
+      if (!url) return;
+      const opened = window.open(url, "_blank", "noopener,noreferrer");
+      if (opened) opened.opener = null;
+      else setMsg("importError", "Trình duyệt đã chặn cửa sổ mới.");
+    });
     $("btnPick").addEventListener("click", function () { $("fileInput").click(); });
     $("fileInput").addEventListener("change", function () {
       if ($("fileInput").files && $("fileInput").files.length) ingestFileList($("fileInput").files);
