@@ -22,7 +22,7 @@ Web UI chạy trên WAMP. Đường dẫn www khai báo trong `xml/www.xml` (git
 | `xml/` | Cấu hình account, path terminal, checklist tuần |
 | `note-ai/` | Ghi chú kiến trúc cho lần sửa sau |
 
-`xml/accounts.xml`, `xml/paths.xml`, `xml/www.xml`, `xml/day_trade_week.xml`, `xml/timer.xml`, `xml/telegram.xml`, `xml/mt5_watch.xml` **không commit** (đã `.gitignore`). Lấy mẫu từ các file `*.example.xml`.
+`xml/accounts.xml`, `xml/paths.xml`, `xml/www.xml`, `xml/day_trade_week.xml`, `xml/timer.xml`, `xml/fibo.xml`, `xml/telegram.xml`, `xml/mt5_watch.xml` **không commit** (đã `.gitignore`). Lấy mẫu từ các file `*.example.xml`.
 
 ---
 
@@ -154,6 +154,7 @@ Trang ra lệnh: **Xem trước** không gửi lệnh; **Xác nhận gửi lện
 | GET | `/api/history` | `history_mt5.txt` đã parse |
 | GET/PUT | `/api/setup/week` | Tuần checklist |
 | GET/PUT | `/api/setup/timer` | Báo thức vùng giá (`xml/timer.xml`) |
+| GET/PUT | `/api/setup/fibo` | Đỉnh/đáy Fibo (`xml/fibo.xml`) |
 | POST | `/api/setup/telegram-test` | Gửi 1 tin thử Telegram |
 | POST/PUT/DELETE | `/api/setup/setups` | Setup trong tuần |
 
@@ -171,7 +172,7 @@ Theo `day_trade_mindset.txt`. Dữ liệu tuần: `xml/day_trade_week.xml`. Báo
 
 Không gửi lệnh MT5 — chỉ chấm điểm setup thủ công.
 
-Trang **Fibo** (`/setup/fibo/`): nhập đỉnh, đáy và Buy hoặc Sell. Tính hồi Fibonacci và 3 vùng giá trên trình duyệt (không gọi API). Sell: 100% tại đỉnh. Buy: 100% tại đáy. Chi tiết công thức: `note-ai/setup.md`.
+Trang **Fibo** (`/setup/fibo/`): nhập đỉnh, đáy và Buy hoặc Sell. Tính hồi Fibonacci và 3 vùng giá trên trình duyệt; đỉnh/đáy lưu `xml/fibo.xml` qua API. Sell: 100% tại đỉnh. Buy: 100% tại đáy. Chi tiết: `note-ai/setup.md`.
 
 Trang **Timer** (`/setup/timer/`): đặt vùng giá (từ–đến). Server poll **nến M1 đã đóng** (~30s) trong `watch.py`. Chạm vùng nếu high/low của nến giao vùng. Cảnh báo **Telegram** (không cần giữ tab). Cần `start_server.bat` + `xml/telegram.xml` (`enabled=true`, token, chat_id). Danh sách báo thức: `xml/timer.xml`.
 

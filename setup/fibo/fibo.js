@@ -1,104 +1,31 @@
-// Fibonacci retracement — tính trên trình duyệt, không gọi API.
-const THEME_KEY = "mt5-theme";
-const STORAGE_KEY = "setup-fibo";
+// Fibonacci retracement — tính trên trình duyệt; đỉnh/đáy lưu xml/fibo.xml qua API.
+const {
+  el,
+  initTheme,
+  toggleTheme,
+  apiGet,
+  apiPut,
+  debounce,
+  markApiOk,
+  markApiError,
+} = window.MT5;
 
-const LEVELS = [
-  { ratio: 1, label: "1.000 (100%)" },
-  { ratio: 0.786, label: "0.786 (78.6%)" },
-  { ratio: 0.618, label: "0.618 (61.8%)" },
-  { ratio: 0.5, label: "0.500 (50.0%)" },
-  { ratio: 0.382, label: "0.382 (38.2%)" },
-  { ratio: 0.236, label: "0.236 (23.6%)" },
-  { ratio: 0, label: "0.000 (0%)" },
-];
+const {
+  LEVELS,
+  ROLES,
+  SIDE_HINT,
+  priceDigits,
+  roundTo,
+  formatPrice,
+  priceAt,
+  rowClass,
+} = window.FiboCalc;
 
-const ROLES = {
-  sell: {
-    1: "Đỉnh gốc sóng giảm chính",
-    0.786: "Giới hạn cuối cùng để duy trì xu hướng giảm",
-    0.618: "Golden Zone (Vùng kháng cự chính mạnh nhất)",
-    0.5: "Equilibrium (Mức giá cân bằng sóng)",
-    0.382: "Cản hồi phục nhẹ đầu tiên",
-    0.236: "Vùng Flip Zone (cựu hỗ trợ đã bị đâm thủng)",
-    0: "Đáy thấp nhất hiện tại",
-  },
-  buy: {
-    1: "Đáy gốc sóng tăng chính",
-    0.786: "Giới hạn cuối cùng để duy trì xu hướng tăng",
-    0.618: "Golden Zone (Vùng hỗ trợ chính mạnh nhất)",
-    0.5: "Equilibrium (Mức giá cân bằng sóng)",
-    0.382: "Hỗ trợ hồi nhẹ đầu tiên",
-    0.236: "Vùng Flip Zone (cựu kháng cự đã bị phá)",
-    0: "Đỉnh cao nhất hiện tại",
-  },
-};
+const LEGACY_STORAGE_KEY = "setup-fibo";
 
-const SIDE_HINT = {
-  sell: "SELL: 100% tại đỉnh, 0% tại đáy. Giá hồi từ đáy lên — ưu tiên Sell ở Premium (50%–78.6%).",
-  buy: "BUY: 100% tại đáy, 0% tại đỉnh. Giá hồi từ đỉnh xuống — ưu tiên Buy ở Discount (50%–78.6%).",
-};
-
-function el(id) {
-  return document.getElementById(id);
-}
-
-function applyTheme(theme) {
-  document.documentElement.setAttribute("data-theme", theme);
-  const btn = el("themeToggle");
-  if (btn) btn.textContent = theme === "dark" ? "Chế độ sáng" : "Chế độ tối";
-}
-
-function initTheme() {
-  let saved = "light";
-  try {
-    saved = localStorage.getItem(THEME_KEY) === "dark" ? "dark" : "light";
-  } catch (err) {
-    saved = "light";
-  }
-  applyTheme(saved);
-}
-
-function toggleTheme() {
-  const current = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
-  const next = current === "dark" ? "light" : "dark";
-  try {
-    localStorage.setItem(THEME_KEY, next);
-  } catch (err) { /* ignore */ }
-  applyTheme(next);
-}
-
-function priceDigits(high, low) {
-  const mag = Math.max(Math.abs(high), Math.abs(low));
-  if (mag >= 100) return 2;
-  if (mag >= 10) return 3;
-  return 5;
-}
-
-function roundTo(value, digits) {
-  const stabilized = Number(value.toFixed(digits + 6));
-  const factor = 10 ** digits;
-  return Math.round(stabilized * factor) / factor;
-}
-
-function formatPrice(value, digits) {
-  return value.toLocaleString("en-US", {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  });
-}
-
-function priceAt(high, low, ratio, side) {
-  const range = high - low;
-  return side === "sell" ? low + range * ratio : high - range * ratio;
-}
-
-function rowClass(ratio) {
-  const classes = [];
-  if (ratio === 0.618 || ratio === 0.5) classes.push("is-key");
-  if (ratio === 0.786 || ratio === 0.618 || ratio === 0.5) classes.push("is-best");
-  if (ratio === 0.382 || ratio === 0.236) classes.push("is-scalp");
-  return classes.join(" ");
-}
+let hydrated = false;
+let saveBusy = false;
+let saveQueued = false;
 
 function zonesFor(side, fmt, at) {
   const band = "Bao gồm Fibo 0.500, 0.618 và 0.786. Vùng có tỷ lệ R:R an toàn và tối ưu nhất.";
@@ -171,6 +98,96 @@ function setView(mode) {
   el("emptyCard").classList.toggle("hidden", mode !== "empty");
 }
 
+function applySettings(settings) {
+  const high = settings && settings.high;
+  const low = settings && settings.low;
+  const side = settings && settings.side;
+  el("swingHigh").value = high === null || high === undefined ? "" : String(high);
+  el("swingLow").value = low === null || low === undefined ? "" : String(low);
+  el("side").value = side === "buy" ? "buy" : "sell";
+}
+
+function payloadFromForm() {
+  const highRaw = el("swingHigh").value.trim();
+  const lowRaw = el("swingLow").value.trim();
+  return {
+    high: highRaw === "" ? null : readNumber("swingHigh"),
+    low: lowRaw === "" ? null : readNumber("swingLow"),
+    side: el("side").value === "buy" ? "buy" : "sell",
+  };
+}
+
+function restoreFromLocalStorage() {
+  try {
+    const raw = localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    if (!data || (typeof data.high !== "string" && typeof data.low !== "string")) return false;
+    applySettings({
+      high: data.high === "" ? null : Number(data.high),
+      low: data.low === "" ? null : Number(data.low),
+      side: data.side,
+    });
+    return !!(data.high || data.low);
+  } catch (err) {
+    return false;
+  }
+}
+
+function clearLegacyStorage() {
+  try {
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
+  } catch (err) { /* ignore */ }
+}
+
+function hasSavedLevels(settings) {
+  if (!settings) return false;
+  return (settings.high !== null && settings.high !== undefined)
+    || (settings.low !== null && settings.low !== undefined);
+}
+
+async function migrateFromLocalStorage(serverSettings) {
+  if (hasSavedLevels(serverSettings)) {
+    clearLegacyStorage();
+    return false;
+  }
+  if (!restoreFromLocalStorage()) return false;
+  try {
+    await apiPut("/api/setup/fibo", payloadFromForm());
+    clearLegacyStorage();
+    markApiOk("Đã chuyển đỉnh/đáy lên server");
+    return true;
+  } catch (err) {
+    markApiError(err);
+    return false;
+  }
+}
+
+async function persistToServer() {
+  if (!hydrated) return;
+  if (saveBusy) {
+    saveQueued = true;
+    return;
+  }
+  saveBusy = true;
+  try {
+    await apiPut("/api/setup/fibo", payloadFromForm());
+    markApiOk("Đã lưu đỉnh/đáy");
+  } catch (err) {
+    markApiError(err);
+  } finally {
+    saveBusy = false;
+    if (saveQueued) {
+      saveQueued = false;
+      persistToServer();
+    }
+  }
+}
+
+const scheduleSave = debounce(() => {
+  persistToServer();
+}, 400);
+
 function render(high, low, side) {
   const digits = priceDigits(high, low);
   const at = (ratio) => roundTo(priceAt(high, low, ratio, side), digits);
@@ -207,33 +224,13 @@ function render(high, low, side) {
   setView("result");
 }
 
-function persist() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      high: el("swingHigh").value,
-      low: el("swingLow").value,
-      side: el("side").value,
-    }));
-  } catch (err) { /* ignore */ }
-}
-
-function restore() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    const data = JSON.parse(raw);
-    if (data && typeof data.high === "string") el("swingHigh").value = data.high;
-    if (data && typeof data.low === "string") el("swingLow").value = data.low;
-    if (data && (data.side === "buy" || data.side === "sell")) el("side").value = data.side;
-  } catch (err) { /* ignore */ }
-}
-
-function update() {
+function update({ save = false } = {}) {
   const side = el("side").value === "buy" ? "buy" : "sell";
   el("sideHint").textContent = SIDE_HINT[side];
   const high = readNumber("swingHigh");
   const low = readNumber("swingLow");
-  persist();
+
+  if (hydrated && save) scheduleSave();
 
   if (high === null || low === null) {
     showError("");
@@ -249,13 +246,31 @@ function update() {
   render(high, low, side);
 }
 
+async function loadSettings() {
+  let migrated = false;
+  try {
+    const data = await apiGet("/api/setup/fibo", { useCache: false });
+    applySettings(data.settings || {});
+    migrated = await migrateFromLocalStorage(data.settings || {});
+    if (!migrated) markApiOk("Đã tải đỉnh/đáy từ server");
+  } catch (err) {
+    if (restoreFromLocalStorage()) {
+      markApiError(new Error(`${err.message || err} — đang dùng bản trình duyệt tạm.`));
+    } else {
+      markApiError(err);
+    }
+  } finally {
+    hydrated = true;
+    update({ save: false });
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   initTheme();
   el("themeToggle").addEventListener("click", toggleTheme);
-  restore();
   ["swingHigh", "swingLow", "side"].forEach((id) => {
-    el(id).addEventListener("input", update);
-    el(id).addEventListener("change", update);
+    el(id).addEventListener("input", () => update({ save: true }));
+    el(id).addEventListener("change", () => update({ save: true }));
   });
-  update();
+  loadSettings();
 });

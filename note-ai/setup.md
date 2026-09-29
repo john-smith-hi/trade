@@ -14,7 +14,9 @@ CSS/JS: `ver.php` + `?v=filemtime`. Thêm file JS mới thì ghi vào list trong
 
 ## Fibo
 
-Tính trên trình duyệt. Không API, không XML. Nhớ lần nhập bằng `localStorage` key `setup-fibo`. Theme dùng chung key `mt5-theme`. Trang này **không** load `common.js` (tránh poll Timer).
+Tính bảng/vùng trên trình duyệt (`setup/fibo/calc.js`). **Đỉnh/đáy + side** lưu server qua `GET/PUT /api/setup/fibo` → `xml/fibo.xml` (gitignore; mẫu `fibo.example.xml`). Tự lưu ~400ms sau khi gõ; **không** ghi XML khi chỉ mở trang. PUT xong **không** ghi đè ô đang nhập. Lần đầu nếu server trống mà còn `localStorage` key `setup-fibo` thì đẩy lên server rồi xóa local.
+
+Cần `start_server.bat` + `proxy.php`. Theme key `mt5-theme`. Load `common.js` (có poll Timer nền — giống trang Timer).
 
 Công thức, `range = đỉnh − đáy`:
 

@@ -13,6 +13,7 @@ $files = [
   "common.js",
   "app.js",
   "timer/timer.js",
+  "fibo/calc.js",
   "fibo/fibo.js",
 ];
 

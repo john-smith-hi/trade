@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    MẪU file lưu đỉnh/đáy trang setup/fibo/.
+    Copy thành "fibo.xml" (cùng thư mục xml/) — API tự tạo khi chạy lần đầu.
+
+    high        : giá đỉnh sóng (trống = chưa nhập).
+    low         : giá đáy sóng.
+    side        : buy | sell — hướng ưu tiên vào lệnh.
+    updated_at  : ISO thời điểm lưu gần nhất (VN).
+-->
+<fibo_settings high="" low="" side="sell" updated_at="" />

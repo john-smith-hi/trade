@@ -29,7 +29,7 @@
       <a href="./" class="active">Fibo</a>
       <a href="../timer/">Timer</a>
     </nav>
-    <p class="api-status">Tính trên trình duyệt — không cần API.</p>
+    <p class="api-status" id="apiStatus">Đang tải đỉnh/đáy...</p>
   </div>
   <button type="button" id="themeToggle" class="btn btn-secondary theme-toggle">Chế độ tối</button>
 </header>
@@ -55,6 +55,7 @@
         </select>
       </div>
     </div>
+    <p class="hint">Đỉnh/đáy tự lưu vào <code>xml/fibo.xml</code> trên server (cần <code>start_server.bat</code>).</p>
     <p class="hint hint-error hidden" id="fiboError"></p>
   </section>
 
@@ -84,9 +85,12 @@
   </section>
 </main>
 
+<script>window.MT5_PROXY = "../proxy.php";</script>
 <script>
 (function () {
   var v = window.SETUP_ASSET_VER || "0";
+  document.write('<script src="../common.js?v=' + v + '"><\/script>');
+  document.write('<script src="calc.js?v=' + v + '"><\/script>');
   document.write('<script src="fibo.js?v=' + v + '"><\/script>');
 })();
 </script>

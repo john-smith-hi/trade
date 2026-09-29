@@ -50,6 +50,8 @@
 #   DELETE /api/setup/setups/<id>?week_id=  -> xóa 1 setup (tuần active)
 #   GET    /api/setup/timer             -> danh sách báo thức vùng giá (xml/timer.xml)
 #   PUT    /api/setup/timer             -> lưu toàn bộ danh sách báo thức
+#   GET    /api/setup/fibo              -> đỉnh/đáy Fibo (xml/fibo.xml)
+#   PUT    /api/setup/fibo              -> lưu đỉnh/đáy Fibo
 #   POST   /api/setup/telegram-test     -> gửi 1 tin thử qua bot Telegram
 #   GET    /setup/, /setup/<file>       -> serve file tĩnh repo (dev); production dùng WAMP
 #
@@ -70,6 +72,7 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 import day_trade
+import fibo_settings
 import modify_if
 import mt5 as mt5app
 import telegram_notify
@@ -103,6 +106,7 @@ def _watch_extra_files():
     skip = {
         day_trade.WEEK_FILE.resolve(),
         timer_alerts.ALERTS_FILE.resolve(),
+        fibo_settings.SETTINGS_FILE.resolve(),
         modify_if.JOBS_FILE.resolve(),
         telegram_notify.CONFIG_FILE.resolve(),
         watch_state.WATCH_FILE.resolve(),
@@ -813,6 +817,26 @@ def setup_timer_save_endpoint():
         return jsonify({"error": str(exc)}), 400
 
     return jsonify({"alerts": alerts})
+
+
+@app.get("/api/setup/fibo")
+def setup_fibo_get_endpoint():
+    return jsonify({"settings": fibo_settings.load_settings()})
+
+
+@app.put("/api/setup/fibo")
+def setup_fibo_save_endpoint():
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"error": "Body JSON không hợp lệ"}), 400
+
+    try:
+        with _lock:
+            settings = fibo_settings.replace_settings(data)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    return jsonify({"settings": settings})
 
 
 @app.post("/api/setup/telegram-test")
