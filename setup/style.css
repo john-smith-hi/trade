@@ -662,3 +662,59 @@ main {
 .timer-status.armed { color: var(--ok); }
 .timer-status.fired { color: var(--warn); }
 
+.fibo-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.fibo-form .field {
+  margin-bottom: 0;
+}
+
+.fibo-table td.role {
+  white-space: normal;
+  min-width: 220px;
+  line-height: 1.45;
+}
+
+.fibo-table td.price,
+.fibo-table th.price {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.fibo-table tr.is-key .role {
+  font-weight: 700;
+}
+
+.fibo-table tr.is-best td.level {
+  box-shadow: inset 3px 0 0 var(--ok);
+}
+
+.fibo-table tr.is-scalp td.level {
+  box-shadow: inset 3px 0 0 var(--warn);
+}
+
+.fibo-zones {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.fibo-zones > li {
+  margin: 0 0 14px;
+  line-height: 1.45;
+}
+
+.fibo-zones ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+}
+
+@media (max-width: 720px) {
+  .fibo-form {
+    grid-template-columns: 1fr;
+  }
+}
+

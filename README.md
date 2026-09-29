@@ -15,7 +15,7 @@ Web UI chạy trên WAMP. Đường dẫn www khai báo trong `xml/www.xml` (git
 | `watch.py` | Poll Timer + lệnh TP/SL/pending trên server |
 | `copy_www.py` | Xóa folder đích rồi copy UI `mt5/` / `setup/` / `history/` theo `xml/www.xml` (không dùng tên `copy.py`) |
 | `mt5/` | Giao diện ra lệnh / account / path / lịch sử gửi lệnh |
-| `setup/` | Giao diện checklist vào lệnh theo tuần |
+| `setup/` | Checklist tuần, trang Fibo (đỉnh/đáy), Timer báo giá |
 | `history/` | Phân tích CSV lệnh đã đóng (import trên trình duyệt). Khác `mt5/history/` |
 | `day_trade.py` | Chấm điểm setup, đọc/ghi `xml/day_trade_week.xml` |
 | `stock.py` | Phân tích giá (vnstock / Yahoo / TradingView) |
@@ -131,6 +131,7 @@ Sau đó:
 - Path terminal: http://localhost/mt5/path/
 - Lịch sử gửi lệnh: http://localhost/mt5/history/
 - Checklist tuần: http://localhost/setup/
+- Fibo đỉnh/đáy: http://localhost/setup/fibo/
 - Timer báo giá: http://localhost/setup/timer/
 - Phân tích CSV: http://localhost/history/
 
@@ -169,6 +170,8 @@ Theo `day_trade_mindset.txt`. Dữ liệu tuần: `xml/day_trade_week.xml`. Báo
 - Qua T6: tuần `closed`; tuần mới đã mở từ Thứ 7
 
 Không gửi lệnh MT5 — chỉ chấm điểm setup thủ công.
+
+Trang **Fibo** (`/setup/fibo/`): nhập đỉnh, đáy và Buy hoặc Sell. Tính hồi Fibonacci và 3 vùng giá trên trình duyệt (không gọi API). Sell: 100% tại đỉnh. Buy: 100% tại đáy. Chi tiết công thức: `note-ai/setup.md`.
 
 Trang **Timer** (`/setup/timer/`): đặt vùng giá (từ–đến). Server poll **nến M1 đã đóng** (~30s) trong `watch.py`. Chạm vùng nếu high/low của nến giao vùng. Cảnh báo **Telegram** (không cần giữ tab). Cần `start_server.bat` + `xml/telegram.xml` (`enabled=true`, token, chat_id). Danh sách báo thức: `xml/timer.xml`.
 

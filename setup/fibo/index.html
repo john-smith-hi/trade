@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Fibo</title>
+<script>
+(function () {
+  try {
+    if (localStorage.getItem("mt5-theme") === "dark") {
+      document.documentElement.setAttribute("data-theme", "dark");
+    }
+  } catch (err) { /* ignore */ }
+})();
+</script>
+<script src="../ver.php"></script>
+<script>
+(function () {
+  var v = window.SETUP_ASSET_VER || "0";
+  document.write('<link rel="stylesheet" href="../style.css?v=' + v + '" />');
+})();
+</script>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <nav class="nav">
+      <a href="../">Setup</a>
+      <a href="./" class="active">Fibo</a>
+      <a href="../timer/">Timer</a>
+    </nav>
+    <p class="api-status">Tính trên trình duyệt — không cần API.</p>
+  </div>
+  <button type="button" id="themeToggle" class="btn btn-secondary theme-toggle">Chế độ tối</button>
+</header>
+
+<main>
+  <section class="card">
+    <h2>Đỉnh / đáy của sóng</h2>
+    <p class="hint" id="sideHint"></p>
+    <div class="fibo-form">
+      <div class="field">
+        <label for="swingHigh">Đỉnh</label>
+        <input type="number" id="swingHigh" step="any" inputmode="decimal" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label for="swingLow">Đáy</label>
+        <input type="number" id="swingLow" step="any" inputmode="decimal" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label for="side">Hướng lệnh</label>
+        <select id="side">
+          <option value="sell">SELL</option>
+          <option value="buy">BUY</option>
+        </select>
+      </div>
+    </div>
+    <p class="hint hint-error hidden" id="fiboError"></p>
+  </section>
+
+  <section class="card" id="emptyCard">
+    <p class="hint">Nhập đỉnh và đáy, chọn Buy hoặc Sell để hiện bảng hồi và 3 vùng giá.</p>
+  </section>
+
+  <section class="card hidden" id="resultCard">
+    <h2>1. Bảng mức Fibonacci hồi phục (Retracement)</h2>
+    <p class="hint" id="rangeHint"></p>
+    <div class="table-wrap">
+      <table class="data-table fibo-table">
+        <thead>
+          <tr>
+            <th>Mức Fibo</th>
+            <th class="price">Giá trị</th>
+            <th>Vai trò &amp; Đặc điểm</th>
+          </tr>
+        </thead>
+        <tbody id="fiboBody"></tbody>
+      </table>
+    </div>
+
+    <h2>2. Phân nhóm vùng giá giao dịch</h2>
+    <ul class="fibo-zones" id="zoneList"></ul>
+    <p class="hint" id="gapHint"></p>
+  </section>
+</main>
+
+<script>
+(function () {
+  var v = window.SETUP_ASSET_VER || "0";
+  document.write('<script src="fibo.js?v=' + v + '"><\/script>');
+})();
+</script>
+</body>
+</html>
