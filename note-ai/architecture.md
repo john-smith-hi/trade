@@ -39,7 +39,7 @@ Web UI (không nằm trong repo trade):
 | `POST` | `/api/accounts` | Thêm account (gồm login/password/server) |
 | `PUT` | `/api/accounts/<name>` | Sửa cấu hình — **không** đổi login/password/server/name |
 | `POST` | `/api/reload-accounts` | Ép nạp lại XML accounts (+ paths fresh) |
-| `POST` | `/api/action` | status / open / close-all / modify-all |
+| `POST` | `/api/action` | status / open / open-2-side / close-all / modify-all |
 | `GET` | `/api/quote?account=&symbol=&side=` | bid / ask / entry — UI điền TP/SL khi **open** |
 | `GET` | `/api/positions?account=` | Lệnh mở JSON — UI điền TP/SL khi **modify-all** |
 | `GET` | `/api/history?limit=50` | `{ lines, rows }` — raw + parse bảng |

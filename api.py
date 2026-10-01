@@ -28,7 +28,7 @@
 #   POST /api/accounts          -> thêm account mới
 #   PUT  /api/accounts/<name>   -> sửa cấu hình (không đổi login/password/server/name)
 #   POST /api/reload-accounts   -> nạp lại xml/accounts.xml (ép buộc)
-#   POST /api/action            -> thực thi action (status/open/pending/cancel-pending/close/close-all/modify-all/modify-all-if)
+#   POST /api/action            -> thực thi action (status/open/open-2-side/pending/cancel-pending/close/close-all/modify-all/modify-all-if)
 #   GET  /api/modify-if?account=           -> job modify-all-if đang chờ
 #   GET  /api/quote?account=&symbol=&side=  -> bid/ask/entry tick live (điền TP/SL)
 #   GET  /api/candle?account=&symbol=&closed=1  -> nến M1 (mặc định nến đã đóng)
@@ -463,7 +463,16 @@ def action_endpoint():
     if pending_type not in ("limit", "stop"):
         return jsonify({"error": "'pending_type' phải là limit hoặc stop"}), 400
 
-    if action in ("open", "pending", "modify-all", "modify-all-if"):
+    if action == "open-2-side":
+        if sl_price is None or sl_price <= 0:
+            return jsonify({
+                "error": "open-2-side: sl_price là khoảng cách > 0 (ví dụ 10), không phải mức giá",
+            }), 400
+        if tp_price is not None and tp_price <= 0:
+            return jsonify({
+                "error": "open-2-side: tp_price là khoảng cách > 0 (ví dụ 50), hoặc bỏ trống",
+            }), 400
+    elif action in ("open", "pending", "modify-all", "modify-all-if"):
         if sl_price is None or sl_price <= 0:
             return jsonify({"error": "Stop loss là bắt buộc (sl_price > 0)"}), 400
     if action == "modify-all-if":

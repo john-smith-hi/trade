@@ -26,15 +26,22 @@
 #
 # THAM SỐ BẮT BUỘC
 #   --account   tên account khai báo trong xml/accounts.xml (vd: fake, real, prop_demo)
-#   --action    status | open | pending | cancel-pending | close | close-all | modify-all | modify-all-if | cancel-modify-if
+#   --action    status | open | open-2-side | pending | cancel-pending | close | close-all | modify-all | modify-all-if | cancel-modify-if
 #
 # THAM SỐ KHÁC
 #   --symbol --side --lot --tp-price --sl-price --price --pending-type --comment --copy --no-ask
 #   (Không có --no-ask → chỉ xem trước, KHÔNG gửi lệnh thật.)
-#   TP/SL là mức giá cụ thể (không phải số điểm).
+#   Với open / pending / modify: TP/SL là mức giá cụ thể (không phải số điểm).
 #   action=open BẮT BUỘC --sl-price; --tp-price tùy chọn.
 #     BUY : SL < giá mở (< TP nếu có)
 #     SELL: (TP nếu có <) giá mở < SL
+#   action=open-2-side: mở BUY và SELL thị trường cùng lúc. --side bị bỏ qua.
+#     --sl-price / --tp-price là KHOẢNG CÁCH so với giá khớp, không phải mức giá.
+#     Bắt buộc --sl-price > 0; --tp-price tùy chọn (bỏ trống = không đặt TP).
+#     BUY khớp ở ask: SL = ask − SL, TP = ask + TP.
+#     SELL khớp ở bid: SL = bid + SL, TP = bid − TP.
+#     Ví dụ giá 4000, --sl-price 10 --tp-price 50:
+#       BUY  SL 3990 TP 4050 | SELL SL 4010 TP 3950.
 #   action=pending BẮT BUỘC --price (giá chờ) + --sl-price; --tp-price tùy chọn.
 #     Limit/Stop tự chọn theo giá chờ so với thị trường (không bắt phải nhỏ/lớn hơn).
 #     BUY:  giá < ask → LIMIT, còn lại STOP.
@@ -58,6 +65,9 @@
 #
 #   # Mở lệnh thật (có cả TP)
 #   python mt5.py --account fake --action open --symbol XAUUSD --side buy --lot 0.01 --tp-price 60000 --sl-price 58000 --no-ask
+#
+#   # Mua và bán cùng lúc. 10 và 50 là khoảng cách, không phải mức giá.
+#   python mt5.py --account fake --action open-2-side --symbol XAUUSD --lot 0.01 --sl-price 10 --tp-price 50 --no-ask
 #
 #   # Đặt lệnh chờ mua (Buy Limit) tại giá
 #   python mt5.py --account fake --action pending --symbol XAUUSD --side buy --pending-type limit --price 2500 --lot 0.01 --sl-price 2480 --no-ask
@@ -123,7 +133,7 @@ PATHS_FILE = XML_DIR / "paths.xml"
 PATHS_EXAMPLE_FILE = XML_DIR / "paths.example.xml"
 
 COPYABLE_ACTIONS = {
-    "open", "pending", "cancel-pending", "close", "close-all", "modify-all",
+    "open", "open-2-side", "pending", "cancel-pending", "close", "close-all", "modify-all",
     "modify-all-if", "cancel-modify-if",
 }
 PENDING_TYPES = {"limit", "stop"}
@@ -1048,13 +1058,16 @@ def print_position_pnl_lines(position, indent="  "):
     return info
 
 
-def build_trade_request(symbol, side, lot, tp_price=None, sl_price=None, comment="Python trader test"):
-    tick = get_current_price(symbol)
+def build_trade_request(symbol, side, lot, tp_price=None, sl_price=None, comment="Python trader test", price=None):
     symbol_info = mt5.symbol_info(symbol)
     if symbol_info is None:
         raise RuntimeError(f"Không lấy được thông tin symbol {symbol}")
 
-    price = tick.ask if side == "buy" else tick.bid
+    if price is None:
+        tick = get_current_price(symbol)
+        price = tick.ask if side == "buy" else tick.bid
+    else:
+        price = float(price)
     order_type = mt5.ORDER_TYPE_BUY if side == "buy" else mt5.ORDER_TYPE_SELL
 
     validate_tp_sl(side, price, tp_price, sl_price)
@@ -1129,6 +1142,208 @@ def open_trade(account, symbol, side, lot, tp_price=None, sl_price=None, comment
     print(f"Đặt lệnh thành công! Ticket ID: {result.order}")
     save_trade_history(symbol, lot, result, request, "SUCCESS")
     return result
+
+
+def levels_from_distance(side, entry_price, sl_distance, tp_distance=None):
+    """Đổi khoảng cách SL/TP thành mức giá theo hướng lệnh.
+
+    BUY: SL = giá − khoảng cách SL, TP = giá + khoảng cách TP.
+    SELL: SL = giá + khoảng cách SL, TP = giá − khoảng cách TP.
+    """
+    side_l = (side or "").lower()
+    if side_l not in ("buy", "sell"):
+        raise RuntimeError("side phải là buy hoặc sell")
+    try:
+        entry = float(entry_price)
+        sl_d = float(sl_distance)
+    except (TypeError, ValueError) as exc:
+        raise RuntimeError("Giá hoặc khoảng cách SL/TP không phải số") from exc
+    if not math.isfinite(entry) or entry <= 0:
+        raise RuntimeError(f"Giá hiện tại không hợp lệ: {entry_price}")
+    if not math.isfinite(sl_d) or sl_d <= 0:
+        raise RuntimeError(
+            "Stop loss phải là khoảng cách > 0 so với giá hiện tại (ví dụ 10), không phải mức giá"
+        )
+    tp_d = None
+    if tp_distance is not None:
+        try:
+            tp_d = float(tp_distance)
+        except (TypeError, ValueError) as exc:
+            raise RuntimeError("Khoảng cách take profit không phải số") from exc
+        if not math.isfinite(tp_d) or tp_d <= 0:
+            raise RuntimeError(
+                "Take profit phải là khoảng cách > 0 so với giá hiện tại (ví dụ 50), hoặc bỏ trống"
+            )
+    if side_l == "buy":
+        sl_price = entry - sl_d
+        tp_price = None if tp_d is None else entry + tp_d
+    else:
+        sl_price = entry + sl_d
+        tp_price = None if tp_d is None else entry - tp_d
+    if sl_price <= 0 or (tp_price is not None and tp_price <= 0):
+        raise RuntimeError(
+            f"Khoảng cách SL/TP quá lớn so với giá {entry}: SL={sl_price}"
+            + (f", TP={tp_price}" if tp_price is not None else "")
+        )
+    return tp_price, sl_price
+
+
+def plan_open_two_side(symbol, sl_distance, tp_distance=None):
+    """Một tick: BUY theo ask, SELL theo bid, SL/TP là khoảng cách từ giá khớp."""
+    tick = get_current_price(symbol)
+    plans = []
+    for side in ("buy", "sell"):
+        entry = float(tick.ask if side == "buy" else tick.bid)
+        tp_price, sl_price = levels_from_distance(side, entry, sl_distance, tp_distance)
+        sl_price = normalize_price(symbol, sl_price)
+        if tp_price is not None:
+            tp_price = normalize_price(symbol, tp_price)
+        validate_tp_sl(side, entry, tp_price, sl_price)
+        plans.append({
+            "side": side,
+            "entry": entry,
+            "tp": tp_price,
+            "sl": sl_price,
+        })
+    return {
+        "bid": float(tick.bid),
+        "ask": float(tick.ask),
+        "plans": plans,
+    }
+
+
+def _print_two_side_plan(symbol, lot, sl_distance, tp_distance, snapshot, account):
+    contract_size = resolve_contract_size(symbol)
+    tp_label = tp_distance if tp_distance is not None else "không đặt"
+    print(f"Sẽ mở BUY và SELL trên {symbol}, mỗi lệnh {lot} lot")
+    print(f"Khoảng cách: SL {sl_distance} | TP {tp_label}")
+    print(f"Giá hiện tại: bid={snapshot['bid']} ask={snapshot['ask']}")
+    print("BUY khớp ở ask, SELL khớp ở bid — cùng thời điểm lấy giá.")
+    for plan in snapshot["plans"]:
+        side = plan["side"]
+        entry = plan["entry"]
+        sl_price = plan["sl"]
+        tp_price = plan["tp"]
+        if side == "buy":
+            sl_note = f"giá − {sl_distance}"
+            tp_note = f"giá + {tp_distance}" if tp_price is not None else None
+        else:
+            sl_note = f"giá + {sl_distance}"
+            tp_note = f"giá − {tp_distance}" if tp_price is not None else None
+        tp_text = f"{tp_price} ({tp_note})" if tp_price is not None else "không đặt"
+        print(f"{side.upper()} giá vào {entry} | SL {sl_price} ({sl_note}) | TP {tp_text}")
+        estimated = estimate_tp_sl_pnl(side, entry, tp_price, sl_price, lot, contract_size)
+        if tp_price is not None:
+            print(f"  Ước tính lời TP: {estimated.get('tp', 0):.8f}")
+        else:
+            print("  Không đặt TP — bỏ qua ước tính lời TP.")
+        print(f"  Ước tính lỗ SL: {estimated.get('sl', 0):.8f}")
+        validate_xauusd_max_loss(symbol, side, entry, sl_price, lot, account=account)
+
+
+def _warn_distance_inside_stops(symbol, sl_distance, tp_distance):
+    info = mt5.symbol_info(symbol)
+    if info is None:
+        return
+    point = float(getattr(info, "point", 0) or 0)
+    stops = int(getattr(info, "trade_stops_level", 0) or 0)
+    min_dist = stops * point
+    if min_dist <= 0:
+        return
+    too_close = float(sl_distance) < min_dist
+    if tp_distance is not None and float(tp_distance) < min_dist:
+        too_close = True
+    if too_close:
+        print(
+            f"Cảnh báo: broker yêu cầu SL/TP cách giá ít nhất {min_dist} "
+            f"(stops level {stops}). Khoảng cách nhỏ hơn có thể bị từ chối."
+        )
+
+
+def send_market_order(symbol, side, lot, tp_price, sl_price, comment, price):
+    """Gửi một lệnh thị trường. Giá vào đã chốt — không lấy tick mới."""
+    request = build_trade_request(
+        symbol, side, lot, tp_price, sl_price, comment, price=price,
+    )
+    result = mt5.order_send(request)
+    label = side.upper()
+    if result is None:
+        err = mt5.last_error()
+        print(f"{label}: đặt lệnh thất bại nặng! Không nhận được phản hồi từ terminal. Lỗi hệ thống: {err}")
+        save_trade_history(
+            symbol, lot, None, request, "FAILED",
+            f"không phản hồi từ terminal | last_error={err}",
+        )
+        return None
+    if result.retcode != mt5.TRADE_RETCODE_DONE:
+        print(f"{label}: đặt lệnh thất bại! Mã lỗi: {result.retcode} ({result.comment})")
+        save_trade_history(symbol, lot, result, request, "FAILED", f"retcode={result.retcode} | {result.comment}")
+        return None
+    print(f"{label}: đặt lệnh thành công! Ticket ID: {result.order}")
+    save_trade_history(symbol, lot, result, request, "SUCCESS")
+    return result
+
+
+def open_two_side(account, symbol, lot, tp_distance=None, sl_distance=None, comment="Python trader test"):
+    """Mở BUY và SELL thị trường. sl_distance/tp_distance là khoảng cách, không phải mức giá."""
+    if sl_distance is None:
+        raise RuntimeError(
+            "Lệnh open-2-side bắt buộc --sl-price là khoảng cách > 0 (ví dụ 10), không phải mức giá"
+        )
+    try:
+        sl_distance = float(sl_distance)
+    except (TypeError, ValueError) as exc:
+        raise RuntimeError("Khoảng cách stop loss không phải số") from exc
+    if not math.isfinite(sl_distance) or sl_distance <= 0:
+        raise RuntimeError(
+            "Lệnh open-2-side bắt buộc --sl-price là khoảng cách > 0 (ví dụ 10), không phải mức giá"
+        )
+    if tp_distance is not None:
+        try:
+            tp_distance = float(tp_distance)
+        except (TypeError, ValueError) as exc:
+            raise RuntimeError("Khoảng cách take profit không phải số") from exc
+        if not math.isfinite(tp_distance) or tp_distance <= 0:
+            raise RuntimeError(
+                "open-2-side: --tp-price phải là khoảng cách > 0 (ví dụ 50), hoặc bỏ trống"
+            )
+
+    symbol = select_symbol(symbol, account)
+    snapshot = plan_open_two_side(symbol, sl_distance, tp_distance)
+    _print_two_side_plan(symbol, lot, sl_distance, tp_distance, snapshot, account)
+    _warn_distance_inside_stops(symbol, sl_distance, tp_distance)
+
+    if not confirm_action("Mở đồng thời lệnh BUY và SELL với SL/TP tính theo khoảng cách?"):
+        print("Đã hủy mở lệnh 2 phía.")
+        return None
+
+    snapshot = plan_open_two_side(symbol, sl_distance, tp_distance)
+    print(f"Gửi theo giá mới nhất: bid={snapshot['bid']} ask={snapshot['ask']}")
+    for plan in snapshot["plans"]:
+        tp_text = plan["tp"] if plan["tp"] is not None else "không đặt"
+        print(f"  {plan['side'].upper()} giá vào {plan['entry']} | SL {plan['sl']} | TP {tp_text}")
+        validate_xauusd_max_loss(
+            symbol, plan["side"], plan["entry"], plan["sl"], lot, account=account,
+        )
+
+    results = {}
+    for plan in snapshot["plans"]:
+        try:
+            results[plan["side"]] = send_market_order(
+                symbol, plan["side"], lot, plan["tp"], plan["sl"], comment, plan["entry"],
+            )
+        except Exception as exc:
+            results[plan["side"]] = None
+            print(f"{plan['side'].upper()}: lỗi khi gửi lệnh: {exc}")
+
+    buy_ok = results.get("buy") is not None
+    sell_ok = results.get("sell") is not None
+    print(
+        "Kết quả open-2-side: "
+        f"BUY {'thành công' if buy_ok else 'thất bại'} | "
+        f"SELL {'thành công' if sell_ok else 'thất bại'}"
+    )
+    return results
 
 
 def pending_order_type_label(order_type):
@@ -2068,6 +2283,8 @@ def run_action_on_account(account, args, lot):
         connect_mt5(account)
         if args.action == "open":
             open_trade(account, args.symbol, args.side, lot, args.tp_price, args.sl_price, args.comment)
+        elif args.action == "open-2-side":
+            open_two_side(account, args.symbol, lot, args.tp_price, args.sl_price, args.comment)
         elif args.action == "pending":
             open_pending_trade(
                 account, args.symbol, args.side, args.pending_type, args.price, lot,
@@ -2140,7 +2357,7 @@ def execute_request(account_name, action, symbol="XAUUSD", side="buy", lot=0.01,
     args.zone_low = zone_low
     args.zone_high = zone_high
 
-    lot_scale_actions = {"open", "pending", "close"}
+    lot_scale_actions = {"open", "open-2-side", "pending", "close"}
 
     try:
         run_action_on_account(primary_account, args, lot)
@@ -2150,7 +2367,7 @@ def execute_request(account_name, action, symbol="XAUUSD", side="buy", lot=0.01,
 
         if copy_names and action not in COPYABLE_ACTIONS:
             print(
-                f"Lưu ý: copy chỉ áp dụng cho action open/pending/cancel-pending/close/close-all/"
+                f"Lưu ý: copy chỉ áp dụng cho action open/open-2-side/pending/cancel-pending/close/close-all/"
                 f"modify-all/modify-all-if/cancel-modify-if, bỏ qua sao chép cho action '{action}'."
             )
         elif copy_names:
@@ -2197,7 +2414,7 @@ def main():
     )
     parser.add_argument(
         "--action",
-        choices=["open", "pending", "cancel-pending", "close", "close-all", "modify-all", "modify-all-if", "cancel-modify-if", "status"],
+        choices=["open", "open-2-side", "pending", "cancel-pending", "close", "close-all", "modify-all", "modify-all-if", "cancel-modify-if", "status"],
         required=True,
     )
     parser.add_argument("--symbol", default="XAUUSD")
@@ -2228,6 +2445,14 @@ def main():
 
     if args.action == "open" and args.sl_price is None:
         parser.error("action=open bắt buộc phải có --sl-price (stop loss); --tp-price tùy chọn")
+    if args.action == "open-2-side":
+        if args.sl_price is None or args.sl_price <= 0:
+            parser.error(
+                "action=open-2-side bắt buộc --sl-price là khoảng cách > 0 (ví dụ 10), "
+                "không phải mức giá tuyệt đối; --tp-price là khoảng cách tùy chọn (ví dụ 50)"
+            )
+        if args.tp_price is not None and args.tp_price <= 0:
+            parser.error("action=open-2-side: --tp-price phải là khoảng cách > 0, hoặc bỏ trống")
     if args.action == "close" and (args.lot is None or args.lot <= 0):
         parser.error("action=close bắt buộc --lot > 0 (số lot muốn đóng, cho phép nhỏ hơn vị thế)")
     if args.action == "pending":

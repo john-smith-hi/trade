@@ -53,7 +53,8 @@ Gửi lệnh thật **chỉ khi** có `--no-ask`. Không có cờ này thì ch�
 | Action | Việc |
 |--------|------|
 | `status` | Balance, lệnh mở, lệnh chờ |
-| `open` | Lệnh thị trường (bắt buộc TP + SL) |
+| `open` | Lệnh thị trường (bắt buộc SL, TP tùy chọn — mức giá tuyệt đối) |
+| `open-2-side` | Mua và bán cùng lúc. `--sl-price` / `--tp-price` là khoảng cách so với giá khớp (BUY: ask−SL / ask+TP, SELL: bid+SL / bid−TP) |
 | `pending` | Lệnh chờ tại giá (`limit` hoặc `stop`) |
 | `cancel-pending` | Hủy toàn bộ lệnh chờ |
 | `close-all` | Đóng hết lệnh mở |
@@ -70,7 +71,7 @@ Gửi lệnh thật **chỉ khi** có `--no-ask`. Không có cờ này thì ch�
 - Không truyền `--copy` → dùng `auto_copy_enabled` / `auto_copy_targets` của account (nếu bật)
 - `--copy "prop_demo,prop_1"` → copy đúng danh sách đó
 - `--copy ""` → tắt copy lần chạy đó
-- Lot đích = lot gốc × `multi` của account đích (với `open` và `pending`)
+- Lot đích = lot gốc × `multi` của account đích (với `open`, `open-2-side` và `pending`)
 - `xauusd_max_loss`: account đích bỏ trống thì lấy của gốc × `multi`
 
 ### Ví dụ CLI
@@ -79,6 +80,8 @@ Gửi lệnh thật **chỉ khi** có `--no-ask`. Không có cờ này thì ch�
 python mt5.py --account fake --action status
 
 python mt5.py --account fake --action open --symbol XAUUSD --side buy --lot 0.01 --tp-price 60000 --sl-price 58000 --no-ask
+
+python mt5.py --account fake --action open-2-side --symbol XAUUSD --lot 0.01 --sl-price 10 --tp-price 50 --no-ask
 
 python mt5.py --account fake --action pending --symbol XAUUSD --side buy --pending-type limit --price 2500 --lot 0.01 --tp-price 2550 --sl-price 2480 --no-ask
 
@@ -146,7 +149,7 @@ Trang ra lệnh: **Xem trước** không gửi lệnh; **Xác nhận gửi lện
 | GET/POST/PUT | `/api/paths` | Path terminal |
 | GET/POST/PUT | `/api/accounts` | Account (GET không trả password) |
 | POST | `/api/reload-accounts` | Nạp lại XML |
-| POST | `/api/action` | status / open / pending / cancel-pending / close-all / modify-all |
+| POST | `/api/action` | status / open / open-2-side / pending / cancel-pending / close-all / modify-all |
 | GET | `/api/quote` | bid / ask / entry (tick live) |
 | GET | `/api/candle` | nến M1 (mặc định đã đóng) — Timer |
 | GET | `/api/positions` | Lệnh đang mở |

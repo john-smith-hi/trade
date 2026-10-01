@@ -24,6 +24,7 @@
 ## Validation áp dụng khi
 
 - `open` (có SL)
+- `open-2-side` (SL khoảng cách, kiểm tra từng phía BUY và SELL)
 - `modify-all` (đổi SL) trên symbol XAUUSD / XAUUSDm
 
 Ước tính lỗ dùng `estimate_tp_sl_pnl` + `resolve_contract_size`.

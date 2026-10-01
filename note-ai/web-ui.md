@@ -50,6 +50,7 @@ Khi thêm file JS/CSS mới: **thêm vào list trong `ver.php`**.
   - Layout tham số: Symbol|Side → Lot (riêng dòng) → TP|SL (cùng dòng) → Comment (riêng) → Copy.
   - Mobile (`≤720px`): nav scroll ngang dạng chip, form 1 cột, nút full-width, input 16px (tránh zoom iOS); TP|SL vẫn 2 cột (máy rất hẹp mới xếp dọc).
   - Chọn **open** → `GET /api/quote` điền TP/SL = giá entry (ask/bid theo side); đổi symbol/side/account thì lấy lại.
+  - Chọn **open-2-side** → không điền mức giá vào ô SL/TP. Hai ô là khoảng cách (vd SL 10, TP 50). Quote chỉ để hint: BUY ask−SL / ask+TP, SELL bid+SL / bid−TP. Đổi action sang open-2-side thì xóa ô SL/TP (tránh gửi mức giá tuyệt đối như khoảng cách).
   - Chọn **modify-all** / **close-all** → `GET /api/positions` kiểm tra lệnh mở.
     - **Không có lệnh mở** → báo vô nghĩa, khóa nút Xem trước / Xác nhận.
     - modify-all có lệnh → điền TP/SL; close-all có lệnh → hiện tóm tắt số lệnh sẽ đóng.

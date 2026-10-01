@@ -164,6 +164,8 @@ let lastAccounts = [];
 /** Account đã gắn default_lot vào ô Lot — tránh ghi đè khi refresh danh sách (vd. Xem trước). */
 let lotBoundToAccount = null;
 let fillSeq = 0;
+/** Quote gần nhất cho open-2-side — hint tính SL/TP theo khoảng cách. */
+let lastTwoSideQuote = null;
 /** null = không áp dụng; false = action cần lệnh nhưng không có */
 let actionHasPositions = null;
 let actionHasOrders = null;
@@ -241,6 +243,10 @@ function actionNeedsPendingOrders(action = el("action").value) {
 
 function actionUsesQuote(action = el("action").value) {
   return action === "open" || action === "pending";
+}
+
+function actionIsTwoSide(action = el("action").value) {
+  return action === "open-2-side";
 }
 
 function actionIsModifyIf(action = el("action").value) {
@@ -356,6 +362,74 @@ function setTpSl(tp, sl) {
     el("slPrice").value = sl != null && sl !== "" ? sl : "";
   } finally {
     fillingForm = false;
+  }
+}
+
+function formatTwoSideHint(quote) {
+  const bid = Number(quote.bid);
+  const ask = Number(quote.ask);
+  const base = `Giá ${quote.symbol || ""}: bid=${quote.bid} ask=${quote.ask}. SL/TP là khoảng cách so với giá khớp (BUY = ask, SELL = bid), không phải mức giá. Lot áp dụng cho từng lệnh.`;
+  const slRaw = el("slPrice").value.trim();
+  const tpRaw = el("tpPrice").value.trim();
+  const sl = Number(slRaw);
+  const tp = tpRaw === "" ? null : Number(tpRaw);
+  if (!slRaw) {
+    return {
+      text: `${base} Nhập SL (ví dụ 10) và TP (ví dụ 50, có thể để trống).`,
+      asError: false,
+    };
+  }
+  if (!Number.isFinite(sl) || sl <= 0 || !Number.isFinite(bid) || !Number.isFinite(ask)) {
+    return { text: `${base} SL phải là số > 0.`, asError: true };
+  }
+  if (tp != null && (!Number.isFinite(tp) || tp <= 0)) {
+    return { text: `${base} TP phải là số > 0 hoặc để trống.`, asError: true };
+  }
+  const buySl = ask - sl;
+  const sellSl = bid + sl;
+  const buyTp = tp == null ? null : ask + tp;
+  const sellTp = tp == null ? null : bid - tp;
+  const buyTpText = buyTp == null ? "không TP" : `TP ${fmtPrice(buyTp)}`;
+  const sellTpText = sellTp == null ? "không TP" : `TP ${fmtPrice(sellTp)}`;
+  const bad = buySl <= 0 || sellSl <= 0 || (buyTp != null && buyTp <= 0) || (sellTp != null && sellTp <= 0);
+  return {
+    text: `${base} SL ${fmtPrice(sl)}${tp == null ? "" : `, TP ${fmtPrice(tp)}`} → BUY ${fmtPrice(ask)} SL ${fmtPrice(buySl)} ${buyTpText} | SELL ${fmtPrice(bid)} SL ${fmtPrice(sellSl)} ${sellTpText}`,
+    asError: bad,
+  };
+}
+
+function updateTwoSideHint() {
+  if (!actionIsTwoSide() || !lastTwoSideQuote) return;
+  const hint = formatTwoSideHint(lastTwoSideQuote);
+  setPriceHint(hint.text, { asError: hint.asError });
+}
+
+async function autofillTwoSide() {
+  actionHasPositions = null;
+  actionHasOrders = null;
+  syncExecuteForAction();
+  const account = el("account").value;
+  const symbol = el("symbol").value.trim();
+  if (!account || !symbol) {
+    lastTwoSideQuote = null;
+    setPriceHint("Chọn account và nhập symbol để lấy giá.");
+    return;
+  }
+
+  const seq = ++fillSeq;
+  setPriceHint("Đang lấy giá thị trường...");
+  try {
+    const q = new URLSearchParams({ account, symbol, side: "buy" });
+    const data = await apiGet(`/api/quote?${q}`, { useCache: false, timeoutMs: 30000 });
+    if (seq !== fillSeq) return;
+    lastTwoSideQuote = data;
+    const hint = formatTwoSideHint(data);
+    setPriceHint(hint.text, { asError: hint.asError });
+    markApiOk("Đã lấy giá cho open-2-side");
+  } catch (err) {
+    if (seq !== fillSeq) return;
+    lastTwoSideQuote = null;
+    setPriceHint(`Không lấy được giá: ${err.message || err}`, { asError: true });
   }
 }
 
@@ -576,7 +650,9 @@ async function checkPendingOrdersForAction({ lockButtons = false } = {}) {
 
 async function autofillTpSl() {
   const action = el("action").value;
-  if (actionUsesQuote(action)) {
+  if (actionIsTwoSide(action)) {
+    await withBusy(() => autofillTwoSide(), "Đang lấy giá...", { block: false });
+  } else if (actionUsesQuote(action)) {
     await withBusy(() => autofillFromQuote(), "Đang lấy giá...", { block: false });
   } else if (actionNeedsOpenPositions(action)) {
     await withBusy(() => checkOpenPositionsForAction({ fillLevels: true }), "Đang lấy lệnh mở...", { block: false });
@@ -638,7 +714,24 @@ function updateParamsVisibility() {
 
   const lotLabel = document.querySelector('label[for="lot"]');
   if (lotLabel) {
-    lotLabel.textContent = action === "close" ? "Lot muốn đóng" : "Lot";
+    lotLabel.textContent = action === "close" ? "Lot muốn đóng" : actionIsTwoSide(action) ? "Lot mỗi lệnh" : "Lot";
+  }
+  const slLabel = document.querySelector('label[for="slPrice"]');
+  const tpLabel = document.querySelector('label[for="tpPrice"]');
+  const slInput = el("slPrice");
+  const tpInput = el("tpPrice");
+  if (slLabel && tpLabel && slInput && tpInput) {
+    if (actionIsTwoSide(action)) {
+      slLabel.textContent = "SL cách giá *";
+      tpLabel.textContent = "TP cách giá";
+      slInput.placeholder = "vd 10 — không phải mức giá";
+      tpInput.placeholder = "vd 50 — để trống nếu không đặt";
+    } else {
+      slLabel.textContent = "SL price *";
+      tpLabel.textContent = "TP price";
+      slInput.placeholder = "bắt buộc";
+      tpInput.placeholder = "để trống nếu không đặt";
+    }
   }
 }
 
@@ -700,13 +793,26 @@ async function submitAction(noAsk, triggerBtn) {
     }
   }
   const action = el("action").value;
-  if (action === "open" || action === "pending" || action === "modify-all" || action === "modify-all-if") {
+  if (action === "open" || action === "open-2-side" || action === "pending" || action === "modify-all" || action === "modify-all-if") {
     const slRaw = el("slPrice").value.trim();
     const sl = Number(slRaw);
     if (!slRaw || !Number.isFinite(sl) || sl <= 0) {
-      alert("Stop loss là bắt buộc — hãy nhập mức giá SL hợp lệ (> 0).");
+      alert(action === "open-2-side"
+        ? "Stop loss là khoảng cách từ giá hiện tại (ví dụ 10), không phải mức giá."
+        : "Stop loss là bắt buộc — hãy nhập mức giá SL hợp lệ (> 0).");
       el("slPrice").focus();
       return;
+    }
+  }
+  if (action === "open-2-side") {
+    const tpRaw = el("tpPrice").value.trim();
+    if (tpRaw) {
+      const tp = Number(tpRaw);
+      if (!Number.isFinite(tp) || tp <= 0) {
+        alert("Take profit là khoảng cách > 0 (ví dụ 50), hoặc để trống.");
+        el("tpPrice").focus();
+        return;
+      }
     }
   }
   if (noAsk) {
@@ -766,16 +872,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   el("themeToggle").addEventListener("click", toggleTheme);
   el("action").addEventListener("change", () => {
     invalidatePreview();
+    if (actionIsTwoSide()) setTpSl("", "");
     updateParamsVisibility();
     autofillTpSl();
   });
   el("symbol").addEventListener("change", () => {
     invalidatePreview();
-    if (actionUsesQuote() || actionIsModifyIf() || actionIsClose()) autofillTpSl();
+    if (actionUsesQuote() || actionIsModifyIf() || actionIsClose() || actionIsTwoSide()) autofillTpSl();
   });
   el("symbol").addEventListener("blur", () => {
     invalidatePreview();
-    if (actionUsesQuote() || actionIsModifyIf() || actionIsClose()) autofillTpSl();
+    if (actionUsesQuote() || actionIsModifyIf() || actionIsClose() || actionIsTwoSide()) autofillTpSl();
   });
   el("pendingType").addEventListener("change", () => {
     invalidatePreview();
@@ -786,6 +893,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!node) return;
     node.addEventListener("input", () => {
       invalidatePreview();
+      if ((id === "slPrice" || id === "tpPrice") && actionIsTwoSide()) updateTwoSideHint();
       if (id === "lot" && actionIsClose() && lastFetchedPositions.length) {
         const hint = formatCloseHint(lastFetchedPositions);
         actionHasPositions = hint.ok;
