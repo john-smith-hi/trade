@@ -50,6 +50,7 @@ header {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 16px;
 }
 
@@ -114,6 +115,7 @@ h3 { margin: 18px 0 8px; font-size: 14px; }
 .btn-secondary:hover { background: var(--secondary-hover); }
 .btn-ghost { background: transparent; color: var(--danger); padding-left: 0; }
 .theme-toggle { flex-shrink: 0; white-space: nowrap; }
+.fx-rate { font-size: 13px; color: var(--muted); white-space: nowrap; }
 
 #btnPick { margin-top: 12px; }
 #btnClear { margin-top: 8px; }

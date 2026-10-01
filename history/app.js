@@ -34,6 +34,9 @@
     shown: [],
   };
 
+  let usdVndRate = null;
+  let showVnd = false;
+
   function $(id) { return document.getElementById(id); }
 
   function esc(s) {
@@ -303,10 +306,13 @@
 
   function fmtMoney(n) {
     if (n == null || !Number.isFinite(n)) return "—";
-    const abs = Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    if (n > 0) return "+" + abs;
-    if (n < 0) return "−" + abs;
-    return abs;
+    const vnd = showVnd && usdVndRate;
+    const value = vnd ? n * usdVndRate : n;
+    const abs = Math.abs(value).toLocaleString("en-US", vnd
+      ? { maximumFractionDigits: 0 }
+      : { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const body = (value > 0 ? "+" : value < 0 ? "−" : "") + abs;
+    return vnd ? body + " ₫" : body;
   }
 
   function fmtPct(n) {
@@ -1089,8 +1095,57 @@
     });
   }
 
+  function paintCurrency() {
+    const btn = $("currencyToggle");
+    const label = $("fxRate");
+    if (btn) {
+      btn.disabled = !usdVndRate;
+      btn.textContent = showVnd ? "Hiện USD" : "Hiện VND";
+    }
+    if (!label) return;
+    if (usdVndRate) label.textContent = "1 USD = " + usdVndRate.toLocaleString("en-US") + " VND";
+  }
+
+  function repaintMoney() {
+    if (!state.files.length) return;
+    renderFileList();
+    if (state.files.some(function (f) { return f.trades.length; })) renderResults();
+  }
+
+  function loadUsdVnd() {
+    const label = $("fxRate");
+    if (label) label.textContent = "Đang lấy tỷ giá…";
+    fetch("https://api.frankfurter.dev/v2/rate/usd/vnd")
+      .then(function (res) {
+        if (!res.ok) throw new Error("rate");
+        return res.json();
+      })
+      .then(function (data) {
+        const rate = Number(data && data.rate);
+        if (!Number.isFinite(rate) || rate <= 0 || data.base !== "USD" || data.quote !== "VND") throw new Error("rate");
+        usdVndRate = rate;
+        paintCurrency();
+      })
+      .catch(function () {
+        usdVndRate = null;
+        showVnd = false;
+        if (label) label.textContent = "Không lấy được tỷ giá";
+        paintCurrency();
+      });
+  }
+
   function init() {
     applyTheme(savedTheme());
+    const currencyBtn = $("currencyToggle");
+    if (currencyBtn) {
+      currencyBtn.addEventListener("click", function () {
+        if (!usdVndRate) return;
+        showVnd = !showVnd;
+        paintCurrency();
+        repaintMoney();
+      });
+    }
+    loadUsdVnd();
     if (!window.HistoryAnalyze) {
       setMsg("importError", "Không tải được analyze.js.");
       return;

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'none'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'none'; connect-src 'self' https://api.frankfurter.dev; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" />
 <title>Phân tích lệnh</title>
 <script src="theme.js"></script>
 <script src="ver.php"></script>
@@ -11,6 +11,8 @@
 </head>
 <body>
 <header>
+  <span id="fxRate" class="fx-rate">Đang lấy tỷ giá…</span>
+  <button type="button" id="currencyToggle" class="btn btn-secondary theme-toggle" disabled>Hiện VND</button>
   <button type="button" id="themeToggle" class="btn btn-secondary theme-toggle">Chế độ tối</button>
 </header>
 
