@@ -117,10 +117,21 @@
     el.setSelectionRange(pos, pos);
   }
 
+  function pickerFor(id) {
+    return document.querySelector('.date-cal-native[data-date-for="' + id + '"]');
+  }
+
+  function syncPicker(id, key) {
+    const picker = pickerFor(id);
+    if (picker) picker.value = key || "";
+  }
+
   function markDateFields() {
     ["filterFrom", "filterTo"].forEach(function (id) {
       const raw = $(id).value.trim();
-      $(id).classList.toggle("date-bad", !!raw && !parseDisplayDate(raw));
+      const key = raw ? parseDisplayDate(raw) : "";
+      $(id).classList.toggle("date-bad", !!raw && !key);
+      syncPicker(id, key || "");
     });
     const bad = $("filterFrom").classList.contains("date-bad") || $("filterTo").classList.contains("date-bad");
     state.dateError = bad ? "Ngày phải theo dạng dd/mm/yyyy." : "";
@@ -218,6 +229,48 @@
     el.value = shown;
     el.dataset.prev = shown;
     el.classList.remove("date-bad");
+    syncPicker(id, key || "");
+  }
+
+  function applyPickedDate(id, iso) {
+    const key = parseDisplayDate(iso);
+    if (!key) return "";
+    showDate(id, key);
+    return key;
+  }
+
+  function bindDateCalendars() {
+    document.querySelectorAll(".cal-btn[data-date-for]").forEach(function (btn) {
+      const id = btn.getAttribute("data-date-for");
+      const text = $(id);
+      const picker = pickerFor(id);
+      if (!text || !picker) return;
+      btn.addEventListener("click", function () {
+        const key = parseDisplayDate(text.value.trim());
+        picker.value = key || "";
+        if (typeof picker.showPicker === "function") {
+          try {
+            picker.showPicker();
+            return;
+          } catch (err) {}
+        }
+        picker.focus();
+      });
+      picker.addEventListener("mousedown", function () {
+        const key = parseDisplayDate(text.value.trim());
+        picker.value = key || "";
+      });
+      picker.addEventListener("change", function () {
+        const key = applyPickedDate(id, picker.value);
+        if (!key) return;
+        const keyName = text.getAttribute("data-date-key");
+        if (!keyName) return;
+        const before = state.dateError;
+        markDateFields();
+        if (state[keyName] !== key) setDateFilter(keyName, key);
+        else if (state.dateError !== before) renderResults();
+      });
+    });
   }
 
   const ORDERS_ACCOUNT = "201967146";
@@ -268,9 +321,12 @@
     const edited = applyDateEdit(el);
     if (!edited.digits || edited.digits.length < 8) {
       el.classList.remove("date-bad");
+      if (!edited.digits) syncPicker(id, "");
       return;
     }
-    el.classList.toggle("date-bad", !parseDisplayDate(edited.masked));
+    const key = parseDisplayDate(edited.masked);
+    el.classList.toggle("date-bad", !key);
+    syncPicker(id, key || "");
   }
 
   function onPlainDateBlur(id) {
@@ -278,13 +334,11 @@
     const raw = el.value.trim();
     const key = raw ? parseDisplayDate(raw) : "";
     if (key) {
-      const shown = toDisplayDate(key);
-      el.value = shown;
-      el.dataset.prev = shown;
-      el.classList.remove("date-bad");
+      showDate(id, key);
       return;
     }
     el.classList.toggle("date-bad", !!raw);
+    syncPicker(id, "");
   }
 
   function setMsg(id, text) {
@@ -938,6 +992,7 @@
     });
     $("btnPaste").addEventListener("click", function () { ingestPastedCsv(); });
     $("linkTo").placeholder = toDisplayDate(todayKey());
+    bindDateCalendars();
     ["linkFrom", "linkTo"].forEach(function (id) {
       const el = $(id);
       el.dataset.prev = el.value || "";
@@ -958,9 +1013,7 @@
         if (!key) return;
         ev.preventDefault();
         const shown = toDisplayDate(key);
-        el.value = shown;
-        el.dataset.prev = shown;
-        el.classList.remove("date-bad");
+        showDate(id, key);
         el.setSelectionRange(shown.length, shown.length);
       });
       el.addEventListener("input", function () { onPlainDateInput(id); });
@@ -1056,9 +1109,7 @@
         if (!key) return;
         ev.preventDefault();
         const shown = toDisplayDate(key);
-        el.value = shown;
-        el.dataset.prev = shown;
-        el.classList.remove("date-bad");
+        showDate(id, key);
         el.setSelectionRange(shown.length, shown.length);
         state.dateError = "";
         setDateFilter(keyName, key);

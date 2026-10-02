@@ -151,7 +151,7 @@ h3 { margin: 18px 0 8px; font-size: 14px; }
 
 .ghost-label { color: transparent; }
 
-.field input, .field select, #tradeSearch {
+.field input:not(.date-cal-native), .field select, #tradeSearch {
   width: 100%;
   padding: 8px 10px;
   border: 1px solid var(--border);
@@ -161,12 +161,101 @@ h3 { margin: 18px 0 8px; font-size: 14px; }
   font-size: 14px;
 }
 
+.date-wrap {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.field .date-wrap { width: 100%; }
+
+.date-wrap .date-text {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
 #filterFrom, #filterTo {
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
 }
 
-.field input.date-bad {
+.cal-hit {
+  position: relative;
+  flex: 0 0 36px;
+  width: 36px;
+  display: flex;
+}
+
+.cal-btn {
+  appearance: none;
+  flex: 1;
+  width: 100%;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--secondary);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.cal-hit:hover .cal-btn { background: var(--secondary-hover); }
+
+.cal-icon {
+  display: block;
+  position: relative;
+  width: 14px;
+  height: 13px;
+  box-sizing: border-box;
+  border: 1.5px solid currentColor;
+  border-top-width: 4px;
+  border-radius: 2px;
+}
+
+.cal-icon::before,
+.cal-icon::after {
+  content: "";
+  position: absolute;
+  top: -6px;
+  width: 1.5px;
+  height: 5px;
+  background: currentColor;
+  border-radius: 1px;
+}
+
+.cal-icon::before { left: 2px; }
+.cal-icon::after { right: 2px; }
+
+.date-cal-native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.date-cal-native::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.field input.date-bad,
+.date-text.date-bad {
   border-color: var(--danger);
 }
 
@@ -211,8 +300,11 @@ h3 { margin: 18px 0 8px; font-size: 14px; }
   font-weight: 600;
 }
 
-.exness-link input {
+.exness-link .date-wrap { width: auto; }
+
+.exness-link .date-text {
   width: 118px;
+  flex: 0 1 118px;
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -221,8 +313,6 @@ h3 { margin: 18px 0 8px; font-size: 14px; }
   font-size: 14px;
   font-variant-numeric: tabular-nums;
 }
-
-.exness-link input.date-bad { border-color: var(--danger); }
 
 #btnPaste { margin-top: 8px; }
 
@@ -380,7 +470,7 @@ details.glossary p { margin: 8px 0 0; font-size: 13px; color: var(--muted); line
 
 @media (max-width: 720px) {
   .filters, .kpi-grid, .split, dl.stats { grid-template-columns: 1fr; }
-  .btn, .field input, .field select, #tradeSearch, #csvPaste, .exness-link input { font-size: 16px; }
-  .exness-link input { width: 9.2em; }
+  .btn, .field input:not(.date-cal-native), .field select, #tradeSearch, #csvPaste, .exness-link .date-text { font-size: 16px; }
+  .exness-link .date-text { width: 9.2em; flex-basis: 9.2em; }
   #tradeSearch { max-width: none; }
 }

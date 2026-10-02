@@ -6,10 +6,11 @@ Thư mục này tóm tắt kiến trúc và quy ước đã thống nhất.
 1. `architecture.md` — luồng chạy, file quan trọng, endpoint API
 2. `web-ui.md` — trang web WAMP, cache `?v=`, performance, UX
 3. `setup.md` — checklist, Timer, trang Fibo (đỉnh/đáy)
-4. `accounts-xml.md` — `accounts.xml` + `paths.xml`, API CRUD
-5. `auto-reload.md` — .py / .xml tự làm mới khi sửa
-6. `xauusd-max-loss.md` — giới hạn lỗ XAUUSD + copy trade
-7. `gotchas.md` — lỗi đã gặp, việc không được làm
+4. `history.md` — phân tích CSV lệnh đã đóng (`/history/`), ô ngày + nút lịch
+5. `accounts-xml.md` — `accounts.xml` + `paths.xml`, API CRUD
+6. `auto-reload.md` — .py / .xml tự làm mới khi sửa
+7. `xauusd-max-loss.md` — giới hạn lỗ XAUUSD + copy trade
+8. `gotchas.md` — lỗi đã gặp, việc không được làm
 
 **Không** ghi mật khẩu / login thật vào đây. `xml/accounts.xml` nằm trong `.gitignore`.
 

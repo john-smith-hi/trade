@@ -10,10 +10,11 @@ UI **không** nằm trong git repo `trade`. Sửa trực tiếp trên WAMP; đ�
 | `http://localhost/mt5/account/` | `account/` | Thêm + sửa account (không xóa; không sửa login/password/server) |
 | `http://localhost/mt5/path/` | `path/` | Thêm + sửa path terminal (`name` → `exe`) |
 | `http://localhost/mt5/history/` | `history/` | Bảng lịch sử từ `history_mt5.txt` |
+| `http://localhost/history/` | `trade/history/` (app riêng) | Phân tích CSV lệnh đã đóng — xem `history.md` |
 
-Menu chung: **Ra lệnh | Accounts | Path | Lịch sử**.
+Menu mt5: **Ra lệnh | Accounts | Path | Lịch sử**.
 
-Shared: `style.css`, `common.js`, `proxy.php`, `ver.php`.
+Shared: `style.css`, `common.js`, `proxy.php`, `ver.php`, `favicon.ico` (mỗi app một file ở root: `mt5/`, `setup/`, `history/`). Trang con dùng `../favicon.ico`.
 
 ## Cache CSS/JS — luôn `?v=` (không dùng `?t=` / không tắt query)
 

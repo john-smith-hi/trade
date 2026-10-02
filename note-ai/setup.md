@@ -10,7 +10,7 @@ Menu: **Setup | Fibo | Timer**.
 | `/setup/fibo/` | `fibo/index.html` + `fibo/fibo.js` | Fibonacci hồi từ đỉnh/đáy |
 | `/setup/timer/` | `timer/` | Báo thức vùng giá |
 
-CSS/JS: `ver.php` + `?v=filemtime`. Thêm file JS mới thì ghi vào list trong `setup/ver.php`.
+CSS/JS: `ver.php` + `?v=filemtime`. Thêm file JS mới thì ghi vào list trong `setup/ver.php`. Favicon: `setup/favicon.ico`; Fibo/Timer trỏ `../favicon.ico`.
 
 ## Fibo
 

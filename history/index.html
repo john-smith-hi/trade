@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'none'; connect-src 'self' https://api.frankfurter.dev; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" />
-<title>Phân tích lệnh</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' https://api.frankfurter.dev; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" />
+<title>history</title>
+<link rel="icon" href="favicon.ico" type="image/x-icon" />
 <script src="theme.js"></script>
 <script src="ver.php"></script>
 <script src="assets.js"></script>
@@ -30,9 +31,21 @@
       <label class="paste-label" for="csvPaste">Hoặc dán JSON</label>
       <div class="exness-link">
         <label for="linkFrom">Từ</label>
-        <input id="linkFrom" type="text" inputmode="numeric" placeholder="01/01/2007" maxlength="10" autocomplete="off" spellcheck="false" />
+        <div class="date-wrap">
+          <input id="linkFrom" class="date-text" type="text" inputmode="numeric" placeholder="01/01/2007" maxlength="10" autocomplete="off" spellcheck="false" />
+          <span class="cal-hit">
+            <button type="button" class="cal-btn" data-date-for="linkFrom" aria-label="Chọn ngày từ" title="Chọn lịch"><span class="cal-icon" aria-hidden="true"></span></button>
+            <input type="date" class="date-cal-native" data-date-for="linkFrom" tabindex="-1" aria-hidden="true" />
+          </span>
+        </div>
         <label for="linkTo">Đến</label>
-        <input id="linkTo" type="text" inputmode="numeric" placeholder="hôm nay" maxlength="10" autocomplete="off" spellcheck="false" />
+        <div class="date-wrap">
+          <input id="linkTo" class="date-text" type="text" inputmode="numeric" placeholder="hôm nay" maxlength="10" autocomplete="off" spellcheck="false" />
+          <span class="cal-hit">
+            <button type="button" class="cal-btn" data-date-for="linkTo" aria-label="Chọn ngày đến" title="Chọn lịch"><span class="cal-icon" aria-hidden="true"></span></button>
+            <input type="date" class="date-cal-native" data-date-for="linkTo" tabindex="-1" aria-hidden="true" />
+          </span>
+        </div>
         <button type="button" id="btnOrders" class="btn btn-secondary">Mở orders</button>
       </div>
     </div>
@@ -75,11 +88,23 @@
         </div>
         <div class="field">
           <label for="filterFrom">Đóng từ</label>
-          <input type="text" id="filterFrom" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" autocomplete="off" spellcheck="false" />
+          <div class="date-wrap">
+            <input type="text" id="filterFrom" class="date-text" data-date-key="from" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" autocomplete="off" spellcheck="false" />
+            <span class="cal-hit">
+              <button type="button" class="cal-btn" data-date-for="filterFrom" aria-label="Chọn ngày đóng từ" title="Chọn lịch"><span class="cal-icon" aria-hidden="true"></span></button>
+              <input type="date" class="date-cal-native" data-date-for="filterFrom" tabindex="-1" aria-hidden="true" />
+            </span>
+          </div>
         </div>
         <div class="field">
           <label for="filterTo">Đóng đến</label>
-          <input type="text" id="filterTo" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" autocomplete="off" spellcheck="false" />
+          <div class="date-wrap">
+            <input type="text" id="filterTo" class="date-text" data-date-key="to" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" autocomplete="off" spellcheck="false" />
+            <span class="cal-hit">
+              <button type="button" class="cal-btn" data-date-for="filterTo" aria-label="Chọn ngày đóng đến" title="Chọn lịch"><span class="cal-icon" aria-hidden="true"></span></button>
+              <input type="date" class="date-cal-native" data-date-for="filterTo" tabindex="-1" aria-hidden="true" />
+            </span>
+          </div>
         </div>
         <div class="field">
           <label class="ghost-label">Lọc</label>
