@@ -8,7 +8,9 @@ Trang **phân tích CSV lệnh đã đóng** — khác `mt5/history/` (bảng `h
 
 Lên WAMP: `python copy_www.py history` (xóa folder đích rồi copy cả cây). Không cần API. Dữ liệu import nằm IndexedDB trình duyệt, không ghi vào folder web.
 
-CSS/JS: `ver.php` + `?v=filemtime`. Thêm file JS/CSS mới thì ghi vào list trong `history/ver.php`. Theme key `mt5-theme`. Favicon: `history/favicon.ico` (tab title `history`). CSP `img-src 'self'` để trình duyệt tải icon (trước đây `'none'`).
+CSS/JS: `ver.php` + `?v=filemtime`. Thêm file JS/CSS mới thì ghi vào list trong `history/ver.php`. Theme key `mt5-theme`. Favicon: `history/favicon.ico` (tab title `History`). CSP `img-src 'self'` để trình duyệt tải icon (trước đây `'none'`).
+
+Bộ lọc (symbol, side, lý do đóng, file, đóng từ/đến) + ô tìm lệnh lưu `localStorage` key `history-journal-filters` — còn sau khi đóng tab. Phiên cũ dùng `sessionStorage` thì lần lưu sau chuyển sang local. Nút **Xóa lọc** ghi đè bản lưu.
 
 ## Ô ngày
 

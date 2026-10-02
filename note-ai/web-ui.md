@@ -14,7 +14,7 @@ UI **không** nằm trong git repo `trade`. Sửa trực tiếp trên WAMP; đ�
 
 Menu mt5: **Ra lệnh | Accounts | Path | Lịch sử**.
 
-Shared: `style.css`, `common.js`, `proxy.php`, `ver.php`, `favicon.ico` (mỗi app một file ở root: `mt5/`, `setup/`, `history/`). Trang con dùng `../favicon.ico`.
+Shared: `style.css`, `common.js`, `proxy.php`, `ver.php`, `favicon.ico`. Setup: icon riêng Setup / Fibo / Timer (file trong từng folder). History: `history/favicon.ico`. Trang con mt5 dùng `../favicon.ico`.
 
 ## Cache CSS/JS — luôn `?v=` (không dùng `?t=` / không tắt query)
 

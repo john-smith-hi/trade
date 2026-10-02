@@ -489,23 +489,36 @@
     });
   }
 
+  function filterPayload() {
+    return {
+      symbols: state.symbols ? Array.from(state.symbols) : null,
+      side: state.side,
+      reason: state.reason,
+      file: state.file,
+      from: state.from,
+      to: state.to,
+      search: state.search,
+    };
+  }
+
   function saveFilters() {
-    try {
-      sessionStorage.setItem(FILTER_KEY, JSON.stringify({
-        symbols: state.symbols ? Array.from(state.symbols) : null,
-        side: state.side,
-        reason: state.reason,
-        file: state.file,
-        from: state.from,
-        to: state.to,
-        search: state.search,
-      }));
-    } catch (e) {}
+    const payload = JSON.stringify(filterPayload());
+    try { localStorage.setItem(FILTER_KEY, payload); } catch (e) {}
+    try { sessionStorage.removeItem(FILTER_KEY); } catch (e) {}
+  }
+
+  function readSavedFilters() {
+    let raw = null;
+    try { raw = localStorage.getItem(FILTER_KEY); } catch (e) {}
+    if (!raw) {
+      try { raw = sessionStorage.getItem(FILTER_KEY); } catch (e) {}
+    }
+    if (!raw) return null;
+    try { return JSON.parse(raw); } catch (e) { return null; }
   }
 
   function restoreFilters() {
-    let saved = null;
-    try { saved = JSON.parse(sessionStorage.getItem(FILTER_KEY) || "null"); } catch (e) { saved = null; }
+    const saved = readSavedFilters();
     if (!saved || typeof saved !== "object" || Array.isArray(saved)) return;
     if (Array.isArray(saved.symbols)) {
       const next = [];
@@ -681,8 +694,12 @@
       return `<option value="${esc(opt.value)}">${esc(opt.label)}</option>`;
     }).join("");
     const ok = Array.from(el.options).some(function (opt) { return opt.value === current; });
-    el.value = ok ? current : (options[0] ? options[0].value : "");
-    return el.value;
+    if (ok) {
+      el.value = current;
+      return current;
+    }
+    el.value = options[0] ? options[0].value : "";
+    return current;
   }
 
   function renderReasonOptions() {
@@ -717,6 +734,7 @@
     });
     const allSymbols = Array.from(symbols).sort();
     const known = state.knownSymbols;
+    if (!state.symbolFilterReady) restoreFilters();
     if (!state.symbolFilterReady) {
       state.symbols = new Set(allSymbols);
       if (allSymbols.length) state.symbolFilterReady = true;
@@ -1207,6 +1225,7 @@
       refreshAfterFiles();
     }).catch(function () {
       setMsg("persistError", "Không đọc được dữ liệu đã import. Có thể chọn file lại cho phiên này.");
+      restoreFilters();
       refreshAfterFiles();
     });
   }
