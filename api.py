@@ -439,6 +439,8 @@ def action_endpoint():
 
     account = data.get("account")
     action = data.get("action")
+    if isinstance(action, str):
+        action = action.strip()
     if not account or not action:
         return jsonify({"error": "Thiếu 'account' hoặc 'action'"}), 400
 

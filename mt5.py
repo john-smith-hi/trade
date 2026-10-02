@@ -2309,11 +2309,17 @@ def run_action_on_account(account, args, lot):
             )
         elif args.action == "cancel-modify-if":
             cancel_modify_if_jobs(account)
-        else:
+        elif args.action == "status":
             print_account_info()
             print_open_positions()
             print_pending_orders()
             _print_modify_if_jobs(account["name"])
+        else:
+            raise RuntimeError(
+                f"Action không hỗ trợ: {args.action!r}. "
+                "open-2-side cần process API đã nạp bản mt5.py mới — "
+                "chế độ start_server.bat không tự reload file .py, hãy restart bat."
+            )
     finally:
         _ACTIVE_XAUUSD_MAX_LOSS = _UNSET_MAX_LOSS
 
