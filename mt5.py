@@ -2276,13 +2276,23 @@ def list_pending_orders_data():
     return rows
 
 
+def _print_open_duration(started):
+    elapsed = time.perf_counter() - started
+    print(f"Thời gian mở 1 lệnh: {elapsed:.3f} giây")
+
+
 def run_action_on_account(account, args, lot):
     global _ACTIVE_XAUUSD_MAX_LOSS
     _ACTIVE_XAUUSD_MAX_LOSS = account.get("xauusd_max_loss")
+    # action=open: đo từ lúc nối terminal đến lúc ngắt, gồm tính TP/SL và order_send.
+    open_started = time.perf_counter() if args.action == "open" else None
     try:
         connect_mt5(account)
         if args.action == "open":
             open_trade(account, args.symbol, args.side, lot, args.tp_price, args.sl_price, args.comment)
+            mt5.shutdown()
+            _print_open_duration(open_started)
+            open_started = None
         elif args.action == "open-2-side":
             open_two_side(account, args.symbol, lot, args.tp_price, args.sl_price, args.comment)
         elif args.action == "pending":
@@ -2317,6 +2327,9 @@ def run_action_on_account(account, args, lot):
         else:
             raise RuntimeError(f"Action không hỗ trợ: {args.action!r}.")
     finally:
+        if open_started is not None:
+            mt5.shutdown()
+            _print_open_duration(open_started)
         _ACTIVE_XAUUSD_MAX_LOSS = _UNSET_MAX_LOSS
 
 
