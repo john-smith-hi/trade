@@ -2609,7 +2609,6 @@ def _print_news_hedge_outcome(title, p_ref, sell_avg, buy_sl, sell_sl, buffer_ef
         + _news_loss_line("SELL lỗ", scenario["sell_loss_dist"], volume_units, scenario["sell_loss"])
         + f". Hai SL cộng {_news_fmt_num(scenario['both_sl_loss'])}$."
     )
-    print("Không đóng đầu còn lại khi giá chạm mức đệm. Quay đầu coi như thua.")
     return scenario
 
 
@@ -2847,15 +2846,93 @@ def _news_filled_volume(result, lot):
 
 
 def _news_remember(symbol, lot, result, request, status, detail, position=None):
-    """Xếp lịch sử. Ghi file và Telegram sau vòng bắn để không nuốt MAX_EXEC_TIME."""
+    """Xếp kết quả hedge tin. Chưa ghi file, chưa Telegram."""
     _NEWS_HISTORY_QUEUE.append((symbol, lot, result, request, status, detail, position))
 
 
+def _news_history_line(symbol, lot, result, request, status, detail):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    ticket = getattr(result, "order", None)
+    retcode = getattr(result, "retcode", None)
+    entry = (
+        f"{timestamp} | account={CURRENT_ACCOUNT_NAME or '-'} | symbol={symbol} | lot={lot} | status={status} | "
+        f"ticket={ticket if ticket is not None else '-'} | "
+        f"retcode={retcode if retcode is not None else '-'} | "
+        f"comment={request.get('comment', '') if isinstance(request, dict) else ''}"
+    )
+    if detail:
+        entry += f" | detail={detail}"
+    return entry
+
+
+def _news_send_summary_telegram(queued):
+    """Một tin sau khi mọi order_send của hedge tin đã xong. Không đọc history deals."""
+    try:
+        import telegram_notify
+    except Exception:
+        return
+    opens = []
+    modifies = []
+    fails = []
+    for _symbol, lot, result, request, status, detail, position in queued:
+        side = _request_side_label(request, position) or ""
+        order_ticket = getattr(result, "order", None) if result is not None else None
+        if status == "SUCCESS":
+            price = request.get("price") if isinstance(request, dict) else None
+            opens.append(f"{side} {lot} giá {price} ticket {order_ticket}")
+        elif status == "MODIFY_SUCCESS":
+            sl = request.get("sl") if isinstance(request, dict) else None
+            pos_ticket = getattr(position, "ticket", None) if position is not None else order_ticket
+            modifies.append(f"{side} ticket {pos_ticket} SL {sl}")
+        elif status in ("FAILED", "MODIFY_FAILED", "CLOSE_FAILED"):
+            fails.append(f"{side} {lot} {status} {detail}".strip())
+    if not opens and not modifies and not fails:
+        return
+    lines = [f"account: {CURRENT_ACCOUNT_NAME or '-'}"]
+    if opens:
+        lines.append(f"Mở {len(opens)} lệnh")
+        lines.extend(opens)
+    if modifies:
+        lines.append(f"Gán SL {len(modifies)} lệnh")
+        lines.extend(modifies)
+    if fails:
+        lines.append(f"Lỗi {len(fails)}")
+        lines.extend(fails)
+    title = "HEDGE TIN CÓ LỖI" if fails else "HEDGE TIN"
+    try:
+        telegram_notify.send_alert(telegram_notify.build_message(title, lines))
+    except Exception:
+        pass
+
+
 def _news_flush_history():
+    """Ghi lịch sử một lần và gửi một Telegram. Không đi qua save_trade_history."""
     queued = list(_NEWS_HISTORY_QUEUE)
     _NEWS_HISTORY_QUEUE.clear()
-    for symbol, lot, result, request, status, detail, position in queued:
-        save_trade_history(symbol, lot, result, request, status, detail, position=position)
+    if not queued:
+        return
+    try:
+        import watch_state
+    except Exception:
+        watch_state = None
+    lines = []
+    for symbol, lot, result, request, status, detail, _position in queued:
+        lines.append(_news_history_line(symbol, lot, result, request, status, detail))
+        if status == "SUCCESS" and watch_state is not None and result is not None:
+            try:
+                watch_state.remember_skip_open_order(getattr(result, "order", None))
+            except Exception:
+                pass
+    block = "\n".join(reversed(lines))
+    existing = ""
+    if HISTORY_FILE.exists():
+        existing = HISTORY_FILE.read_text(encoding="utf-8").strip()
+    if existing:
+        HISTORY_FILE.write_text(block + "\n" + existing + "\n", encoding="utf-8")
+    else:
+        HISTORY_FILE.write_text(block + "\n", encoding="utf-8")
+    print("Lệnh hedge tin đã xong. Gửi một Telegram tổng.", flush=True)
+    _news_send_summary_telegram(queued)
 
 
 def _news_send(symbol, side, lot):
