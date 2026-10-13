@@ -11,11 +11,10 @@ UI **không** nằm trong git repo `trade`. Sửa trực tiếp trên WAMP; đ�
 | `http://localhost/mt5/path/` | `path/` | Thêm + sửa path terminal (`name` → `exe`) |
 | `http://localhost/mt5/history/` | `history/` | Bảng lịch sử từ `history_mt5.txt` |
 | `http://localhost/history/` | `trade/history/` (app riêng) | Phân tích CSV lệnh đã đóng — xem `history.md` |
-| `http://localhost/tick/` | `trade/tick/` (app riêng) | CSV tick Bid/Ask, giờ VN, đồ thị — xem `tick.md` |
 
 Menu mt5: **Ra lệnh | Accounts | Path | Lịch sử**.
 
-Shared: `style.css`, `common.js`, `proxy.php`, `ver.php`, `favicon.ico`. Setup: icon riêng Setup / Fibo / Timer (file trong từng folder). History: `history/favicon.ico`. Tick: `tick/favicon.ico`. Trang con mt5 dùng `../favicon.ico`.
+Shared: `style.css`, `common.js`, `proxy.php`, `ver.php`, `favicon.ico`. Setup: icon riêng Setup / Fibo / Timer (file trong từng folder). History: `history/favicon.ico`. Trang con mt5 dùng `../favicon.ico`.
 
 ## Cache CSS/JS — luôn `?v=` (không dùng `?t=` / không tắt query)
 

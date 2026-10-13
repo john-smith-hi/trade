@@ -1,42 +1,97 @@
-# Tick Bid/Ask (`tick/`)
+# Dữ liệu tick CSV (Exness XAUUSDm)
 
-Trang **xem giá mua/bán theo tick CSV** — khác `history/` (CSV lệnh đã đóng) và `mt5/history/` (`history_mt5.txt`).
+**Không còn app web `/tick/` hay API `/api/tick/*` trong repo.** Chỉ còn file CSV trên đĩa.
 
-| URL | File | Việc |
-|-----|------|------|
-| `/tick/` | `tick/index.html` + `app.js` | Nạp CSV, tìm theo giờ Việt Nam, bảng + đồ thị Bid/Ask |
+## Vị trí file
 
-Lên WAMP: `python copy_www.py tick`. Folder đích xóa code cũ **nhưng giữ `*.csv`**. Dữ liệu nằm ngay `www/tick` (cùng chỗ trang). File tháng cũ trong `data/GOLD/tick/` vẫn được API đọc nếu chưa copy sang www.
+| Path | Ghi chú |
+|------|---------|
+| `data/GOLD/tick/*.csv` | Nguồn chính (đã `.gitignore` qua `data/`) |
+| `<www>/tick/*.csv` | Bản copy cũ trên WAMP (nếu còn) — có thể xóa tay |
 
-Nạp: `POST /api/tick/adopt` (`install_file`) — đã có trong `www/tick` thì giữ; chỉ có trong `data/GOLD/tick/` thì **copy** sang `www/tick`. Không có trên server → `save.php` từng khối 1 MB. Dán CSV tối đa 8 MB. List trả `storage`: `www` | `legacy`.
+Tên mẫu: `Exness_XAUUSDm_2026_06.csv` … `_09.csv` (theo tháng).
 
-Tìm cần API (`start_server.bat`) + `proxy.php`. Timeout proxy 180s.
+Quy mô: **~6–8 triệu dòng / file**, **~400–500 MB / file**. **Không** mở/read toàn file trong editor hay `Read` tool của agent.
 
-CSS/JS: `ver.php` + `?v=filemtime`. Theme `mt5-theme`. CSP `connect-src 'self'`.
+## Định dạng CSV
 
-## CSV
+Header (dòng 1):
 
-```
+```text
 "Exness","Symbol","Timestamp","Bid","Ask"
-"exness","XAUUSDm","2026-09-01 00:00:00.065Z",4452.22,4452.48
 ```
 
-Timestamp **UTC**. UI/API **giờ Việt Nam UTC+7**. Bid = giá bán, Ask = giá mua.
+Dòng dữ liệu (UTC, đuôi `Z`, mili giây tùy dòng):
 
-## Tìm
+```text
+"exness","XAUUSDm","2026-06-01 00:00:00.076Z",4539.717,4539.997
+```
 
-Ô ngày giống `history/`: `dd/mm/yyyy` + nút lịch. Giờ `HH:MM:SS`. Bấm **Tìm**. Bộ lọc `localStorage` key `tick-filters` (chỉ bộ lọc, không phải CSV).
+- **Timestamp**: UTC (`Z`). Hiển thị giờ Việt Nam = UTC+7, **không DST**.
+- **Bid** = giá bán, **Ask** = giá mua.
+- File **đã sort** theo thời gian tăng dần (có thể binary-search theo khoảng thời gian).
 
-`GET /api/tick/query` binary-search file đã sort.
+## Cách đọc an toàn (agent / script)
 
-## API (không lấy lock MT5)
+### Được làm
 
-| Method | Path | Việc |
-|--------|------|------|
-| GET | `/api/tick/files` | List CSV trong `www/tick` (+ `data/GOLD/tick/` nếu có) |
-| POST | `/api/tick/adopt` | Đưa vào `www/tick` (copy từ legacy nếu cần; `action`: already/copied) |
-| POST | `/api/tick/upload` | Lưu CSV vào `www/tick` (UI dùng `save.php` từng khối) |
-| DELETE | `/api/tick/files/<name>` | Xóa file trong `www/tick` (không xóa bản nguồn `data/GOLD/tick/`) |
-| GET | `/api/tick/query?from=&to=` | Tick giờ VN + chart |
+1. **`path.stat().st_size`** — biết dung lượng không đọc nội dung.
+2. **Dòng 1** — header (`readline` hoặc `head -1`).
+3. **Vài dòng đầu** sau header — ví dụ `readline` × 5 hoặc `Get-Content -TotalCount 6`.
+4. **Cuối file** — `seek(size - 16384)`, đọc chunk, lấy dòng cuối không rỗng (khoảng thời gian kết thúc file).
+5. **Khoảng thời gian** — parse UTC từ dòng đầu/cuối → đổi sang VN (+7h).
+6. **Tra cứu theo giờ** — mở file **binary**, `seek` + đọc **tuần tự** hoặc **binary search** trên offset (file sort). Chỉ parse dòng trong `[from, to]`.
+7. **`grep` / `rg`** với pattern hẹp (ngày cụ thể) nếu cần vài dòng mẫu — **không** grep cả tháng không giới hạn.
 
-Logic: `tick_data.py`.
+### Không làm
+
+- `Read` tool / `read()` / `readlines()` / `pandas.read_csv()` **cả file**.
+- Load vào **localStorage**, **IndexedDB**, hoặc **mảng JS** hàng triệu phần tử.
+- Commit CSV vào git.
+
+## Parse timestamp UTC (Python gợi ý)
+
+```python
+from datetime import datetime, timezone, timedelta
+
+UTC = timezone.utc
+VN = timezone(timedelta(hours=7))
+
+def parse_utc_z(s: str) -> datetime:
+    s = s.strip().strip('"').rstrip("Zz").replace("T", " ")
+    # "2026-06-01 00:00:00.076" -> datetime UTC (cắt micro tùy chuỗi)
+    ...
+```
+
+Đổi sang VN: `dt.astimezone(VN)`. API cũ dùng `YYYY-MM-DDTHH:MM:SS` **giờ VN** khi filter.
+
+## Tra cứu theo khoảng giờ (ý tưởng thuật toán)
+
+1. Đọc header → vị trí byte `data_pos` sau dòng 1.
+2. Đổi `from_vn`, `to_vn` → `start_utc`, `end_utc`.
+3. Nếu file sorted: binary search offset đầu tiên có `timestamp >= start_utc`.
+4. Từ offset đó đọc từng dòng đến khi `timestamp > end_utc` thì dừng.
+5. Bảng/chart: giới hạn số dòng (vd ≤500 bảng, ≤1200 điểm đồ thị — gộp bucket theo thời gian).
+
+## Lệnh nhanh (PowerShell / shell)
+
+```powershell
+# Header + 3 dòng
+Get-Content "data\GOLD\tick\Exness_XAUUSDm_2026_09.csv" -TotalCount 4
+
+# Dung lượng
+(Get-Item "data\GOLD\tick\Exness_XAUUSDm_2026_09.csv").Length
+```
+
+```bash
+head -n 4 data/GOLD/tick/Exness_XAUUSDm_2026_09.csv
+tail -c 2000 data/GOLD/tick/Exness_XAUUSDm_2026_09.csv | tail -n 3
+```
+
+## Liên quan repo khác
+
+- `history/` — CSV **lệnh đã đóng**, nhỏ hơn, phân tích trên browser.
+- `mt5/history/` — `history_mt5.txt` log gửi lệnh.
+- `GET /api/quote` — **tick live** MT5 (bid/ask), không phải file CSV này.
+
+Nếu làm lại UI/tool tick: đọc trực tiếp `data/GOLD/tick/`, query phía server (Python), không đẩy CSV qua trình duyệt.

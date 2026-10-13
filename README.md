@@ -13,12 +13,11 @@ Web UI chạy trên WAMP. Đường dẫn www khai báo trong `xml/www.xml` (git
 | `start_server.bat` | API 24/7 (watcher Telegram; sửa `.py`/`.xml` thì process tự chạy lại; crash thì đợi 5 giây) |
 | `telegram_notify.py` | Gửi cảnh báo Telegram (`xml/telegram.xml`) |
 | `watch.py` | Poll Timer + lệnh TP/SL/pending trên server |
-| `copy_www.py` | Xóa folder đích rồi copy UI `mt5/` / `setup/` / `history/` / `tick/` theo `xml/www.xml` (không dùng tên `copy.py`) |
+| `copy_www.py` | Xóa folder đích rồi copy UI `mt5/` / `setup/` / `history/` theo `xml/www.xml` (không dùng tên `copy.py`) |
 | `mt5/` | Giao diện ra lệnh / account / path / lịch sử gửi lệnh |
 | `setup/` | Checklist tuần, trang Fibo (đỉnh/đáy), Timer báo giá |
 | `history/` | Phân tích CSV lệnh đã đóng (import trên trình duyệt). Khác `mt5/history/` |
-| `tick/` | Xem CSV tick Bid/Ask theo giờ Việt Nam. CSV nằm `www/tick` (cần API để tìm) |
-| `tick_data.py` | Đọc/ghi/query CSV tick |
+| `data/GOLD/tick/` | CSV tick Exness (Bid/Ask) — xem `note-ai/tick.md`, không commit |
 | `day_trade.py` | Chấm điểm setup, đọc/ghi `xml/day_trade_week.xml` |
 | `stock.py` | Phân tích giá (vnstock / Yahoo / TradingView) |
 | `xml/` | Cấu hình account, path terminal, checklist tuần |
@@ -122,11 +121,10 @@ API: `http://127.0.0.1:5001` (chỉ localhost). Sửa `.py` hoặc `.xml` → pr
 ### Đưa UI lên WAMP
 
 ```bash
-python copy_www.py              # xóa mt5 + setup + history + tick trong xml/www.xml rồi copy lại
+python copy_www.py              # xóa mt5 + setup + history trong xml/www.xml rồi copy lại
 python copy_www.py mt5          # chỉ giao diện ra lệnh
 python copy_www.py setup        # chỉ checklist
 python copy_www.py history      # chỉ phân tích CSV lệnh đã đóng
-python copy_www.py tick         # chỉ trang tick Bid/Ask
 python copy_www.py --dest E:\www   # override xml/www.xml lần này
 ```
 
@@ -140,9 +138,8 @@ Sau đó:
 - Fibo đỉnh/đáy: http://localhost/setup/fibo/
 - Timer báo giá: http://localhost/setup/timer/
 - Phân tích CSV: http://localhost/history/
-- Tick Bid/Ask: http://localhost/tick/
 
-Trang phân tích CSV lệnh (`/history/`) tự tính trên trình duyệt, không cần API. Trang tick lưu CSV trong `www/tick`; tìm cần API. Các trang mt5/setup gọi `proxy.php` → `127.0.0.1:5001`. CSS/JS gắn `?v=` từ `ver.php` (mtime) để cache đúng.
+Trang phân tích CSV lệnh (`/history/`) tự tính trên trình duyệt, không cần API. Các trang mt5/setup gọi `proxy.php` → `127.0.0.1:5001`. CSS/JS gắn `?v=` từ `ver.php` (mtime) để cache đúng. CSV tick Exness: `data/GOLD/tick/` — `note-ai/tick.md`.
 
 Trang ra lệnh: **Xem trước** không gửi lệnh; **Xác nhận gửi lệnh thật** = `--no-ask`.
 
@@ -159,7 +156,6 @@ Trang ra lệnh: **Xem trước** không gửi lệnh; **Xác nhận gửi lện
 | GET | `/api/positions` | Lệnh đang mở |
 | GET | `/api/orders` | Lệnh chờ |
 | GET | `/api/history` | `history_mt5.txt` đã parse |
-| GET/POST/DELETE | `/api/tick/...` | CSV tick Bid/Ask (`www/tick`) |
 | GET/PUT | `/api/setup/week` | Tuần checklist |
 | GET/PUT | `/api/setup/timer` | Báo thức vùng giá (`xml/timer.xml`) |
 | GET/PUT | `/api/setup/fibo` | Đỉnh/đáy Fibo (`xml/fibo.xml`) |

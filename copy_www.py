@@ -6,14 +6,13 @@
 # (Flask/Werkzeug cần `from copy import deepcopy` → API không chạy được).
 #
 # Đường dẫn đích lấy từ xml/www.xml (gitignore). Chưa có thì copy từ
-# xml/www.example.xml. Folder đích (mt5/, setup/, history/, tick/) được xóa sạch
-# trước khi copy — trừ file .csv trong tick/ (dữ liệu tick nằm ngay www/tick).
+# xml/www.example.xml. Folder đích (mt5/, setup/, history/) được xóa sạch
+# trước khi copy.
 #
-#   python copy_www.py              # copy mt5, setup, history và tick
+#   python copy_www.py              # copy mt5, setup, history
 #   python copy_www.py mt5          # chỉ mt5
 #   python copy_www.py setup        # chỉ setup
 #   python copy_www.py history      # chỉ trang phân tích CSV lệnh
-#   python copy_www.py tick         # chỉ trang tick Bid/Ask
 #   python copy_www.py mt5 setup    # tường minh từng app
 #   python copy_www.py --dest E:\www   # override xml/www.xml lần chạy này
 #
@@ -37,9 +36,8 @@ ROOT = Path(__file__).resolve().parent
 XML_DIR = ROOT / "xml"
 WWW_FILE = XML_DIR / "www.xml"
 WWW_EXAMPLE_FILE = XML_DIR / "www.example.xml"
-KNOWN_APPS = ("mt5", "setup", "history", "tick")
+KNOWN_APPS = ("mt5", "setup", "history")
 SKIP_DIR_NAMES = {"__pycache__", ".git"}
-SKIP_TICK_SUFFIXES = {".csv", ".part"}
 
 
 def load_www_path() -> Path:
@@ -63,29 +61,14 @@ def load_www_path() -> Path:
     return Path(text)
 
 
-def clear_dir(path: Path, keep_suffixes: set[str] | None = None) -> None:
-    """Xóa nội dung folder đích. keep_suffixes: giữ file (vd .csv trên www/tick)."""
-    keep = {s.lower() for s in (keep_suffixes or set())}
+def clear_dir(path: Path) -> None:
+    """Xóa nội dung folder đích."""
     if not path.exists():
         path.mkdir(parents=True, exist_ok=True)
         return
-    if not keep:
-        shutil.rmtree(path)
-        print(f"  da xoa folder cu: {path}")
-        path.mkdir(parents=True, exist_ok=True)
-        return
-    kept = 0
-    for child in list(path.iterdir()):
-        if child.is_file() and child.suffix.lower() in keep:
-            kept += 1
-            continue
-        if child.is_dir():
-            shutil.rmtree(child)
-        else:
-            child.unlink()
+    shutil.rmtree(path)
+    print(f"  da xoa folder cu: {path}")
     path.mkdir(parents=True, exist_ok=True)
-    if kept:
-        print(f"  giu {kept} file csv trong {path}")
 
 
 def copy_tree(src: Path, dest: Path) -> int:
@@ -100,8 +83,6 @@ def copy_tree(src: Path, dest: Path) -> int:
         if path.is_dir():
             target.mkdir(parents=True, exist_ok=True)
             continue
-        if src.name == "tick" and path.suffix.lower() in SKIP_TICK_SUFFIXES:
-            continue
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, target)
         count += 1
@@ -111,13 +92,13 @@ def copy_tree(src: Path, dest: Path) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Copy folder mt5/, setup/, history/ hoac tick/ vao thu muc WAMP www (xml/www.xml).",
+        description="Copy folder mt5/, setup/, history/ vao thu muc WAMP www (xml/www.xml).",
     )
     parser.add_argument(
         "apps",
         nargs="*",
         choices=KNOWN_APPS,
-        help="mt5, setup, history va/hoac tick. Bo trong = copy ca bon.",
+        help="mt5, setup, history. Bo trong = copy ca ba.",
     )
     parser.add_argument(
         "--dest",
@@ -147,7 +128,7 @@ def main() -> int:
             print(f"Bo qua {name}: khong co folder {src}", file=sys.stderr)
             continue
         print(f"{src}  ->  {dest}")
-        clear_dir(dest, keep_suffixes=SKIP_TICK_SUFFIXES if name == "tick" else None)
+        clear_dir(dest)
         n = copy_tree(src, dest)
         print(f"  ({n} file)\n")
         total += n

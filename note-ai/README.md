@@ -7,7 +7,7 @@ Thư mục này tóm tắt kiến trúc và quy ước đã thống nhất.
 2. `web-ui.md` — trang web WAMP, cache `?v=`, performance, UX
 3. `setup.md` — checklist, Timer, trang Fibo (đỉnh/đáy)
 4. `history.md` — phân tích CSV lệnh đã đóng (`/history/`), ô ngày + nút lịch
-5. `tick.md` — CSV tick Bid/Ask (`/tick/`), giờ Việt Nam, đồ thị
+5. `tick.md` — CSV tick Exness trên đĩa (`data/GOLD/tick/`), cách đọc không load cả file
 6. `accounts-xml.md` — `accounts.xml` + `paths.xml`, API CRUD
 7. `auto-reload.md` — .py / .xml tự làm mới khi sửa
 8. `xauusd-max-loss.md` — giới hạn lỗ XAUUSD + copy trade

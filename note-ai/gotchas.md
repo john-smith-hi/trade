@@ -28,7 +28,7 @@ Exness cần `suffix=m`. FTMO để trống. Sai suffix → không chọn đư�
 
 ## 6. Lock API
 
-Mọi thao tác MT5 đi qua một lock trong `api.py`. Đừng bỏ lock khi thêm endpoint **MT5**. Endpoint tick (`/api/tick/*`) chỉ đọc CSV — **không** lấy lock (tránh treo lệnh khi quét file tháng).
+Mọi thao tác MT5 đi qua một lock trong `api.py`. Đừng bỏ lock khi thêm endpoint **MT5**.
 
 ## 7. Web UI ngoài repo
 
@@ -64,9 +64,9 @@ Nếu vẫn đứng: kiểm tra `start_server.bat` còn chạy; DevTools Network
 
 `GET /api/history` trả `{ lines, rows }`. UI dùng `rows` (đã parse). Limit max 500.
 
-## 12b. Tick CSV
+## 12b. Tick CSV (file thô)
 
-CSV nằm `www/tick`. `copy_www.py tick` **giữ** `*.csv` khi thay UI. Nạp: adopt **copy** từ `data/GOLD/tick/` sang www nếu chưa có; không có trên server thì khối 1 MB qua `save.php`. Query không lấy lock MT5. Xóa UI chỉ xóa `www/tick`, không xóa `data/GOLD/tick/`.
+Không còn app `/tick/`. Dữ liệu: `data/GOLD/tick/*.csv` (~hàng triệu dòng/file). **Không** đọc cả file trong agent — xem `tick.md`.
 
 ## 13. Quote / positions cho form ra lệnh
 
