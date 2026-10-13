@@ -76,7 +76,7 @@ Không còn app `/tick/`. Dữ liệu: `data/GOLD/tick/*.csv` (~hàng triệu d�
 
 ## 14. close-all nhanh
 
-Sau xác nhận, `close-all` dùng cùng ý tưởng hedge tin: `symbol_info_tick` một lần (không `get_current_price` retry), **IOC** khi symbol hỗ trợ, gửi lệnh `quiet`, tối đa 4 vòng × 50 ms. Xem trước P/L vẫn in đầy đủ trước confirm. Lệnh `close` đơn vẫn dùng đường chậm (tick retry + filling mặc định).
+Sau xác nhận, `close-all` **không** gọi `get_current_price` (retry ~0,3s × mỗi lệnh) và **không** `positions_get` / ghi history / Telegram giữa các lệnh. Một tick + filling mỗi symbol, rồi `order_send` liên tiếp. Vòng 2 chỉ gửi lệnh còn sót (`positions_get` một lần). History và một Telegram ghi sau cùng. Danh sách trước confirm chỉ in `position.profit` có sẵn.
 
 ## 15. Copy — đã thử prewarm, đã bỏ
 

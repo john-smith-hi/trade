@@ -1877,34 +1877,190 @@ def _close_all_fast(positions):
     return results
 
 
+def _close_history_line(symbol, lot, result, request, status, detail):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    ticket = getattr(result, "order", None) if result is not None else None
+    retcode = getattr(result, "retcode", None) if result is not None else None
+    entry = (
+        f"{timestamp} | account={CURRENT_ACCOUNT_NAME or '-'} | symbol={symbol} | lot={lot} | status={status} | "
+        f"ticket={ticket if ticket is not None else '-'} | "
+        f"retcode={retcode if retcode is not None else '-'} | "
+        f"comment={request.get('comment', '') if isinstance(request, dict) else ''}"
+    )
+    if detail:
+        entry += f" | detail={detail}"
+    return entry
+
+
+def _flush_close_all_history(lines):
+    """Một lần ghi file sau khi mọi order_send đã xong."""
+    if not lines:
+        return
+    block = "\n".join(reversed(lines))
+    existing = ""
+    if HISTORY_FILE.exists():
+        existing = HISTORY_FILE.read_text(encoding="utf-8").strip()
+    if existing:
+        HISTORY_FILE.write_text(block + "\n" + existing + "\n", encoding="utf-8")
+    else:
+        HISTORY_FILE.write_text(block + "\n", encoding="utf-8")
+
+
+def _close_all_summary_telegram(n_closed, n_total, closed, failed, elapsed_ms):
+    try:
+        import telegram_notify
+    except Exception:
+        return
+    lines = [
+        f"account: {CURRENT_ACCOUNT_NAME or '-'}",
+        f"Đóng {n_closed}/{n_total} lệnh trong {elapsed_ms:.0f} ms",
+    ]
+    lines.extend(closed[:12])
+    if len(closed) > 12:
+        lines.append(f"... +{len(closed) - 12}")
+    if failed:
+        lines.append(f"Chưa đóng {len(failed)}")
+        lines.extend(failed[:8])
+    title = "ĐÓNG HẾT CÒN LỆNH" if failed else "ĐÓNG HẾT"
+    try:
+        telegram_notify.send_alert(telegram_notify.build_message(title, lines))
+    except Exception:
+        pass
+
+
+def _close_send(position, tick, filling):
+    """order_send đóng một vị thế. Không ghi file, không Telegram, không positions_get."""
+    close_type = mt5.ORDER_TYPE_SELL if position.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
+    price = float(tick.bid if close_type == mt5.ORDER_TYPE_SELL else tick.ask)
+    request = {
+        "action": mt5.TRADE_ACTION_DEAL,
+        "symbol": position.symbol,
+        "volume": float(position.volume),
+        "type": close_type,
+        "position": int(position.ticket),
+        "price": price,
+        "deviation": DEFAULT_DEVIATION,
+        "magic": DEFAULT_MAGIC,
+        "comment": "Close position",
+        "type_time": mt5.ORDER_TIME_GTC,
+        "type_filling": filling,
+    }
+    result = mt5.order_send(request)
+    side = "BUY" if position.type == mt5.ORDER_TYPE_BUY else "SELL"
+    label = f"#{position.ticket} {side} {position.symbol} {position.volume}"
+    partial = getattr(mt5, "TRADE_RETCODE_DONE_PARTIAL", 10010)
+    if result is None:
+        err = mt5.last_error()
+        line = _close_history_line(
+            position.symbol, position.volume, None, request, "CLOSE_FAILED",
+            f"ticket={position.ticket} | không phản hồi | last_error={err}",
+        )
+        return False, line, f"{label} không phản hồi"
+    if result.retcode not in (mt5.TRADE_RETCODE_DONE, partial):
+        line = _close_history_line(
+            position.symbol, position.volume, result, request, "CLOSE_FAILED",
+            f"ticket={position.ticket} | {result.comment}",
+        )
+        return False, line, f"{label} retcode={result.retcode}"
+    line = _close_history_line(
+        position.symbol, position.volume, result, request, "CLOSE_SUCCESS",
+        f"ticket={position.ticket}",
+    )
+    return True, line, label
+
+
+def _close_all_fast(positions):
+    """Chỉ order_send liên tiếp. Tick và filling lấy một lần mỗi symbol."""
+    started = time.perf_counter()
+    want = {int(p.ticket) for p in positions}
+    symbols = []
+    for position in positions:
+        if position.symbol not in symbols:
+            symbols.append(position.symbol)
+    for symbol in symbols:
+        mt5.symbol_select(symbol, True)
+    packs = {}
+    for symbol in symbols:
+        tick = mt5.symbol_info_tick(symbol)
+        packs[symbol] = (tick, prefer_ioc_filling_mode(symbol))
+
+    history = []
+    closed_labels = []
+    for round_i in range(2):
+        if round_i == 0:
+            batch = list(positions)
+        else:
+            live = {
+                int(p.ticket): p
+                for p in (mt5.positions_get() or [])
+                if int(p.ticket) in want
+            }
+            batch = [live[ticket] for ticket in want if ticket in live]
+            if not batch:
+                break
+            for symbol in {p.symbol for p in batch}:
+                tick = mt5.symbol_info_tick(symbol)
+                filling = packs.get(symbol, (None, None))[1] or prefer_ioc_filling_mode(symbol)
+                packs[symbol] = (tick, filling)
+        for position in batch:
+            tick, filling = packs.get(position.symbol, (None, None))
+            if tick is None or tick.bid <= 0 or tick.ask <= 0 or tick.ask < tick.bid or filling is None:
+                history.append(_close_history_line(
+                    position.symbol, position.volume, None,
+                    {"comment": "Close position"}, "CLOSE_FAILED",
+                    f"ticket={position.ticket} | không có tick",
+                ))
+                print(f"ticket {position.ticket}: không có tick", flush=True)
+                continue
+            ok, line, label = _close_send(position, tick, filling)
+            history.append(line)
+            if ok:
+                closed_labels.append(label)
+            else:
+                print(label, flush=True)
+
+    elapsed_ms = (time.perf_counter() - started) * 1000.0
+    _flush_close_all_history(history)
+    left = [p for p in (mt5.positions_get() or []) if int(p.ticket) in want]
+    failed_labels = [
+        f"#{p.ticket} {'BUY' if p.type == mt5.ORDER_TYPE_BUY else 'SELL'} {p.symbol} {p.volume}"
+        for p in left
+    ]
+    print(
+        f"close-all: đóng {len(want) - len(left)}/{len(want)} trong {elapsed_ms:.0f} ms "
+        f"(order_send liên tiếp, không lấy tick từng lệnh).",
+        flush=True,
+    )
+    if left:
+        print(f"Còn {len(left)} lệnh chưa đóng:", flush=True)
+        for position in left:
+            print(
+                f"- ticket {position.ticket} | {position.symbol} | "
+                f"{'BUY' if position.type == mt5.ORDER_TYPE_BUY else 'SELL'} | vol {position.volume}",
+                flush=True,
+            )
+    print("Gửi một Telegram tổng.", flush=True)
+    _close_all_summary_telegram(len(want) - len(left), len(want), closed_labels, failed_labels, elapsed_ms)
+    return history
+
+
 def close_all_positions():
     positions = mt5.positions_get()
     if not positions:
         print("Không có lệnh nào đang mở.")
         return []
 
-    print(f"Tìm thấy {len(positions)} lệnh đang mở. Đang chuẩn bị đóng toàn bộ...")
+    print(f"Tìm thấy {len(positions)} lệnh đang mở.")
     total_mt5 = 0.0
-    total_formula = 0.0
-    formula_ok = True
     for position in positions:
+        pnl = float(getattr(position, "profit", 0.0) or 0.0)
+        total_mt5 += pnl
         print(
             f"- Ticket: {position.ticket} | Symbol: {position.symbol} | "
             f"Type: {'BUY' if position.type == mt5.ORDER_TYPE_BUY else 'SELL'} | "
-            f"Vol: {position.volume}"
+            f"Vol: {position.volume} | Giá vào: {position.price_open} | P/L: {pnl:.2f}"
         )
-        print(f"  Giá vào: {position.price_open}")
-        info = print_position_pnl_lines(position)
-        total_mt5 += info["mt5_profit"]
-        if info["pnl_formula"] is not None:
-            total_formula += info["pnl_formula"]
-        else:
-            formula_ok = False
-
-    if formula_ok:
-        print(f"Tổng P/L tất cả lệnh: {format_pnl_status(total_mt5)} | công thức: {total_formula:.6f}")
-    else:
-        print(f"Tổng P/L tất cả lệnh: {format_pnl_status(total_mt5)} (MT5)")
+    print(f"Tổng P/L (số MT5 trên lệnh, không lấy tick): {format_pnl_status(total_mt5)}")
 
     if not confirm_action("Bạn có muốn đóng toàn bộ các lệnh này không?"):
         print("Đã hủy đóng toàn bộ lệnh.")
