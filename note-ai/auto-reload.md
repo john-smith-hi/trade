@@ -6,15 +6,15 @@ Sửa **bất kỳ `.py` hoặc `.xml`** trong project → nội dung được l
 
 ## Cách triển khai hiện tại
 
-`start_server.bat` đặt `TRADE_SERVER=1`. **Không** dùng Flask/Werkzeug reloader: trên Windows reloader dễ để 2 process `LISTEN` cùng cổng 5001 (TCP nối được, không trả HTTP → UI timeout 12s).
+`start_server.bat` đặt `TRADE_SERVER=1`. Process **cha** không giữ cổng và không thoát khi sửa file. Process **con** giữ `127.0.0.1:5001`. **Không** dùng Flask/Werkzeug reloader.
 
-1. Một process gọi `make_server` và giữ cổng.
-2. Thread poll ~0.4s, chữ ký mtime+size của:
+1. Con gọi `make_server` và giữ cổng.
+2. Thread trong con poll ~0.4s, chữ ký mtime+size của:
    - mọi `*.py` ở root project
    - mọi `*.xml` (rglob) — gồm `accounts.xml` và `paths.xml`
    - loại XML đổi liên tục: tuần checklist, timer, fibo, modify-if, telegram, watch
-3. File đổi và yên ~0.5s → đợi lock MT5 tối đa 8s (rồi nhả lock) → `os._exit(3)` ngay. Không `server.shutdown()` + ngủ: socket đóng mà process không chết thì bat không chạy lại, API tắt hẳn.
-4. `start_server.bat` thấy mã 3 thì chạy `python api.py` lại ngay (import bản mới). Mã khác (crash) thì đợi 5 giây.
+3. File đổi và yên ~0.5s → đợi lock MT5 tối đa 8s → `os._exit(3)`.
+4. Cha thấy mã 3 thì chạy lại con ngay (import bản mới). Cửa sổ `python api.py` / bat không tắt. Con crash (mã khác 3) thì cha đợi 5 giây.
 5. Soft-reload trong `mt5.py` (không chờ restart):
    - `ensure_paths_fresh()` — mtime `paths.xml` → nạp lại `PATHS`
    - `ensure_accounts_fresh()` — mtime accounts (+ gọi paths fresh) → nạp lại `ACCOUNTS`

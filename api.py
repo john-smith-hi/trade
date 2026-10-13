@@ -16,10 +16,10 @@
 #   ra mạng ngoài vì có thao tác gửi lệnh thật + thông tin tài khoản)
 #
 # AUTO-RELOAD
-#   - start_server.bat (TRADE_SERVER=1): một process giữ cổng. Sửa .py hoặc .xml
-#     cấu hình → process thoát mã 3, bat chạy lại ngay. Không dùng Flask-reloader
-#     (trên Windows reloader dễ để 2 process LISTEN cùng cổng → UI timeout).
-#   - accounts.xml / paths.xml vẫn soft-reload theo mtime trên từng request.
+#   TRADE_SERVER=1: process cha giữ cửa sổ. Process con giữ cổng 5001.
+#   Sửa .py / .xml cấu hình → con thoát mã 3, cha chạy lại con ngay (nạp bản mới).
+#   Không dùng Flask-reloader (Windows dễ 2 process cùng cổng).
+#   accounts.xml / paths.xml vẫn soft-reload theo mtime trên từng request.
 #
 # ENDPOINT
 #   GET  /api/paths             -> danh sách path (name + exe) từ xml/paths.xml
@@ -67,6 +67,7 @@
 import contextlib
 import io
 import os
+import subprocess
 import threading
 import time
 from pathlib import Path
@@ -970,7 +971,7 @@ def _watch_code_and_shutdown(_server, reload_flag):
 
 
 def _serve_until_code_change():
-    """Lắng nghe HTTP cho đến khi code đổi. Thoát mã 3 để start_server.bat chạy lại."""
+    """Process con: giữ cổng cho đến khi code đổi, rồi thoát mã 3."""
     reload_flag = threading.Event()
     server = make_server(API_HOST, API_PORT, app, threaded=True)
     watcher = threading.Thread(
@@ -988,22 +989,48 @@ def _serve_until_code_change():
         raise SystemExit(RELOAD_EXIT_CODE)
 
 
-if __name__ == "__main__":
-    if _should_start_watcher():
-        watch.start_watcher(_lock)
-        print(f"Đang chạy MT5 API tại http://{API_HOST}:{API_PORT} (chỉ localhost)")
-        if SERVER_MODE:
-            print("Chế độ server 24/7: sửa .py hoặc .xml cấu hình → process tự khởi động lại.")
-        else:
-            print("Auto-reload: sửa .py hoặc .xml → process restart và nạp lại nội dung.")
+def _supervise_server():
+    """Process cha không thoát khi code đổi. Process con giữ cổng; thoát mã 3 thì chạy lại ngay.
 
-    if SERVER_MODE:
-        _serve_until_code_change()
+    start_server.bat và lệnh `python api.py` đều chờ process cha, nên commit/sửa file
+    không làm cửa sổ server tắt hẳn.
+    """
+    script = str(Path(__file__).resolve())
+    env = os.environ.copy()
+    env["TRADE_SERVER"] = "1"
+    env["TRADE_SERVER_CHILD"] = "1"
+    while True:
+        print("Khởi động API.", flush=True)
+        completed = subprocess.run([sys.executable, script], env=env)
+        code = completed.returncode
+        if code == RELOAD_EXIT_CODE:
+            print("Code thay đổi. Khởi động lại ngay.", flush=True)
+            time.sleep(0.3)
+            continue
+        print(f"API đã dừng (mã {code}). Khởi động lại sau 5 giây...", flush=True)
+        time.sleep(5)
+
+
+if __name__ == "__main__":
+    is_supervisor = SERVER_MODE and os.environ.get("TRADE_SERVER_CHILD") != "1"
+    if is_supervisor:
+        print("Chế độ server 24/7: sửa .py hoặc .xml → nạp lại, cửa sổ này không tắt.")
+        _supervise_server()
     else:
-        app.run(
-            host=API_HOST,
-            port=API_PORT,
-            threaded=True,
-            use_reloader=USE_RELOADER,
-            extra_files=_watch_extra_files() if USE_RELOADER else None,
-        )
+        if _should_start_watcher():
+            watch.start_watcher(_lock)
+            print(f"Đang chạy MT5 API tại http://{API_HOST}:{API_PORT} (chỉ localhost)")
+            if SERVER_MODE:
+                print("Process con: file đổi sẽ thoát mã 3 để process cha chạy lại.")
+            else:
+                print("Auto-reload: sửa .py hoặc .xml → process restart và nạp lại nội dung.")
+        if SERVER_MODE:
+            _serve_until_code_change()
+        else:
+            app.run(
+                host=API_HOST,
+                port=API_PORT,
+                threaded=True,
+                use_reloader=USE_RELOADER,
+                extra_files=_watch_extra_files() if USE_RELOADER else None,
+            )
