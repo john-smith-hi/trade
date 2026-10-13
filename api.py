@@ -29,7 +29,8 @@
 #   POST /api/accounts          -> thêm account mới
 #   PUT  /api/accounts/<name>   -> sửa cấu hình (không đổi login/password/server/name)
 #   POST /api/reload-accounts   -> nạp lại xml/accounts.xml (ép buộc)
-#   POST /api/action            -> thực thi action (status/open/open-2-side/pending/cancel-pending/close/close-all/modify-all/modify-all-if)
+#   POST /api/action            -> thực thi action (status/open/open-2-side/open-2-side-news-multi-auto/demo-open-2-side-news-multi-auto/pending/cancel-pending/close/close-all/modify-all/modify-all-if)
+#                                 hedge tin: max_risk, sl_pips, buffer_pips, max_exec_ms (mặc định 375, 15, 8, 300). Lot bị bỏ qua. Không copy.
 #   GET  /api/modify-if?account=           -> job modify-all-if đang chờ
 #   GET  /api/quote?account=&symbol=&side=  -> bid/ask/entry tick live (điền TP/SL)
 #   GET  /api/candle?account=&symbol=&closed=1  -> nến M1 (mặc định nến đã đóng)
@@ -488,6 +489,26 @@ def action_endpoint():
         if zone_low is None and zone_high is None and price is None:
             return jsonify({"error": "modify-all-if cần vùng kích hoạt (zone_low/zone_high hoặc price)"}), 400
 
+    news_kwargs = {}
+    if action in (mt5app.NEWS_HEDGE_ACTION, mt5app.NEWS_HEDGE_DEMO_ACTION):
+        try:
+            max_risk = _to_float(data.get("max_risk"), "max_risk", default=375.0)
+            sl_pips = _to_float(data.get("sl_pips"), "sl_pips", default=15.0)
+            buffer_pips = _to_float(data.get("buffer_pips"), "buffer_pips", default=8.0)
+            max_exec_ms = _to_float(data.get("max_exec_ms"), "max_exec_ms", default=300.0)
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        if min(max_risk, sl_pips, buffer_pips, max_exec_ms) <= 0:
+            return jsonify({
+                "error": "max_risk, sl_pips, buffer_pips, max_exec_ms đều phải > 0",
+            }), 400
+        news_kwargs = {
+            "max_risk": max_risk,
+            "sl_pips": sl_pips,
+            "buffer_pips": buffer_pips,
+            "max_exec_ms": max_exec_ms,
+        }
+
     copy_raw = data.get("copy", None)
     if copy_raw is None:
         copy_names = None  # dùng auto_copy_enabled/auto_copy_targets cấu hình sẵn
@@ -504,6 +525,7 @@ def action_endpoint():
                     tp_price, sl_price, comment, no_ask, copy_names,
                     price=price, pending_type=pending_type,
                     zone_low=zone_low, zone_high=zone_high,
+                    **news_kwargs,
                 )
         except Exception as exc:
             print(f"Lỗi: {exc}", file=buf)
