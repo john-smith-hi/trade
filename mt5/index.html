@@ -50,6 +50,8 @@
         <option value="status">status — xem trạng thái/lệnh đang mở</option>
         <option value="open">open — mở lệnh mới (thị trường)</option>
         <option value="open-2-side">open-2-side — mua và bán cùng lúc (SL/TP là khoảng cách)</option>
+        <option value="open-2-side-news-multi-auto">open-2-side-news-multi-auto — hedge tin, lot tự tính</option>
+        <option value="demo-open-2-side-news-multi-auto">demo-open-2-side-news-multi-auto — kịch bản mẫu, không gửi lệnh</option>
         <option value="pending">pending — đặt lệnh chờ tại giá</option>
         <option value="cancel-pending">cancel-pending — hủy toàn bộ lệnh chờ</option>
         <option value="close">close — đóng một phần theo lot</option>
@@ -66,7 +68,7 @@
     <p class="hint" id="paramsEmptyHint">Action này không cần thêm tham số nào.</p>
 
     <div class="grid">
-      <div class="field" data-actions="open,open-2-side,pending,close,modify-all-if">
+      <div class="field" data-actions="open,open-2-side,open-2-side-news-multi-auto,pending,close,modify-all-if">
         <label for="symbol">Symbol</label>
         <input type="text" id="symbol" value="XAUUSD" />
       </div>
@@ -103,6 +105,28 @@
           <input type="number" id="zoneHigh" step="any" placeholder="để trống = cùng mức từ" />
         </div>
       </div>
+      <div class="field-pair field-wide" data-actions="open-2-side-news-multi-auto">
+        <div class="field">
+          <label for="maxRisk">MAX_RISK (USD) *</label>
+          <input type="number" id="maxRisk" step="any" min="0" value="375" />
+        </div>
+        <div class="field">
+          <label for="slPips">SL (khoảng giá) *</label>
+          <input type="number" id="slPips" step="any" min="0" value="15" />
+        </div>
+      </div>
+      <div class="field-pair field-wide" data-actions="open-2-side-news-multi-auto">
+        <div class="field">
+          <label for="bufferPips">BUFFER (khoảng giá) *</label>
+          <input type="number" id="bufferPips" step="any" min="0" value="8" />
+        </div>
+        <div class="field">
+          <label for="maxExecMs">Thời gian bắn (ms) *</label>
+          <input type="number" id="maxExecMs" step="1" min="1" value="300" />
+        </div>
+      </div>
+      <p class="hint field-wide hidden" id="newsHedgeHint" data-actions="open-2-side-news-multi-auto">Lot tự tính từ MAX_RISK. Không dùng ô Lot, không copy. Xem trước không bắn. Xác nhận chạy bước 1–5. Bot không đóng đầu còn lại khi giá về mức đệm.</p>
+      <p class="hint field-wide hidden" id="newsDemoHint" data-actions="demo-open-2-side-news-multi-auto">In kịch bản mẫu Ask 4200 / Bid 4199 (V 0.41, lỗ thiết kế 369$, hai SL 1271$). Không nối MT5, không gửi lệnh. Bấm Xem trước.</p>
       <div class="field-pair field-wide" data-actions="open,open-2-side,pending,modify-all,modify-all-if">
         <div class="field">
           <label for="slPrice">SL price *</label>
