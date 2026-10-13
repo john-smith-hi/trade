@@ -21,7 +21,7 @@ Web UI (không nằm trong repo trade):
 |------|---------|
 | `mt5.py` | CLI + logic giao dịch, load/save accounts + paths, copy trade |
 | `api.py` | HTTP mỏng bọc `mt5.execute_request`, CORS, lock thread, CRUD accounts/paths, history, tick |
-| `tick_data.py` | Đọc/ghi CSV tick `data/GOLD/tick/`, query giờ Việt Nam |
+| `tick_data.py` | Đọc/ghi CSV tick `www/tick` (+ `data/GOLD/tick/`), query giờ Việt Nam |
 | `start_server.bat` | Khởi động API 24/7 (reload + watcher) |
 | `xml/accounts.xml` | Config account thật (**gitignore**, không commit) |
 | `xml/paths.xml` | Map tên path (`exness` / `ftmo` / …) → `terminal64.exe` |

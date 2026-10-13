@@ -66,7 +66,7 @@ Nếu vẫn đứng: kiểm tra `start_server.bat` còn chạy; DevTools Network
 
 ## 12b. Tick CSV
 
-Nạp/dán trên UI → `localStorage` (`tick-imports`), không ghi đĩa. localStorage ~5 MB nên file tháng **không** nạp qua UI — để `data/GOLD/tick/` và tìm qua API. Query đĩa không lấy lock MT5. `copy_www.py tick` xóa folder web, không đụng CSV trên đĩa / localStorage.
+CSV nằm `www/tick`. `copy_www.py tick` **giữ** `*.csv` khi thay UI. File tháng (~trăm MB) không upload qua trình duyệt (PHP/proxy) — copy vào `www/tick` hoặc để `data/GOLD/tick/` (API vẫn đọc). Query không lấy lock MT5. Xóa trên UI chỉ xóa file trong `www/tick`, không xóa bản nguồn `data/GOLD/tick/`.
 
 ## 13. Quote / positions cho form ra lệnh
 

@@ -6,13 +6,13 @@ Trang **xem giá mua/bán theo tick CSV** — khác `history/` (CSV lệnh đã 
 |-----|------|------|
 | `/tick/` | `tick/index.html` + `app.js` | Nạp CSV, tìm theo giờ Việt Nam, bảng + đồ thị Bid/Ask |
 
-Lên WAMP: `python copy_www.py tick` (xóa folder đích rồi copy UI). **Không** copy file `.csv`.
+Lên WAMP: `python copy_www.py tick`. Folder đích xóa code cũ **nhưng giữ `*.csv`**. Dữ liệu nằm ngay `www/tick` (cùng chỗ trang). File tháng cũ trong `data/GOLD/tick/` vẫn được API đọc nếu chưa copy sang www.
 
-Nạp/dán CSV → `localStorage` key `tick-imports` (trình duyệt, tối đa ~4 MB/file). Không ghi server. File tháng (trăm MB) vẫn đọc từ `data/GOLD/tick/` qua API khi bấm Tìm.
+Nạp/dán nhỏ: `tick/save.php` ghi vào folder trang. File > 64 MB: không upload — nếu trùng tên với file đã có trên đĩa thì dùng file đó; không thì copy tay vào `www/tick`.
 
-Tìm file trình duyệt không cần API. Tìm file tháng trên đĩa cần `start_server.bat` + `proxy.php`. Timeout proxy 180s.
+Tìm cần API (`start_server.bat`) + `proxy.php`. Timeout proxy 180s.
 
-CSS/JS: `ver.php` + `?v=filemtime`. Thêm file JS/CSS mới thì ghi vào list trong `tick/ver.php`. Theme key `mt5-theme`. Favicon: `tick/favicon.ico`. CSP `connect-src 'self'` (chỉ proxy cùng origin).
+CSS/JS: `ver.php` + `?v=filemtime`. Theme `mt5-theme`. CSP `connect-src 'self'`.
 
 ## CSV
 
@@ -21,22 +21,21 @@ CSS/JS: `ver.php` + `?v=filemtime`. Thêm file JS/CSS mới thì ghi vào list t
 "exness","XAUUSDm","2026-09-01 00:00:00.065Z",4452.22,4452.48
 ```
 
-Timestamp trong file là **UTC**. UI/API dùng **giờ Việt Nam UTC+7** (không DST). Bid = giá bán, Ask = giá mua.
-
-Nạp/dán tối đa ~4 MB (hạn localStorage). File tháng copy vào `data/GOLD/tick/` (không nạp qua UI).
+Timestamp **UTC**. UI/API **giờ Việt Nam UTC+7**. Bid = giá bán, Ask = giá mua.
 
 ## Tìm
 
-Ô ngày giống `history/`: `dd/mm/yyyy` + nút lịch. Thêm giờ `HH:MM:SS`. Bấm **Tìm** (không tự quét cả file khi gõ). Bộ lọc lưu `localStorage` key `tick-filters`.
+Ô ngày giống `history/`: `dd/mm/yyyy` + nút lịch. Giờ `HH:MM:SS`. Bấm **Tìm**. Bộ lọc `localStorage` key `tick-filters` (chỉ bộ lọc, không phải CSV).
 
-Kết quả: KPI, canvas Bid/Ask (không thư viện ngoài), bảng phân trang 100 dòng. File localStorage lọc trên trình duyệt. File đĩa: `GET /api/tick/query` (binary-search).
+`GET /api/tick/query` binary-search file đã sort.
 
-## API (không lấy lock MT5) — chỉ file trên đĩa
+## API (không lấy lock MT5)
 
 | Method | Path | Việc |
 |--------|------|------|
-| GET | `/api/tick/files` | List CSV trong `data/GOLD/tick/` |
-| DELETE | `/api/tick/files/<name>` | Xóa 1 file trên đĩa |
-| GET | `/api/tick/query?from=&to=` | Tick giờ VN trên đĩa + chart |
+| GET | `/api/tick/files` | List CSV trong `www/tick` (+ `data/GOLD/tick/` nếu có) |
+| POST | `/api/tick/upload` | Lưu CSV vào `www/tick` (UI ưu tiên `save.php`) |
+| DELETE | `/api/tick/files/<name>` | Xóa file trong `www/tick` (không xóa bản nguồn `data/GOLD/tick/`) |
+| GET | `/api/tick/query?from=&to=` | Tick giờ VN + chart |
 
-`POST /api/tick/upload` còn đó nhưng UI không dùng (nạp đi localStorage). Logic đĩa: `tick_data.py`.
+Logic: `tick_data.py`.

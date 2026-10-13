@@ -21,7 +21,7 @@
     <h2>Nạp CSV tick</h2>
     <div id="dropzone" class="dropzone">
       <p class="drop-title">Thả file CSV vào đây</p>
-      <p class="hint">Cột: Exness, Symbol, Timestamp (UTC, đuôi Z), Bid, Ask. Giờ trên trang là <strong>giờ Việt Nam (UTC+7)</strong>. Phần nạp/dán lưu <code>localStorage</code> trình duyệt này (tối đa ~4 MB/file) — không ghi server, còn sau F5. File tháng (trăm MB) quá lớn cho localStorage: để nguyên trong <code>data/GOLD/tick/</code> rồi tìm (cần API).</p>
+      <p class="hint">Cột: Exness, Symbol, Timestamp (UTC, đuôi Z), Bid, Ask. Giờ trên trang là <strong>giờ Việt Nam (UTC+7)</strong>. File CSV nằm ngay folder trang (<code>www/tick</code>). <code>copy_www.py tick</code> giữ lại file <code>.csv</code>. Upload qua web tối đa 64 MB; file tháng (trăm MB) copy vào <code>www/tick</code> hoặc giữ trong <code>data/GOLD/tick/</code> rồi Tải lại danh sách (cần API).</p>
       <button type="button" id="btnPick" class="btn btn-primary">Chọn file CSV</button>
       <input id="fileInput" type="file" accept=".csv,text/csv" multiple hidden />
     </div>

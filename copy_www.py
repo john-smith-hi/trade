@@ -7,8 +7,7 @@
 #
 # Đường dẫn đích lấy từ xml/www.xml (gitignore). Chưa có thì copy từ
 # xml/www.example.xml. Folder đích (mt5/, setup/, history/, tick/) được xóa sạch
-# trước khi copy. CSV phân tích lệnh không nằm trong folder history: trang đó
-# import trên trình duyệt. CSV tick sống ở data/GOLD/tick/ (không copy lên WAMP).
+# trước khi copy — trừ file .csv trong tick/ (dữ liệu tick nằm ngay www/tick).
 #
 #   python copy_www.py              # copy mt5, setup, history và tick
 #   python copy_www.py mt5          # chỉ mt5
@@ -64,12 +63,29 @@ def load_www_path() -> Path:
     return Path(text)
 
 
-def clear_dir(path: Path) -> None:
-    """Xóa hết nội dung folder đích rồi tạo lại rỗng."""
-    if path.exists():
+def clear_dir(path: Path, keep_suffixes: set[str] | None = None) -> None:
+    """Xóa nội dung folder đích. keep_suffixes: giữ file (vd .csv trên www/tick)."""
+    keep = {s.lower() for s in (keep_suffixes or set())}
+    if not path.exists():
+        path.mkdir(parents=True, exist_ok=True)
+        return
+    if not keep:
         shutil.rmtree(path)
         print(f"  da xoa folder cu: {path}")
+        path.mkdir(parents=True, exist_ok=True)
+        return
+    kept = 0
+    for child in list(path.iterdir()):
+        if child.is_file() and child.suffix.lower() in keep:
+            kept += 1
+            continue
+        if child.is_dir():
+            shutil.rmtree(child)
+        else:
+            child.unlink()
     path.mkdir(parents=True, exist_ok=True)
+    if kept:
+        print(f"  giu {kept} file csv trong {path}")
 
 
 def copy_tree(src: Path, dest: Path) -> int:
@@ -131,7 +147,7 @@ def main() -> int:
             print(f"Bo qua {name}: khong co folder {src}", file=sys.stderr)
             continue
         print(f"{src}  ->  {dest}")
-        clear_dir(dest)
+        clear_dir(dest, keep_suffixes=SKIP_TICK_SUFFIXES if name == "tick" else None)
         n = copy_tree(src, dest)
         print(f"  ({n} file)\n")
         total += n

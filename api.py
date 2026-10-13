@@ -38,7 +38,7 @@
 #   GET  /api/orders?account=               -> lệnh chờ JSON (cancel-pending)
 #   GET    /api/history?limit=50&offset=0  -> lịch sử (lines + rows + total cho phân trang)
 #   DELETE /api/history           -> xóa toàn bộ history_mt5.txt
-#   GET    /api/tick/files        -> danh sách CSV tick trong data/GOLD/tick/
+#   GET    /api/tick/files        -> danh sách CSV tick trong www/tick (+ data/GOLD/tick/)
 #   POST   /api/tick/upload       -> lưu CSV (multipart file hoặc JSON {filename, csv})
 #   DELETE /api/tick/files/<name> -> xóa 1 file CSV tick
 #   GET    /api/tick/query        -> tick trong khoảng giờ VN (from, to, symbol, file, offset, limit)

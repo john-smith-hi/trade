@@ -8,6 +8,8 @@ build/
 dist/
 history_mt5.txt
 /csv
+tick/*.csv
+tick/*.csv.part
 
 # Chứa login/password MT5 thật, không commit. Xem xml/accounts.example.xml để lấy mẫu.
 xml/accounts.xml

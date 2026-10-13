@@ -1,5 +1,5 @@
 # =============================================================================
-# Tick CSV (Bid/Ask) — lưu tại data/GOLD/tick/, tra cứu theo giờ Việt Nam
+# Tick CSV (Bid/Ask) — lưu tại www/tick (xml/www.xml), tra cứu theo giờ Việt Nam
 # =============================================================================
 #
 # File nguồn kiểu Exness:
@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import BinaryIO, Iterable
 
 ROOT = Path(__file__).resolve().parent
-TICK_DIR = ROOT / "data" / "GOLD" / "tick"
+LEGACY_DIR = ROOT / "data" / "GOLD" / "tick"
 VN = timezone(timedelta(hours=7))
 UTC = timezone.utc
 
@@ -38,9 +38,49 @@ class TickError(ValueError):
     pass
 
 
+def www_tick_dir() -> Path:
+    """Folder CSV trên WAMP: <www>/tick — cùng chỗ trang web."""
+    try:
+        import copy_www
+        return copy_www.load_www_path() / "tick"
+    except Exception:
+        return ROOT / "tick"
+
+
+def tick_dir() -> Path:
+    return www_tick_dir()
+
+
+def csv_dirs() -> list[Path]:
+    """www/tick (ưu tiên) rồi data/GOLD/tick nếu còn file tháng cũ."""
+    out: list[Path] = []
+    seen: set[Path] = set()
+    for path in (www_tick_dir(), LEGACY_DIR):
+        try:
+            resolved = path.resolve()
+        except OSError:
+            continue
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        if path.is_dir():
+            out.append(path)
+    return out
+
+
+def iter_csv_files() -> list[Path]:
+    found: dict[str, Path] = {}
+    for folder in csv_dirs():
+        for path in sorted(folder.glob("*.csv")):
+            if path.is_file() and path.name not in found:
+                found[path.name] = path
+    return [found[name] for name in sorted(found)]
+
+
 def ensure_dir() -> Path:
-    TICK_DIR.mkdir(parents=True, exist_ok=True)
-    return TICK_DIR
+    dest = www_tick_dir()
+    dest.mkdir(parents=True, exist_ok=True)
+    return dest
 
 
 def safe_filename(name: str) -> str:
@@ -54,10 +94,11 @@ def safe_filename(name: str) -> str:
 
 
 def storage_dir_label() -> str:
+    path = www_tick_dir()
     try:
-        return TICK_DIR.resolve().relative_to(ROOT.resolve()).as_posix()
-    except ValueError:
-        return str(TICK_DIR)
+        return path.resolve().as_posix()
+    except OSError:
+        return str(path)
 
 
 def parse_utc(raw: str) -> datetime | None:
@@ -277,21 +318,20 @@ def _public_file(meta: dict) -> dict:
 
 def list_files() -> list[dict]:
     ensure_dir()
-    rows = []
-    for path in sorted(TICK_DIR.glob("*.csv")):
-        if not path.is_file():
-            continue
-        rows.append(_public_file(_file_meta(path)))
-    return rows
+    return [_public_file(_file_meta(path)) for path in iter_csv_files()]
 
 
 def _resolve_existing(name: str) -> Path:
     safe = safe_filename(name)
-    path = (TICK_DIR / safe).resolve()
-    root = TICK_DIR.resolve()
-    if path.parent != root or not path.is_file():
-        raise TickError(f"Không thấy file '{safe}'.")
-    return path
+    dest = ensure_dir()
+    path = (dest / safe).resolve()
+    root = dest.resolve()
+    if path.parent == root and path.is_file():
+        return path
+    raise TickError(
+        f"Không thấy '{safe}' trong {storage_dir_label()}. "
+        "File trong data/GOLD/tick/ là bản nguồn — xóa tay nếu cần."
+    )
 
 
 def delete_file(name: str) -> None:
@@ -321,7 +361,7 @@ def save_csv_text(filename: str, text: str) -> dict:
     _validate_csv_prefix(text)
     ensure_dir()
     name = safe_filename(filename or "pasted.csv")
-    dest = TICK_DIR / name
+    dest = ensure_dir() / name
     dest.write_text(text, encoding="utf-8", newline="\n")
     _drop_cache(dest)
     return _public_file(_file_meta(dest))
@@ -335,7 +375,7 @@ def save_upload(filename: str, stream: BinaryIO, size: int | None = None) -> dic
         )
     ensure_dir()
     name = safe_filename(filename)
-    dest = TICK_DIR / name
+    dest = ensure_dir() / name
     tmp = dest.with_name(dest.name + ".part")
     written = 0
     head = b""
@@ -449,7 +489,7 @@ def query_ticks(
 
     ensure_dir()
     metas = []
-    for path in sorted(TICK_DIR.glob("*.csv")):
+    for path in iter_csv_files():
         if not path.is_file():
             continue
         if want_file and path.name != want_file:
