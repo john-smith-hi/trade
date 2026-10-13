@@ -428,8 +428,11 @@
         ? f.first_vn + " → " + f.last_vn
         : (f.error || "Chưa đọc được khoảng thời gian");
       const sym = f.symbol ? f.symbol + " · " : "";
+      const loc = f.storage === "legacy"
+        ? " · <span class=" + '"file-legacy">chỉ data/GOLD/tick</span>'
+        : (f.storage === "www" ? " · www/tick" : "");
       return '<div class="file-row"><div><span class="file-name">' + esc(f.name)
-        + '</span><span class="file-meta">' + esc(sym) + fmtSize(f.size) + " · " + esc(range)
+        + '</span><span class="file-meta">' + esc(sym) + fmtSize(f.size) + loc + " · " + esc(range)
         + '</span></div><button type="button" class="btn btn-ghost" data-del="' + esc(f.name)
         + '">Xóa</button></div>';
     }).join("");
@@ -467,13 +470,12 @@
     }
   }
 
-  async function tryAdopt(name, size) {
-    if (!state.apiOk) return false;
+  async function tryInstall(name, size) {
+    if (!state.apiOk) return null;
     try {
-      await api("POST", "/api/tick/adopt", { filename: name, size: size }, { timeoutMs: 15000 });
-      return true;
+      return await api("POST", "/api/tick/adopt", { filename: name, size: size }, { timeoutMs: 600000 });
     } catch (e) {
-      return false;
+      return null;
     }
   }
 
@@ -510,8 +512,16 @@
         continue;
       }
       try {
-        if (await tryAdopt(name, file.size)) {
-          notes.push(name + ": đã có trên đĩa, không cần gửi lại.");
+        setMsg("importOk", "Đang đưa " + name + " vào " + state.dir + "…");
+        setMsg("importError", "");
+        const installed = await tryInstall(name, file.size);
+        if (installed && installed.action === "already") {
+          notes.push(name + ": đã có trong " + state.dir + ".");
+          ok += 1;
+          continue;
+        }
+        if (installed && installed.action === "copied") {
+          notes.push(name + ": đã copy vào " + state.dir + " (từ " + (installed.from || "đĩa") + ").");
           ok += 1;
           continue;
         }

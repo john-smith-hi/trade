@@ -16,6 +16,7 @@ from __future__ import annotations
 import csv
 import io
 import re
+import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import BinaryIO, Iterable
@@ -316,9 +317,31 @@ def _public_file(meta: dict) -> dict:
     }
 
 
+def _is_under(path: Path, root: Path) -> bool:
+    try:
+        path.resolve().relative_to(root.resolve())
+        return True
+    except (OSError, ValueError):
+        return False
+
+
+def _storage_kind(path: Path) -> str:
+    if _is_under(path, www_tick_dir()):
+        return "www"
+    if _is_under(path, LEGACY_DIR):
+        return "legacy"
+    return "other"
+
+
+def _public_file_from_path(path: Path) -> dict:
+    out = _public_file(_file_meta(path))
+    out["storage"] = _storage_kind(path)
+    return out
+
+
 def list_files() -> list[dict]:
     ensure_dir()
-    return [_public_file(_file_meta(path)) for path in iter_csv_files()]
+    return [_public_file_from_path(path) for path in iter_csv_files()]
 
 
 def find_csv(name: str) -> Path | None:
@@ -329,20 +352,60 @@ def find_csv(name: str) -> Path | None:
     return None
 
 
+def install_file(name: str, size: int | None = None) -> dict:
+    """Đưa CSV vào www/tick: đã có đúng size thì giữ; nếu chỉ có data/GOLD/tick thì copy."""
+    safe = safe_filename(name)
+    dest_dir = ensure_dir()
+    dest = dest_dir / safe
+
+    def size_ok(path: Path) -> bool:
+        if size is None:
+            return True
+        return path.stat().st_size == int(size)
+
+    if dest.is_file() and size_ok(dest):
+        return {"file": _public_file_from_path(dest), "action": "already"}
+
+    source: Path | None = None
+    for folder in (LEGACY_DIR, dest_dir):
+        candidate = folder / safe
+        if candidate.is_file() and size_ok(candidate):
+            source = candidate.resolve()
+            break
+
+    if source is None:
+        raise TickError(
+            f"Không thấy '{safe}' (cùng dung lượng) trong {storage_dir_label()} "
+            "hay data/GOLD/tick/. Gửi file từ máy hoặc copy vào một trong hai folder."
+        )
+
+    if source == dest.resolve() and dest.is_file():
+        return {"file": _public_file_from_path(dest), "action": "already"}
+
+    tmp = dest_dir / (safe + ".part")
+    try:
+        shutil.copy2(source, tmp)
+        if size is not None and tmp.stat().st_size != int(size):
+            raise TickError("Sau copy dung lượng không khớp.")
+        if dest.is_file():
+            dest.unlink()
+        tmp.replace(dest)
+    except Exception:
+        if tmp.exists():
+            tmp.unlink(missing_ok=True)
+        raise
+    _drop_cache(dest)
+    from_label = "data/GOLD/tick" if _is_under(source, LEGACY_DIR) else storage_dir_label()
+    return {
+        "file": _public_file_from_path(dest),
+        "action": "copied",
+        "from": from_label,
+    }
+
+
 def adopt_file(name: str, size: int | None = None) -> dict:
-    """Dùng file đã có trên đĩa (www/tick hoặc data/GOLD/tick), không nhận nội dung."""
-    path = find_csv(name)
-    if path is None:
-        raise TickError(
-            f"Không thấy '{safe_filename(name)}' trong {storage_dir_label()} "
-            "hay data/GOLD/tick/."
-        )
-    actual = path.stat().st_size
-    if size is not None and int(size) != actual:
-        raise TickError(
-            f"'{path.name}' trên đĩa khác dung lượng ({actual} vs {int(size)} byte)."
-        )
-    return _public_file(_file_meta(path))
+    """Alias install_file — API /api/tick/adopt."""
+    return install_file(name, size)
 
 
 def _resolve_existing(name: str) -> Path:

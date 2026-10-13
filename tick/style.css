@@ -136,6 +136,7 @@ h2 { margin: 0 0 10px; font-size: 16px; }
 
 .file-name { font-weight: 700; }
 .file-meta { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+.file-legacy { color: var(--warn, #b45309); }
 
 .filters {
   display: grid;
