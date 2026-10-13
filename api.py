@@ -16,9 +16,10 @@
 #   ra mạng ngoài vì có thao tác gửi lệnh thật + thông tin tài khoản)
 #
 # AUTO-RELOAD
-#   - Sửa file .py hoặc bất kỳ file .xml trong project → process tự restart, nạp lại toàn bộ.
-#   - Thêm lớp an toàn: mỗi request /api/accounts và /api/action vẫn kiểm tra mtime
-#     xml/accounts.xml và nạp lại ngay nếu file đổi (không chờ reloader).
+#   - start_server.bat (TRADE_SERVER=1): một process giữ cổng. Sửa .py hoặc .xml
+#     cấu hình → process thoát mã 3, bat chạy lại ngay. Không dùng Flask-reloader
+#     (trên Windows reloader dễ để 2 process LISTEN cùng cổng → UI timeout).
+#   - accounts.xml / paths.xml vẫn soft-reload theo mtime trên từng request.
 #
 # ENDPOINT
 #   GET  /api/paths             -> danh sách path (name + exe) từ xml/paths.xml
@@ -56,8 +57,8 @@
 #   GET    /setup/, /setup/<file>       -> serve file tĩnh repo (dev); production dùng WAMP
 #
 # CHẠY 24/7 (Windows Server)
-#   start_server.bat  → TRADE_SERVER=1, watcher Timer + lệnh, KHÔNG Flask-reloader
-#                       (tránh 2 process kẹt port → UI timeout 12s). Sửa .py → restart bat.
+#   start_server.bat  → TRADE_SERVER=1, watcher Timer + lệnh.
+#                       Sửa .py / .xml cấu hình → thoát mã 3, bat khởi động lại ngay.
 #                       Sửa accounts/paths.xml → soft-reload, không cần restart.
 #
 # =============================================================================
@@ -66,10 +67,12 @@ import contextlib
 import io
 import os
 import threading
+import time
 from pathlib import Path
 
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
+from werkzeug.serving import make_server
 
 import day_trade
 import fibo_settings
@@ -85,9 +88,13 @@ API_PORT = 5001
 ROOT_DIR = Path(__file__).resolve().parent
 SETUP_DIR = ROOT_DIR / "setup"
 SERVER_MODE = os.environ.get("TRADE_SERVER") == "1"
-# Server 24/7: tắt reloader — trên Windows dễ có 2 process LISTEN cùng port,
-# TCP nối được nhưng không trả HTTP → trình duyệt AbortError "API timeout" sau 12s.
+# Mã thoát khi file code đổi. start_server.bat thấy mã này thì chạy lại ngay.
+# Mã khác (crash) → bat đợi 5 giây để tránh vòng lặp chặt.
+RELOAD_EXIT_CODE = 3
+# python api.py (không qua bat): Werkzeug reloader. Bat không dùng reloader này.
 USE_RELOADER = not SERVER_MODE
+_RELOAD_POLL_SEC = 0.4
+_RELOAD_DEBOUNCE_SEC = 0.5
 
 app = Flask(__name__)
 CORS(app)
@@ -98,7 +105,7 @@ _lock = threading.Lock()
 
 
 def _watch_extra_files():
-    """Mọi .py (root) và mọi .xml trong project — đổi là reloader restart process.
+    """Mọi .py (root) và mọi .xml trong project — đổi là process tự khởi động lại.
 
     Ngoại lệ: XML dữ liệu đổi liên tục (checklist, timer, telegram, watch)
     không nên coi là "đổi code" -> loại khỏi danh sách theo dõi.
@@ -882,19 +889,102 @@ def _should_start_watcher():
     return os.environ.get("WERKZEUG_RUN_MAIN") == "true"
 
 
+def _code_signature():
+    """mtime + size của file được theo dõi. File mất / chưa có vẫn nằm trong chữ ký."""
+    items = []
+    for raw in _watch_extra_files():
+        path = Path(raw)
+        try:
+            st = path.stat()
+        except OSError:
+            items.append((raw, None, None))
+            continue
+        items.append((raw, st.st_mtime_ns, st.st_size))
+    return tuple(items)
+
+
+def _changed_code_names(before, after):
+    old = {item[0]: item for item in before}
+    new = {item[0]: item for item in after}
+    names = []
+    for key in sorted(set(old) | set(new)):
+        if old.get(key) != new.get(key):
+            names.append(Path(key).name)
+    return names
+
+
+def _watch_code_and_shutdown(server, reload_flag):
+    """Một thread: file đổi và đã yên → đợi hết request MT5, đóng socket, báo nạp lại.
+
+    Giữ lock đến khi process thoát để request mới không gửi lệnh trong lúc restart.
+    Không gọi Werkzeug reloader — reloader spawn process con và trên Windows cả hai
+    có thể LISTEN cùng cổng.
+    """
+    baseline = _code_signature()
+    dirty = None
+    dirty_since = 0.0
+    while True:
+        time.sleep(_RELOAD_POLL_SEC)
+        current = _code_signature()
+        if current == baseline:
+            dirty = None
+            continue
+        now = time.monotonic()
+        if dirty != current:
+            dirty = current
+            dirty_since = now
+            continue
+        if now - dirty_since < _RELOAD_DEBOUNCE_SEC:
+            continue
+        names = ", ".join(_changed_code_names(baseline, current)[:8])
+        print(f"Phát hiện sửa file ({names}) — đợi lệnh đang chạy xong rồi nạp lại.", flush=True)
+        _lock.acquire()
+        reload_flag.set()
+        try:
+            server.shutdown()
+        except Exception as exc:
+            print(f"Không tắt socket sạch: {exc}", flush=True)
+            os._exit(RELOAD_EXIT_CODE)
+        # serve_forever thường trả về trong ~0.5s. Nếu kẹt, thoát cưỡng bức — bat chạy lại.
+        time.sleep(2)
+        os._exit(RELOAD_EXIT_CODE)
+
+
+def _serve_until_code_change():
+    """Lắng nghe HTTP cho đến khi code đổi. Thoát mã 3 để start_server.bat chạy lại."""
+    reload_flag = threading.Event()
+    server = make_server(API_HOST, API_PORT, app, threaded=True)
+    watcher = threading.Thread(
+        target=_watch_code_and_shutdown,
+        args=(server, reload_flag),
+        name="code-reload",
+        daemon=True,
+    )
+    watcher.start()
+    try:
+        server.serve_forever()
+    finally:
+        server.server_close()
+    if reload_flag.is_set():
+        raise SystemExit(RELOAD_EXIT_CODE)
+
+
 if __name__ == "__main__":
     if _should_start_watcher():
         watch.start_watcher(_lock)
         print(f"Đang chạy MT5 API tại http://{API_HOST}:{API_PORT} (chỉ localhost)")
         if SERVER_MODE:
-            print("Chế độ server 24/7: watcher Timer + lệnh → Telegram (không Flask-reloader).")
+            print("Chế độ server 24/7: sửa .py hoặc .xml cấu hình → process tự khởi động lại.")
         else:
             print("Auto-reload: sửa .py hoặc .xml → process restart và nạp lại nội dung.")
 
-    app.run(
-        host=API_HOST,
-        port=API_PORT,
-        threaded=True,
-        use_reloader=USE_RELOADER,
-        extra_files=_watch_extra_files() if USE_RELOADER else None,
-    )
+    if SERVER_MODE:
+        _serve_until_code_change()
+    else:
+        app.run(
+            host=API_HOST,
+            port=API_PORT,
+            threaded=True,
+            use_reloader=USE_RELOADER,
+            extra_files=_watch_extra_files() if USE_RELOADER else None,
+        )

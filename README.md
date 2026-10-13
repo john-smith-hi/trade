@@ -10,7 +10,7 @@ Web UI chạy trên WAMP. Đường dẫn www khai báo trong `xml/www.xml` (git
 |----------------|------|
 | `mt5.py` | CLI + logic MT5 (mở lệnh, pending, copy trade, XML accounts/paths) |
 | `api.py` | HTTP API Flask bọc `mt5.py` và `day_trade.py` |
-| `start_server.bat` | API 24/7 (watcher Telegram; không Flask-reloader; restart nếu crash) |
+| `start_server.bat` | API 24/7 (watcher Telegram; sửa `.py`/`.xml` thì process tự chạy lại; crash thì đợi 5 giây) |
 | `telegram_notify.py` | Gửi cảnh báo Telegram (`xml/telegram.xml`) |
 | `watch.py` | Poll Timer + lệnh TP/SL/pending trên server |
 | `copy_www.py` | Xóa folder đích rồi copy UI `mt5/` / `setup/` / `history/` theo `xml/www.xml` (không dùng tên `copy.py`) |
@@ -186,7 +186,7 @@ Trang **Timer** (`/setup/timer/`): đặt vùng giá (từ–đến). Server pol
 3. Chạy `start_server.bat` (vòng restart nếu Python thoát). Task Scheduler: **At log on**, “Run only when user is logged on” (MT5 cần session desktop).
 4. Không disconnect RDP bằng cách đóng cửa sổ — dùng `tscon` về console hoặc để session mở.
 5. Nút **Thử Telegram** trên trang Timer.
-6. Cập nhật code trên máy 1 (thủ công): `git pull` → `python copy_www.py` → tắt rồi chạy lại `start_server.bat`.
+6. Cập nhật code trên máy 1: `git pull` → `python copy_www.py`. File `.py` / `.xml` cấu hình đang được server theo dõi sẽ tự nạp lại. UI web chỉ đổi sau `copy_www.py`.
 
 Watcher gửi tin: mở/đóng lệnh (web/CLI + auto_copy), pending khớp, đóng TP/SL/stop-out, Timer chạm vùng. Bot **chỉ gửi tin**, không nhận lệnh.
 

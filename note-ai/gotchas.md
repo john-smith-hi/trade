@@ -7,7 +7,7 @@ Hiện tại: trống → `None`. Nếu gặp lại: grep còn sót tên hằng 
 
 ## 2. Sửa `accounts.xml` / `paths.xml` mà web vẫn hiện config cũ
 
-- Soft-reload + Flask reloader đã có — xem `auto-reload.md`.
+- Soft-reload XML + bat tự chạy lại khi `.py` đổi — xem `auto-reload.md`. Không bật Flask-reloader trong `start_server.bat`.
 - UI còn GET cache ~15s → bấm **Tải lại danh sách** hoặc đợi / focus tab.
 - Process API rất cũ (trước khi có watch XML) → restart `start_server.bat` một lần.
 
