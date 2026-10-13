@@ -1,6 +1,8 @@
 # Dữ liệu tick CSV (Exness XAUUSDm)
 
-**Không còn app web `/tick/` hay API `/api/tick/*` trong repo.** Chỉ còn file CSV trên đĩa.
+**App xem tick:** `tick/` → WAMP `http://localhost/tick/` (`python copy_www.py tick`). PHP `query.php` đọc CSV trên đĩa; JS canvas (hover, zoom, kéo). Không dùng API Python `/api/tick/*`.
+
+Nếu chạy từ `www/tick` mà không thấy data: copy `tick/config.example.php` → `tick/config.php` và chỉnh `data_dir`.
 
 ## Vị trí file
 

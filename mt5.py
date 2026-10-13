@@ -954,6 +954,24 @@ def get_filling_mode(symbol):
         return 2  # Giá trị số của mt5.ORDER_FILL_RETURN
 
 
+def prefer_ioc_filling_mode(symbol):
+    """Ưu tiên IOC khi symbol hỗ trợ — đóng/mở nhanh, ít bị từ chối khi spread giãn."""
+    symbol_info = mt5.symbol_info(symbol)
+    if symbol_info is not None and int(getattr(symbol_info, "filling_mode", 0) or 0) & 2:
+        return 1
+    return get_filling_mode(symbol)
+
+
+def tick_for_close(symbol):
+    """Tick một lần để đóng — không retry như get_current_price (close-all / hedge tin)."""
+    if not mt5.symbol_select(symbol, True):
+        raise RuntimeError(f"Không thể chọn symbol {symbol}")
+    tick = mt5.symbol_info_tick(symbol)
+    if tick is None or tick.bid <= 0 or tick.ask <= 0 or tick.ask < tick.bid:
+        raise RuntimeError(f"Không lấy được tick hợp lệ cho {symbol}")
+    return tick
+
+
 def validate_tp_sl(side, entry_price, tp_price, sl_price, is_modification=False):
     """Kiểm tra hướng TP/SL so với giá vào (dùng cho open).
 
@@ -1707,12 +1725,16 @@ def plan_close_volume(positions, lot):
     return plan, remaining
 
 
-def build_close_request(position, volume=None):
+def build_close_request(position, volume=None, fast=False):
     symbol = position.symbol
-    tick = get_current_price(symbol)
+    if fast:
+        tick = tick_for_close(symbol)
+        filling_policy = prefer_ioc_filling_mode(symbol)
+    else:
+        tick = get_current_price(symbol)
+        filling_policy = get_filling_mode(symbol)
     close_type = mt5.ORDER_TYPE_SELL if position.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
     close_price = tick.bid if close_type == mt5.ORDER_TYPE_SELL else tick.ask
-    filling_policy = get_filling_mode(symbol)
     close_volume = float(position.volume if volume is None else volume)
     is_partial = close_volume + 1e-12 < float(position.volume)
 
@@ -1731,7 +1753,7 @@ def build_close_request(position, volume=None):
     }
 
 
-def close_position(position, confirm=True, volume=None):
+def close_position(position, confirm=True, volume=None, fast=False, quiet=False):
     close_vol = float(position.volume if volume is None else volume)
     if close_vol <= 0:
         print(f"Bỏ qua ticket {position.ticket}: volume đóng không hợp lệ ({close_vol}).")
@@ -1740,28 +1762,33 @@ def close_position(position, confirm=True, volume=None):
         close_vol = float(position.volume)
     is_partial = close_vol + 1e-12 < float(position.volume)
     remain = round(float(position.volume) - close_vol, 8)
-
-    print(f"Lệnh hiện tại: ticket={position.ticket} | symbol={position.symbol}")
-    print(f"Loại: {'BUY' if position.type == mt5.ORDER_TYPE_BUY else 'SELL'}")
-    print(f"Giá vào: {position.price_open}")
-    if is_partial:
-        print(f"Đóng một phần: {close_vol} / {position.volume} lot (còn {remain})")
-    else:
-        print(f"Đóng toàn bộ: {close_vol} lot")
-    info = print_position_pnl_lines(position, indent="")
     profit_frac = close_vol / float(position.volume) if position.volume else 1.0
-    if is_partial:
-        print(f"Ước tính P/L phần đóng: {info['mt5_profit'] * profit_frac:.6f}")
+
+    if not quiet:
+        print(f"Lệnh hiện tại: ticket={position.ticket} | symbol={position.symbol}")
+        print(f"Loại: {'BUY' if position.type == mt5.ORDER_TYPE_BUY else 'SELL'}")
+        print(f"Giá vào: {position.price_open}")
+        if is_partial:
+            print(f"Đóng một phần: {close_vol} / {position.volume} lot (còn {remain})")
+        else:
+            print(f"Đóng toàn bộ: {close_vol} lot")
+        info = print_position_pnl_lines(position, indent="")
+        if is_partial:
+            print(f"Ước tính P/L phần đóng: {info['mt5_profit'] * profit_frac:.6f}")
 
     if confirm and not confirm_action(f"Bạn có muốn đóng lệnh {position.ticket} này không?"):
         print("Đã hủy đóng lệnh.")
         return None
 
-    request = build_close_request(position, close_vol)
+    request = build_close_request(position, close_vol, fast=fast)
     result = mt5.order_send(request)
     if result is None:
         err = mt5.last_error()
-        print("Đóng lệnh thất bại! Không nhận được phản hồi.")
+        msg = "Đóng lệnh thất bại! Không nhận được phản hồi."
+        if quiet:
+            print(f"ticket {position.ticket}: {msg} {err}", flush=True)
+        else:
+            print(msg)
         save_trade_history(
             position.symbol, close_vol, None, request, "CLOSE_FAILED",
             f"ticket={position.ticket} | không phản hồi từ terminal | last_error={err}",
@@ -1769,8 +1796,14 @@ def close_position(position, confirm=True, volume=None):
         )
         return None
 
-    if result.retcode != mt5.TRADE_RETCODE_DONE:
-        print(f"Đóng lệnh thất bại! Mã lỗi: {result.retcode} ({result.comment})")
+    partial_code = getattr(mt5, "TRADE_RETCODE_DONE_PARTIAL", 10010)
+    ok = result.retcode in (mt5.TRADE_RETCODE_DONE, partial_code)
+    if not ok:
+        msg = f"Đóng lệnh thất bại! Mã lỗi: {result.retcode} ({result.comment})"
+        if quiet:
+            print(f"ticket {position.ticket}: {msg}", flush=True)
+        else:
+            print(msg)
         save_trade_history(
             position.symbol, close_vol, result, request, "CLOSE_FAILED",
             f"ticket={position.ticket} | {result.comment}",
@@ -1778,7 +1811,8 @@ def close_position(position, confirm=True, volume=None):
         )
         return None
 
-    print(f"Đóng lệnh thành công! Ticket ID: {result.order}")
+    if not quiet:
+        print(f"Đóng lệnh thành công! Ticket ID: {result.order}")
     detail = f"ticket={position.ticket}"
     if is_partial:
         detail += f" | partial={close_vol}/{position.volume}"
@@ -1789,6 +1823,58 @@ def close_position(position, confirm=True, volume=None):
         position=position,
     )
     return result
+
+
+CLOSE_ALL_FAST_ROUNDS = 4
+CLOSE_ALL_FAST_SLEEP = 0.05
+
+
+def _close_all_fast(positions):
+    """Gửi đóng nhanh (IOC + tick một lần), vòng lặp ngắn như hedge tin."""
+    started = time.perf_counter()
+    want = {int(p.ticket) for p in positions}
+    results = []
+    pending = list(positions)
+    for round_i in range(CLOSE_ALL_FAST_ROUNDS):
+        if not pending:
+            break
+        still = []
+        for position in pending:
+            live = find_position_by_ticket(position.ticket)
+            if live is None:
+                results.append((position.ticket, True))
+                continue
+            try:
+                result = close_position(live, confirm=False, fast=True, quiet=True)
+            except RuntimeError as exc:
+                print(f"ticket {live.ticket}: {exc}", flush=True)
+                still.append(live)
+                continue
+            # DONE_PARTIAL vẫn để vị thế mở — vòng sau đóng phần còn lại.
+            remain = find_position_by_ticket(live.ticket)
+            if result is not None and remain is None:
+                results.append((live.ticket, True))
+            else:
+                still.append(remain or live)
+        pending = still
+        if pending and round_i < CLOSE_ALL_FAST_ROUNDS - 1:
+            time.sleep(CLOSE_ALL_FAST_SLEEP)
+    elapsed_ms = (time.perf_counter() - started) * 1000.0
+    left = [p for p in (mt5.positions_get() or []) if int(p.ticket) in want]
+    print(
+        f"close-all nhanh: đã gửi {len(results)}/{len(want)} lệnh trong {elapsed_ms:.0f} ms "
+        f"(IOC, tick một lần, tối đa {CLOSE_ALL_FAST_ROUNDS} vòng).",
+        flush=True,
+    )
+    if left:
+        print(f"Còn {len(left)} lệnh chưa đóng:", flush=True)
+        for position in left:
+            print(
+                f"- ticket {position.ticket} | {position.symbol} | "
+                f"{'BUY' if position.type == mt5.ORDER_TYPE_BUY else 'SELL'} | vol {position.volume}",
+                flush=True,
+            )
+    return results
 
 
 def close_all_positions():
@@ -1824,11 +1910,7 @@ def close_all_positions():
         print("Đã hủy đóng toàn bộ lệnh.")
         return []
 
-    results = []
-    for position in positions:
-        result = close_position(position, confirm=False)
-        results.append(result)
-    return results
+    return _close_all_fast(positions)
 
 
 def close_positions_volume(account, symbol, side, lot):
@@ -2770,11 +2852,7 @@ def _news_positions(symbol):
 
 
 def _news_filling_mode(symbol):
-    """IOC nếu symbol có. FOK dễ bị từ chối khi spread giãn lúc tin."""
-    info = mt5.symbol_info(symbol)
-    if info is not None and int(getattr(info, "filling_mode", 0) or 0) & 2:
-        return 1
-    return get_filling_mode(symbol)
+    return prefer_ioc_filling_mode(symbol)
 
 
 def _news_filled_volume(result, lot):
@@ -2935,7 +3013,7 @@ def _close_news_except(symbol, keep_tickets, reason):
             live = find_position_by_ticket(position.ticket)
             if live is None:
                 continue
-            if close_position(live, confirm=False) is not None:
+            if close_position(live, confirm=False, fast=True, quiet=True) is not None:
                 closed = True
         time.sleep(0.05)
     left = [p for p in _news_positions(symbol) if int(p.ticket) not in keep_tickets]

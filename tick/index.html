@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" />
+<title>Tick XAUUSDm</title>
+<link rel="icon" href="favicon.ico" type="image/x-icon" />
+<script src="theme.js"></script>
+<script src="ver.php"></script>
+<script src="assets.js"></script>
+</head>
+<body>
+<header>
+  <p class="status" id="status">Đang tải…</p>
+  <button type="button" id="themeToggle" class="btn btn-secondary">Chế độ tối</button>
+</header>
+
+<main>
+  <section class="card">
+    <h2>Biểu đồ Bid / Ask (giờ Việt Nam)</h2>
+    <p class="hint">Dữ liệu đọc từ <code>data/GOLD/tick/</code> qua PHP — không tải cả file CSV vào trình duyệt. Kéo chuột trên đồ thị để xem giá; lăn chuột để zoom; kéo ngang khi đã zoom.</p>
+    <div class="presets">
+      <span class="preset-label">Mẫu:</span>
+      <button type="button" class="btn btn-secondary preset" data-date="14/07/2026" data-from="19:30:00" data-to="19:31:00">14/07 19:30–19:31</button>
+      <button type="button" class="btn btn-secondary preset" data-date="12/08/2026" data-from="19:30:00" data-to="19:31:00">12/08 19:30–19:31</button>
+      <button type="button" class="btn btn-secondary preset" data-date="11/09/2026" data-from="19:30:00" data-to="19:31:00">11/09 19:30–19:31</button>
+    </div>
+    <div class="filters">
+      <div class="field">
+        <label for="filterDate">Ngày</label>
+        <input type="text" id="filterDate" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" autocomplete="off" spellcheck="false" value="14/07/2026" />
+      </div>
+      <div class="field">
+        <label for="filterFrom">Từ giờ</label>
+        <input type="text" id="filterFrom" placeholder="19:30:00" maxlength="8" value="19:30:00" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label for="filterTo">Đến giờ</label>
+        <input type="text" id="filterTo" placeholder="19:31:00" maxlength="8" value="19:31:00" autocomplete="off" />
+      </div>
+      <div class="field actions">
+        <label class="ghost-label">Tìm</label>
+        <button type="button" id="btnLoad" class="btn btn-primary">Vẽ</button>
+        <button type="button" id="btnResetZoom" class="btn btn-secondary">Reset zoom</button>
+      </div>
+    </div>
+    <p id="meta" class="meta"></p>
+    <p id="loadError" class="msg error hidden"></p>
+    <div class="chart-wrap">
+      <canvas id="chart" aria-label="Đồ thị Bid Ask"></canvas>
+      <div id="chartTip" class="chart-tip hidden"></div>
+    </div>
+    <p class="legend"><span class="leg bid">Bid (bán)</span> <span class="leg ask">Ask (mua)</span></p>
+  </section>
+
+  <section class="card hidden" id="tableCard">
+    <h2>Mẫu tick (tối đa 200 dòng)</h2>
+    <div class="table-wrap" id="tableWrap"></div>
+  </section>
+</main>
+
+<script src="load.js"></script>
+</body>
+</html>

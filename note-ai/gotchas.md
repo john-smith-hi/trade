@@ -74,7 +74,11 @@ Không còn app `/tick/`. Dữ liệu: `data/GOLD/tick/*.csv` (~hàng triệu d�
 - `GET /api/positions` — snapshot lệnh mở để điền modify-all.
 - Modify-all **không** validate TP/SL so với giá thị trường (chỉ cặp theo side) — xem `web-ui.md`.
 
-## 14. Copy — đã thử prewarm, đã bỏ
+## 14. close-all nhanh
+
+Sau xác nhận, `close-all` dùng cùng ý tưởng hedge tin: `symbol_info_tick` một lần (không `get_current_price` retry), **IOC** khi symbol hỗ trợ, gửi lệnh `quiet`, tối đa 4 vòng × 50 ms. Xem trước P/L vẫn in đầy đủ trước confirm. Lệnh `close` đơn vẫn dùng đường chậm (tick retry + filling mặc định).
+
+## 15. Copy — đã thử prewarm, đã bỏ
 
 Benchmark BTCUSD: lệch **cùng Exness ~$1**, **Exness↔FTMO ~$25–30** (sàn broker). Prewarm multiprocess chỉ cắt wall ~1s trên khác terminal, **gần như không cải thiện Δfill** — với day trade không đáng phức tạp.
 

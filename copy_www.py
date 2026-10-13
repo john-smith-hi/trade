@@ -6,13 +6,14 @@
 # (Flask/Werkzeug cần `from copy import deepcopy` → API không chạy được).
 #
 # Đường dẫn đích lấy từ xml/www.xml (gitignore). Chưa có thì copy từ
-# xml/www.example.xml. Folder đích (mt5/, setup/, history/) được xóa sạch
+# xml/www.example.xml. Folder đích (mt5/, setup/, history/, tick/) được xóa sạch
 # trước khi copy.
 #
-#   python copy_www.py              # copy mt5, setup, history
+#   python copy_www.py              # copy mt5, setup, history, tick
 #   python copy_www.py mt5          # chỉ mt5
 #   python copy_www.py setup        # chỉ setup
 #   python copy_www.py history      # chỉ trang phân tích CSV lệnh
+#   python copy_www.py tick         # chỉ xem tick CSV (PHP query)
 #   python copy_www.py mt5 setup    # tường minh từng app
 #   python copy_www.py --dest E:\www   # override xml/www.xml lần chạy này
 #
@@ -36,7 +37,7 @@ ROOT = Path(__file__).resolve().parent
 XML_DIR = ROOT / "xml"
 WWW_FILE = XML_DIR / "www.xml"
 WWW_EXAMPLE_FILE = XML_DIR / "www.example.xml"
-KNOWN_APPS = ("mt5", "setup", "history")
+KNOWN_APPS = ("mt5", "setup", "history", "tick")
 SKIP_DIR_NAMES = {"__pycache__", ".git"}
 
 
@@ -92,13 +93,13 @@ def copy_tree(src: Path, dest: Path) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Copy folder mt5/, setup/, history/ vao thu muc WAMP www (xml/www.xml).",
+        description="Copy folder mt5/, setup/, history/, tick/ vao thu muc WAMP www (xml/www.xml).",
     )
     parser.add_argument(
         "apps",
         nargs="*",
         choices=KNOWN_APPS,
-        help="mt5, setup, history. Bo trong = copy ca ba.",
+        help="mt5, setup, history, tick. Bo trong = copy ca bon.",
     )
     parser.add_argument(
         "--dest",
@@ -130,6 +131,16 @@ def main() -> int:
         print(f"{src}  ->  {dest}")
         clear_dir(dest)
         n = copy_tree(src, dest)
+        if name == "tick":
+            data_tick = (ROOT / "data" / "GOLD" / "tick").resolve()
+            cfg = dest / "config.php"
+            cfg.write_text(
+                "<?php\nreturn [\n    'data_dir' => "
+                + repr(data_tick.as_posix())
+                + ",\n];\n",
+                encoding="utf-8",
+            )
+            print(f"  config.php -> {data_tick}")
         print(f"  ({n} file)\n")
         total += n
 
