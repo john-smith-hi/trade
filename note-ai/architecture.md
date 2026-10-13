@@ -45,6 +45,7 @@ Web UI (không nằm trong repo trade):
 | `GET` | `/api/positions?account=` | Lệnh mở JSON — UI điền TP/SL khi **modify-all** |
 | `GET` | `/api/history?limit=50` | `{ lines, rows }` — raw + parse bảng |
 | `GET` | `/api/tick/files` | List CSV tick |
+| `POST` | `/api/tick/adopt` | Dùng CSV đã có trên đĩa (không upload) |
 | `POST` | `/api/tick/upload` | Lưu CSV tick |
 | `DELETE` | `/api/tick/files/<name>` | Xóa 1 CSV tick |
 | `GET` | `/api/tick/query` | Tick trong khoảng giờ VN + chart |

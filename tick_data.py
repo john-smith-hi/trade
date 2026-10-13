@@ -321,6 +321,30 @@ def list_files() -> list[dict]:
     return [_public_file(_file_meta(path)) for path in iter_csv_files()]
 
 
+def find_csv(name: str) -> Path | None:
+    safe = safe_filename(name)
+    for path in iter_csv_files():
+        if path.name == safe:
+            return path
+    return None
+
+
+def adopt_file(name: str, size: int | None = None) -> dict:
+    """Dùng file đã có trên đĩa (www/tick hoặc data/GOLD/tick), không nhận nội dung."""
+    path = find_csv(name)
+    if path is None:
+        raise TickError(
+            f"Không thấy '{safe_filename(name)}' trong {storage_dir_label()} "
+            "hay data/GOLD/tick/."
+        )
+    actual = path.stat().st_size
+    if size is not None and int(size) != actual:
+        raise TickError(
+            f"'{path.name}' trên đĩa khác dung lượng ({actual} vs {int(size)} byte)."
+        )
+    return _public_file(_file_meta(path))
+
+
 def _resolve_existing(name: str) -> Path:
     safe = safe_filename(name)
     dest = ensure_dir()

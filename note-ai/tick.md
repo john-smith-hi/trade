@@ -8,7 +8,7 @@ Trang **xem giá mua/bán theo tick CSV** — khác `history/` (CSV lệnh đã 
 
 Lên WAMP: `python copy_www.py tick`. Folder đích xóa code cũ **nhưng giữ `*.csv`**. Dữ liệu nằm ngay `www/tick` (cùng chỗ trang). File tháng cũ trong `data/GOLD/tick/` vẫn được API đọc nếu chưa copy sang www.
 
-Nạp/dán nhỏ: `tick/save.php` ghi vào folder trang. File > 64 MB: không upload — nếu trùng tên với file đã có trên đĩa thì dùng file đó; không thì copy tay vào `www/tick`.
+Nạp: `tick/save.php` ghi vào folder trang. File lớn cắt **1 MB/khối** rồi ghép `.part` → `.csv` (không phụ thuộc giới hạn 64 MB). Nếu API chạy và file đã có trong `www/tick` hoặc `data/GOLD/tick/` (cùng tên + dung lượng) thì `POST /api/tick/adopt` — không gửi lại nội dung. Dán CSV tối đa 8 MB.
 
 Tìm cần API (`start_server.bat`) + `proxy.php`. Timeout proxy 180s.
 
@@ -34,7 +34,8 @@ Timestamp **UTC**. UI/API **giờ Việt Nam UTC+7**. Bid = giá bán, Ask = gi�
 | Method | Path | Việc |
 |--------|------|------|
 | GET | `/api/tick/files` | List CSV trong `www/tick` (+ `data/GOLD/tick/` nếu có) |
-| POST | `/api/tick/upload` | Lưu CSV vào `www/tick` (UI ưu tiên `save.php`) |
+| POST | `/api/tick/adopt` | Dùng file đã có trên đĩa (`filename` + `size`) |
+| POST | `/api/tick/upload` | Lưu CSV vào `www/tick` (UI dùng `save.php` từng khối) |
 | DELETE | `/api/tick/files/<name>` | Xóa file trong `www/tick` (không xóa bản nguồn `data/GOLD/tick/`) |
 | GET | `/api/tick/query?from=&to=` | Tick giờ VN + chart |
 

@@ -5,7 +5,7 @@
   const PAGE_SIZE = 100;
   const PROXY = "proxy.php";
   const SAVE_URL = "save.php";
-  const MAX_UPLOAD = 64 * 1024 * 1024;
+  const CHUNK = 1024 * 1024;
 
   const state = {
     files: [],
@@ -417,14 +417,10 @@
     }
   }
 
-  function hasFile(name) {
-    return state.files.some(function (f) { return f.name === name; });
-  }
-
   function renderFileList() {
     const el = $("fileList");
     if (!state.files.length) {
-      el.innerHTML = '<p class="hint">Chưa có CSV. Copy file tháng vào <code>' + esc(state.dir) + "</code> rồi Tải lại danh sách.</p>";
+      el.innerHTML = '<p class="hint">Chưa có CSV. Chọn file để nạp, hoặc copy vào <code>' + esc(state.dir) + "</code>.</p>";
       return;
     }
     el.innerHTML = state.files.map(function (f) {
@@ -471,6 +467,33 @@
     }
   }
 
+  async function tryAdopt(name, size) {
+    if (!state.apiOk) return false;
+    try {
+      await api("POST", "/api/tick/adopt", { filename: name, size: size }, { timeoutMs: 15000 });
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function uploadChunked(file, name) {
+    const total = Math.max(1, Math.ceil(file.size / CHUNK) || 1);
+    for (let i = 0; i < total; i++) {
+      const blob = file.slice(i * CHUNK, Math.min(file.size, (i + 1) * CHUNK));
+      const fd = new FormData();
+      fd.append("file", blob, name);
+      fd.append("filename", name);
+      fd.append("index", String(i));
+      fd.append("total", String(total));
+      fd.append("size", String(file.size));
+      await saveToWww(fd);
+      const pct = Math.round(((i + 1) / total) * 100);
+      setMsg("importOk", "Đang gửi " + name + " · " + pct + "% (" + (i + 1) + "/" + total + ")");
+      setMsg("importError", "");
+    }
+  }
+
   async function ingestFileList(fileList) {
     const incoming = Array.from(fileList || []);
     const errors = [];
@@ -486,31 +509,20 @@
         errors.push((file.name || "file") + ": chỉ nhận .csv");
         continue;
       }
-      if (file.size > MAX_UPLOAD) {
-        if (hasFile(name)) {
-          notes.push(name + ": đã có trên đĩa, dùng file đó.");
-          ok += 1;
-        } else {
-          errors.push(name + ": quá 64 MB để upload. Copy vào " + state.dir);
-        }
-        continue;
-      }
       try {
-        const fd = new FormData();
-        fd.append("file", file, name);
-        await saveToWww(fd);
+        if (await tryAdopt(name, file.size)) {
+          notes.push(name + ": đã có trên đĩa, không cần gửi lại.");
+          ok += 1;
+          continue;
+        }
+        await uploadChunked(file, name);
         ok += 1;
       } catch (err) {
-        if (hasFile(name)) {
-          notes.push(name + ": đã có trên đĩa, dùng file đó.");
-          ok += 1;
-        } else {
-          errors.push(name + ": " + (err.message || err));
-        }
+        errors.push(name + ": " + (err.message || err));
       }
     }
     setMsg("importError", errors.join(" · "));
-    setMsg("importOk", (ok ? "Đã dùng " + ok + " file trong " + state.dir + "." : "") + (notes.length ? " " + notes.join(" ") : ""));
+    setMsg("importOk", (ok ? "Đã nạp " + ok + " file vào " + state.dir + "." : "") + (notes.length ? " " + notes.join(" ") : ""));
     if (ok) await loadFiles();
   }
 

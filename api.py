@@ -39,6 +39,7 @@
 #   GET    /api/history?limit=50&offset=0  -> lịch sử (lines + rows + total cho phân trang)
 #   DELETE /api/history           -> xóa toàn bộ history_mt5.txt
 #   GET    /api/tick/files        -> danh sách CSV tick trong www/tick (+ data/GOLD/tick/)
+#   POST   /api/tick/adopt        -> dùng file đã có trên đĩa (filename + size), không upload
 #   POST   /api/tick/upload       -> lưu CSV (multipart file hoặc JSON {filename, csv})
 #   DELETE /api/tick/files/<name> -> xóa 1 file CSV tick
 #   GET    /api/tick/query        -> tick trong khoảng giờ VN (from, to, symbol, file, offset, limit)
@@ -709,6 +710,25 @@ def tick_files_endpoint():
     except tick_data.TickError as exc:
         return jsonify({"error": str(exc)}), 400
     return jsonify({"files": files, "dir": tick_data.storage_dir_label()})
+
+
+@app.post("/api/tick/adopt")
+def tick_adopt_endpoint():
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({"error": "Body JSON không hợp lệ"}), 400
+    raw_size = data.get("size")
+    size = None
+    if raw_size is not None and raw_size != "":
+        try:
+            size = int(raw_size)
+        except (TypeError, ValueError):
+            return jsonify({"error": "size không hợp lệ"}), 400
+    try:
+        rec = tick_data.adopt_file(str(data.get("filename") or data.get("name") or ""), size)
+    except tick_data.TickError as exc:
+        return jsonify({"error": str(exc)}), 404
+    return jsonify({"ok": True, "file": rec, "files": tick_data.list_files(), "dir": tick_data.storage_dir_label()})
 
 
 @app.post("/api/tick/upload")
