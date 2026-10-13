@@ -1,6 +1,6 @@
 # History journal (`history/`)
 
-Trang **phân tích CSV lệnh đã đóng** — khác `mt5/history/` (bảng `history_mt5.txt`).
+Trang **phân tích CSV lệnh đã đóng** — khác `mt5/history/` (bảng `history_mt5.txt`) và `tick/` (CSV tick Bid/Ask, xem `tick.md`).
 
 | URL | File | Việc |
 |-----|------|------|

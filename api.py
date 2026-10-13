@@ -38,6 +38,10 @@
 #   GET  /api/orders?account=               -> lệnh chờ JSON (cancel-pending)
 #   GET    /api/history?limit=50&offset=0  -> lịch sử (lines + rows + total cho phân trang)
 #   DELETE /api/history           -> xóa toàn bộ history_mt5.txt
+#   GET    /api/tick/files        -> danh sách CSV tick trong data/GOLD/tick/
+#   POST   /api/tick/upload       -> lưu CSV (multipart file hoặc JSON {filename, csv})
+#   DELETE /api/tick/files/<name> -> xóa 1 file CSV tick
+#   GET    /api/tick/query        -> tick trong khoảng giờ VN (from, to, symbol, file, offset, limit)
 #
 # Kết quả của /api/action trả về đúng nguyên văn các dòng print() của mt5.py
 # (dạng text, giống output khi chạy CLI), để hiển thị trực tiếp trên web.
@@ -80,6 +84,7 @@ import fibo_settings
 import modify_if
 import mt5 as mt5app
 import telegram_notify
+import tick_data
 import timer_alerts
 import watch
 import watch_state
@@ -695,6 +700,71 @@ def history_delete_endpoint():
     with _lock:
         mt5app.HISTORY_FILE.write_text("", encoding="utf-8")
     return jsonify({"ok": True, "lines": [], "rows": [], "total": 0, "limit": 50, "offset": 0})
+
+
+@app.get("/api/tick/files")
+def tick_files_endpoint():
+    try:
+        files = tick_data.list_files()
+    except tick_data.TickError as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify({"files": files, "dir": tick_data.storage_dir_label()})
+
+
+@app.post("/api/tick/upload")
+def tick_upload_endpoint():
+    try:
+        uploaded = request.files.get("file")
+        if uploaded is not None and uploaded.filename:
+            rec = tick_data.save_upload(
+                uploaded.filename,
+                uploaded.stream,
+                size=getattr(uploaded, "content_length", None),
+            )
+        else:
+            data = request.get_json(silent=True) or {}
+            if not isinstance(data, dict):
+                return jsonify({"error": "Body JSON không hợp lệ"}), 400
+            rec = tick_data.save_csv_text(
+                str(data.get("filename") or "pasted.csv"),
+                str(data.get("csv") or data.get("text") or ""),
+            )
+    except tick_data.TickError as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify({"ok": True, "file": rec, "files": tick_data.list_files(), "dir": tick_data.storage_dir_label()}), 201
+
+
+@app.delete("/api/tick/files/<name>")
+def tick_delete_endpoint(name):
+    try:
+        tick_data.delete_file(name)
+    except tick_data.TickError as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify({"ok": True, "files": tick_data.list_files(), "dir": tick_data.storage_dir_label()})
+
+
+@app.get("/api/tick/query")
+def tick_query_endpoint():
+    from_s = (request.args.get("from") or "").strip()
+    to_s = (request.args.get("to") or "").strip()
+    symbol = (request.args.get("symbol") or "").strip()
+    filename = (request.args.get("file") or "").strip()
+    offset = request.args.get("offset", default=0, type=int) or 0
+    limit = request.args.get("limit", default=100, type=int) or 100
+    try:
+        start_vn = tick_data.parse_vn_param(from_s, end=False)
+        end_vn = tick_data.parse_vn_param(to_s, end=True)
+        result = tick_data.query_ticks(
+            start_vn=start_vn,
+            end_vn=end_vn,
+            symbol=symbol,
+            filename=filename,
+            offset=offset,
+            limit=limit,
+        )
+    except tick_data.TickError as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify(result)
 
 
 def _parse_history_line(line):

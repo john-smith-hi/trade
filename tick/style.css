@@ -1,0 +1,397 @@
+:root {
+  color-scheme: light;
+  --bg: #f2f4f7;
+  --card-bg: #ffffff;
+  --border: #dde1e6;
+  --text: #1f2933;
+  --muted: #6b7280;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --danger: #dc2626;
+  --secondary: #e5e7eb;
+  --secondary-hover: #d1d5db;
+  --ok: #15803d;
+  --error: #b91c1c;
+  --row: rgba(37, 99, 235, 0.06);
+  --bid: #dc2626;
+  --ask: #15803d;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f172a;
+  --card-bg: #1e293b;
+  --border: #334155;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --danger: #ef4444;
+  --secondary: #334155;
+  --secondary-hover: #475569;
+  --ok: #4ade80;
+  --error: #f87171;
+  --row: rgba(59, 130, 246, 0.12);
+  --bid: #f87171;
+  --ask: #4ade80;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+header {
+  padding: 16px 24px;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.api-status { margin: 0; font-size: 13px; color: var(--muted); }
+.api-status.ok { color: var(--ok); }
+.api-status.error { color: var(--error); }
+
+main {
+  max-width: 1120px;
+  margin: 20px auto 48px;
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+#dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 22px;
+}
+
+h2 { margin: 0 0 10px; font-size: 16px; }
+
+.hint { margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.hint code { font-size: 12px; }
+
+.hidden { display: none !important; }
+
+.msg { color: var(--error); font-size: 13px; margin: 8px 0 0; }
+.msg.ok { color: var(--ok); }
+
+.dropzone {
+  border: 1.5px dashed var(--border);
+  border-radius: 10px;
+  padding: 22px 16px;
+  text-align: center;
+  background: var(--bg);
+}
+
+.dropzone.drag { border-color: var(--primary); }
+.drop-title { margin: 0; font-weight: 700; }
+
+.btn {
+  border: 0;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-secondary { background: var(--secondary); color: var(--text); }
+.btn-secondary:hover { background: var(--secondary-hover); }
+.btn-ghost { background: transparent; color: var(--danger); padding-left: 0; }
+.theme-toggle { flex-shrink: 0; white-space: nowrap; }
+
+#btnPick { margin-top: 12px; }
+#btnReloadFiles { margin-top: 12px; }
+
+.file-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  margin-top: 10px;
+}
+
+.file-name { font-weight: 700; }
+.file-meta { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.field label, .ghost-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.ghost-label { color: transparent; }
+
+.field input:not(.date-cal-native), .field select, #pasteName, #csvPaste {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card-bg);
+  color: var(--text);
+  font-size: 14px;
+}
+
+.date-wrap {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.field .date-wrap { width: 100%; }
+
+.date-wrap .date-text {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
+#filterFrom, #filterTo, .time-text {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.cal-hit {
+  position: relative;
+  flex: 0 0 36px;
+  width: 36px;
+  display: flex;
+}
+
+.cal-btn {
+  appearance: none;
+  flex: 1;
+  width: 100%;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--secondary);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.cal-hit:hover .cal-btn { background: var(--secondary-hover); }
+
+.cal-icon {
+  display: block;
+  position: relative;
+  width: 14px;
+  height: 13px;
+  box-sizing: border-box;
+  border: 1.5px solid currentColor;
+  border-top-width: 4px;
+  border-radius: 2px;
+}
+
+.cal-icon::before,
+.cal-icon::after {
+  content: "";
+  position: absolute;
+  top: -6px;
+  width: 1.5px;
+  height: 5px;
+  background: currentColor;
+  border-radius: 1px;
+}
+
+.cal-icon::before { left: 2px; }
+.cal-icon::after { right: 2px; }
+
+.date-cal-native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.date-cal-native::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.field input.date-bad,
+.date-text.date-bad { border-color: var(--danger); }
+
+#csvPaste {
+  min-height: 140px;
+  margin-top: 8px;
+  font: 13px Consolas, "Courier New", monospace;
+  resize: vertical;
+}
+
+.paste-head { margin-top: 14px; }
+.paste-label { display: block; margin: 0; font-size: 13px; font-weight: 600; }
+
+.paste-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  align-items: center;
+}
+
+.paste-actions #pasteName { flex: 1; min-width: 220px; }
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.kpi {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.kpi .label { color: var(--muted); font-size: 12px; font-weight: 600; }
+.kpi .value {
+  margin-top: 4px;
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.row-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.row-head h2 { margin: 0; }
+
+.legend { display: flex; gap: 14px; margin: 0; font-size: 12px; font-weight: 600; }
+.leg::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 99px;
+  margin-right: 6px;
+  vertical-align: -1px;
+}
+.leg.bid::before { background: var(--bid); }
+.leg.ask::before { background: var(--ask); }
+
+.chart-wrap {
+  position: relative;
+  height: 300px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+#tickChart { display: block; width: 100%; height: 100%; }
+
+.chart-tip {
+  position: absolute;
+  pointer-events: none;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+  z-index: 2;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.table-wrap { overflow-x: auto; }
+
+#tradeCard .table-wrap {
+  overflow: auto;
+  max-height: min(520px, calc(100vh - 260px));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+#tradeCard thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--card-bg);
+  box-shadow: 0 1px 0 var(--border);
+}
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td {
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+th { color: var(--muted); font-weight: 600; font-size: 12px; }
+td.left, th.left { text-align: left; }
+tbody tr:hover { background: var(--row); }
+.bid { color: var(--bid); }
+.ask { color: var(--ask); }
+
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .kpi-grid { grid-template-columns: 1fr 1fr; }
+  header { padding: 14px 16px; }
+}
+
+@media (max-width: 720px) {
+  .filters, .kpi-grid { grid-template-columns: 1fr; }
+  .btn, .field input:not(.date-cal-native), .field select, #pasteName, #csvPaste { font-size: 16px; }
+}

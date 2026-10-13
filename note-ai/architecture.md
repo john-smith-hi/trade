@@ -20,7 +20,8 @@ Web UI (không nằm trong repo trade):
 | File | Vai trò |
 |------|---------|
 | `mt5.py` | CLI + logic giao dịch, load/save accounts + paths, copy trade |
-| `api.py` | HTTP mỏng bọc `mt5.execute_request`, CORS, lock thread, CRUD accounts/paths, history |
+| `api.py` | HTTP mỏng bọc `mt5.execute_request`, CORS, lock thread, CRUD accounts/paths, history, tick |
+| `tick_data.py` | Đọc/ghi CSV tick `data/GOLD/tick/`, query giờ Việt Nam |
 | `start_server.bat` | Khởi động API 24/7 (reload + watcher) |
 | `xml/accounts.xml` | Config account thật (**gitignore**, không commit) |
 | `xml/paths.xml` | Map tên path (`exness` / `ftmo` / …) → `terminal64.exe` |
@@ -43,8 +44,12 @@ Web UI (không nằm trong repo trade):
 | `GET` | `/api/quote?account=&symbol=&side=` | bid / ask / entry — UI điền TP/SL khi **open** |
 | `GET` | `/api/positions?account=` | Lệnh mở JSON — UI điền TP/SL khi **modify-all** |
 | `GET` | `/api/history?limit=50` | `{ lines, rows }` — raw + parse bảng |
+| `GET` | `/api/tick/files` | List CSV tick |
+| `POST` | `/api/tick/upload` | Lưu CSV tick |
+| `DELETE` | `/api/tick/files/<name>` | Xóa 1 CSV tick |
+| `GET` | `/api/tick/query` | Tick trong khoảng giờ VN + chart |
 
-**Không có** API xóa account / path.
+**Không có** API xóa account / path. Tick **không** dùng lock MT5.
 
 ## State toàn cục trong `mt5.py` (quan trọng)
 

@@ -6,14 +6,15 @@
 # (Flask/Werkzeug cần `from copy import deepcopy` → API không chạy được).
 #
 # Đường dẫn đích lấy từ xml/www.xml (gitignore). Chưa có thì copy từ
-# xml/www.example.xml. Folder đích (mt5/, setup/, history/) được xóa sạch
-# trước khi copy. CSV phân tích lệnh không nằm trong folder đó: trang history
-# import file trên trình duyệt.
+# xml/www.example.xml. Folder đích (mt5/, setup/, history/, tick/) được xóa sạch
+# trước khi copy. CSV phân tích lệnh không nằm trong folder history: trang đó
+# import trên trình duyệt. CSV tick sống ở data/GOLD/tick/ (không copy lên WAMP).
 #
-#   python copy_www.py              # copy mt5, setup và history
+#   python copy_www.py              # copy mt5, setup, history và tick
 #   python copy_www.py mt5          # chỉ mt5
 #   python copy_www.py setup        # chỉ setup
-#   python copy_www.py history      # chỉ trang phân tích CSV
+#   python copy_www.py history      # chỉ trang phân tích CSV lệnh
+#   python copy_www.py tick         # chỉ trang tick Bid/Ask
 #   python copy_www.py mt5 setup    # tường minh từng app
 #   python copy_www.py --dest E:\www   # override xml/www.xml lần chạy này
 #
@@ -37,8 +38,9 @@ ROOT = Path(__file__).resolve().parent
 XML_DIR = ROOT / "xml"
 WWW_FILE = XML_DIR / "www.xml"
 WWW_EXAMPLE_FILE = XML_DIR / "www.example.xml"
-KNOWN_APPS = ("mt5", "setup", "history")
+KNOWN_APPS = ("mt5", "setup", "history", "tick")
 SKIP_DIR_NAMES = {"__pycache__", ".git"}
+SKIP_TICK_SUFFIXES = {".csv", ".part"}
 
 
 def load_www_path() -> Path:
@@ -82,6 +84,8 @@ def copy_tree(src: Path, dest: Path) -> int:
         if path.is_dir():
             target.mkdir(parents=True, exist_ok=True)
             continue
+        if src.name == "tick" and path.suffix.lower() in SKIP_TICK_SUFFIXES:
+            continue
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, target)
         count += 1
@@ -91,13 +95,13 @@ def copy_tree(src: Path, dest: Path) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Copy folder mt5/, setup/ hoac history/ vao thu muc WAMP www (xml/www.xml).",
+        description="Copy folder mt5/, setup/, history/ hoac tick/ vao thu muc WAMP www (xml/www.xml).",
     )
     parser.add_argument(
         "apps",
         nargs="*",
         choices=KNOWN_APPS,
-        help="mt5, setup va/hoac history. Bo trong = copy ca ba.",
+        help="mt5, setup, history va/hoac tick. Bo trong = copy ca bon.",
     )
     parser.add_argument(
         "--dest",
