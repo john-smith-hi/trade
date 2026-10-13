@@ -935,12 +935,12 @@ def _changed_code_names(before, after):
     return names
 
 
-def _watch_code_and_shutdown(server, reload_flag):
-    """Một thread: file đổi và đã yên → đợi hết request MT5, đóng socket, báo nạp lại.
+def _watch_code_and_shutdown(_server, reload_flag):
+    """File đổi và đã yên → thoát mã 3 ngay để start_server.bat chạy lại python api.py.
 
-    Giữ lock đến khi process thoát để request mới không gửi lệnh trong lúc restart.
-    Không gọi Werkzeug reloader — reloader spawn process con và trên Windows cả hai
-    có thể LISTEN cùng cổng.
+    Không gọi server.shutdown() rồi ngủ: thread giữ lock, socket đã đóng, process chưa
+    thoát → bat không chạy bản mới, API trông như tắt. os._exit đóng process kể cả
+    khi thread request còn kẹt.
     """
     baseline = _code_signature()
     dirty = None
@@ -959,16 +959,13 @@ def _watch_code_and_shutdown(server, reload_flag):
         if now - dirty_since < _RELOAD_DEBOUNCE_SEC:
             continue
         names = ", ".join(_changed_code_names(baseline, current)[:8])
-        print(f"Phát hiện sửa file ({names}) — đợi lệnh đang chạy xong rồi nạp lại.", flush=True)
-        _lock.acquire()
+        print(f"Phát hiện sửa file ({names}) — thoát để nạp bản mới.", flush=True)
+        acquired = _lock.acquire(timeout=8)
+        if acquired:
+            _lock.release()
+        else:
+            print("Lệnh MT5 chưa xong sau 8s — vẫn thoát để bat chạy lại.", flush=True)
         reload_flag.set()
-        try:
-            server.shutdown()
-        except Exception as exc:
-            print(f"Không tắt socket sạch: {exc}", flush=True)
-            os._exit(RELOAD_EXIT_CODE)
-        # serve_forever thường trả về trong ~0.5s. Nếu kẹt, thoát cưỡng bức — bat chạy lại.
-        time.sleep(2)
         os._exit(RELOAD_EXIT_CODE)
 
 

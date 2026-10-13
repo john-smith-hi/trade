@@ -13,8 +13,8 @@ Sửa **bất kỳ `.py` hoặc `.xml`** trong project → nội dung được l
    - mọi `*.py` ở root project
    - mọi `*.xml` (rglob) — gồm `accounts.xml` và `paths.xml`
    - loại XML đổi liên tục: tuần checklist, timer, fibo, modify-if, telegram, watch
-3. File đổi và yên ~0.5s → đợi hết request đang giữ lock MT5 → đóng socket → thoát **mã 3**.
-4. `start_server.bat` thấy mã 3 thì chạy `python api.py` lại ngay. Mã khác (crash) thì đợi 5 giây.
+3. File đổi và yên ~0.5s → đợi lock MT5 tối đa 8s (rồi nhả lock) → `os._exit(3)` ngay. Không `server.shutdown()` + ngủ: socket đóng mà process không chết thì bat không chạy lại, API tắt hẳn.
+4. `start_server.bat` thấy mã 3 thì chạy `python api.py` lại ngay (import bản mới). Mã khác (crash) thì đợi 5 giây.
 5. Soft-reload trong `mt5.py` (không chờ restart):
    - `ensure_paths_fresh()` — mtime `paths.xml` → nạp lại `PATHS`
    - `ensure_accounts_fresh()` — mtime accounts (+ gọi paths fresh) → nạp lại `ACCOUNTS`
