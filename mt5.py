@@ -26,7 +26,7 @@
 #
 # THAM SỐ BẮT BUỘC
 #   --account   tên account khai báo trong xml/accounts.xml (vd: fake, real, prop_demo)
-#   --action    status | open | open-2-side | open-2-side-news-multi-auto | demo-open-2-side-news-multi-auto
+#   --action    status | open | open-2-side | open-2-side-news-multi-auto
 #               | pending | cancel-pending | close | close-all | modify-all | modify-all-if | cancel-modify-if
 #
 # THAM SỐ KHÁC
@@ -73,9 +73,6 @@
 #   # Hedge tin: lot tự tính từ MAX_RISK. Không --no-ask = xem trước, không bắn.
 #   # --lot bị bỏ qua. Không copy. Không đóng đầu còn lại khi giá quay về mức đệm.
 #   python mt5.py --account fake --action open-2-side-news-multi-auto --symbol XAUUSD --max-risk 375 --sl-pips 15 --buffer-pips 8 --max-exec-ms 300 --no-ask
-#
-#   # In kịch bản mẫu (Ask 4200 / Bid 4199). Không nối MT5, không gửi lệnh.
-#   python mt5.py --account fake --action demo-open-2-side-news-multi-auto
 #
 #   # Đặt lệnh chờ mua (Buy Limit) tại giá
 #   python mt5.py --account fake --action pending --symbol XAUUSD --side buy --pending-type limit --price 2500 --lot 0.01 --sl-price 2480 --no-ask
@@ -160,7 +157,6 @@ TELEGRAM_IS_COPY = False
 DEFAULT_MAGIC = 234567
 NEWS_HEDGE_MAGIC = 234568
 NEWS_HEDGE_ACTION = "open-2-side-news-multi-auto"
-NEWS_HEDGE_DEMO_ACTION = "demo-open-2-side-news-multi-auto"
 _NEWS_HISTORY_QUEUE = []
 DEFAULT_DEVIATION = 20
 CURRENT_ACCOUNT_NAME = None
@@ -2654,8 +2650,6 @@ def _print_news_hedge_plan(plan, mode):
             f"({_news_fmt_num(plan['v'])} BUY + {_news_fmt_num(plan['v'])} SELL). "
             f"Lỗ thiết kế = {_news_fmt_num(plan['designed_loss']) if plan['designed_loss'] is not None else '?'}$"
         )
-    if mode == "demo":
-        print("Nếu bỏ spread, 375/800 = 0.46 lot sẽ mất 0.46 * 900 = 414$, vượt MAX_RISK.")
 
     print("Bước 2 — đo tốc độ")
     if plan["t_benchmark_ms"] is None:
@@ -2704,15 +2698,7 @@ def _print_news_hedge_plan(plan, mode):
             )
 
     print("Bước 4 — bắn xen kẽ")
-    if mode == "demo":
-        if plan["chunk_lots"]:
-            seq = " -> ".join(
-                f"BUY({_news_fmt_num(lot)}) -> SELL({_news_fmt_num(lot)})" for lot in plan["chunk_lots"]
-            )
-            print(f"Mô phỏng: {seq}. Demo không gửi lệnh.")
-        else:
-            print("Demo không gửi lệnh.")
-    elif plan["chunk_lots"] is None:
+    if plan["chunk_lots"] is None:
         print("Mỗi cặp là BUY rồi SELL cùng khối lượng. Hết giờ thì dừng ở đầu cặp sau. Chưa gửi.")
     else:
         print("Đã có danh sách chunk. Lệnh thật đi theo danh sách này.")
@@ -2730,48 +2716,6 @@ def _print_news_hedge_plan(plan, mode):
         print("Dừng phần còn lại:" if mode == "live" else "Hủy, không gửi lệnh:")
         for blocker in plan["blockers"]:
             print(f"- {blocker}")
-
-
-def print_news_hedge_demo(max_risk=375.0, sl_pips=15.0, buffer_pips=8.0, max_exec_ms=300.0):
-    """In đúng bảng mẫu. Không initialize và không gửi lệnh."""
-    print("demo-open-2-side-news-multi-auto")
-    print("Không nối MT5. Không gửi lệnh. Số liệu cố định: Ask 4200, Bid 4199, Equity 375, T_benchmark 45 ms.")
-    sample = (375.0, 15.0, 8.0, 300.0)
-    given = (float(max_risk), float(sl_pips), float(buffer_pips), float(max_exec_ms))
-    if any(abs(a - b) > 1e-9 for a, b in zip(given, sample)):
-        print("Demo giữ số liệu bảng mẫu. Tham số truyền vào không đổi kịch bản này.")
-    plan = build_news_hedge_plan(
-        max_risk=375.0, sl_pips=15.0, buffer_pips=8.0, leverage=200.0, max_exec_ms=300.0,
-        stop_out=0.0, ask=4200.0, bid=4199.0, equity=375.0, free_margin=375.0,
-        contract_size=100.0, volume_step=0.01, volume_min=0.01, volume_max=100.0,
-        t_benchmark_ms=45.0, margin_hedged=0.0, hedging=True, digits=2,
-    )
-    _print_news_hedge_plan(plan, "demo")
-    expected_chunks = [0.07, 0.07, 0.07, 0.07, 0.06, 0.06]
-    checks = [
-        ("V", plan["v"], 0.41),
-        ("Loss_per_lot", plan["loss_per_lot"], 900.0),
-        ("N_pairs", plan["n_pairs"], 6),
-        ("Margin", plan["guard_margin"], 147.0),
-        ("BUY SL", plan["buy_sl"], 4185.0),
-        ("SELL SL", plan["sell_sl"], 4215.0),
-        ("Lỗ thiết kế", plan["designed_loss"], 369.0),
-        ("Mất ròng", plan["scenario"]["net"], 369.0),
-        ("Hai SL", plan["scenario"]["both_sl_loss"], 1271.0),
-    ]
-    mismatches = []
-    if plan["chunk_lots"] != expected_chunks:
-        mismatches.append(f"chunk {plan['chunk_lots']} khác {expected_chunks}")
-    for label, got, want in checks:
-        if got is None or abs(float(got) - float(want)) > 1e-6:
-            mismatches.append(f"{label}={got} khác {want}")
-    if mismatches:
-        print("Đối chiếu bảng mẫu: lệch.")
-        for line in mismatches:
-            print(f"- {line}")
-        raise RuntimeError("demo-open-2-side-news-multi-auto lệch bảng mẫu")
-    print("Đối chiếu bảng mẫu: khớp (V 0.41, chunk 0.07x4 + 0.06x2, lỗ thiết kế 369, hai SL 1271).")
-    return plan
 
 
 def _news_apply_account_cap(plan, account, symbol):
@@ -3387,11 +3331,6 @@ def execute_request(account_name, action, symbol="XAUUSD", side="buy", lot=0.01,
     lot_scale_actions = {"open", "open-2-side", "pending", "close"}
 
     try:
-        if action == NEWS_HEDGE_DEMO_ACTION:
-            print_news_hedge_demo(max_risk, sl_pips, buffer_pips, max_exec_ms)
-            if copy_names:
-                print("Demo không copy và không nối MT5.")
-            return
         run_action_on_account(primary_account, args, lot)
 
         if auto_copy_used and action in COPYABLE_ACTIONS:
@@ -3448,7 +3387,7 @@ def main():
     parser.add_argument(
         "--action",
         choices=[
-            "open", "open-2-side", NEWS_HEDGE_ACTION, NEWS_HEDGE_DEMO_ACTION,
+            "open", "open-2-side", NEWS_HEDGE_ACTION,
             "pending", "cancel-pending", "close", "close-all", "modify-all",
             "modify-all-if", "cancel-modify-if", "status",
         ],
@@ -3486,7 +3425,7 @@ def main():
 
     if args.action == "open" and args.sl_price is None:
         parser.error("action=open bắt buộc phải có --sl-price (stop loss); --tp-price tùy chọn")
-    if args.action in (NEWS_HEDGE_ACTION, NEWS_HEDGE_DEMO_ACTION):
+    if args.action == NEWS_HEDGE_ACTION:
         if args.max_risk <= 0 or args.sl_pips <= 0 or args.buffer_pips <= 0 or args.max_exec_ms <= 0:
             parser.error("hedge tin: --max-risk, --sl-pips, --buffer-pips, --max-exec-ms đều phải > 0")
     if args.action == "open-2-side":

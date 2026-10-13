@@ -253,10 +253,6 @@ function actionIsNewsHedge(action = el("action").value) {
   return action === "open-2-side-news-multi-auto";
 }
 
-function actionIsNewsDemo(action = el("action").value) {
-  return action === "demo-open-2-side-news-multi-auto";
-}
-
 function actionIsModifyIf(action = el("action").value) {
   return action === "modify-all-if";
 }
@@ -333,10 +329,6 @@ function setPreviewEnabled(enabled) {
 function syncConfirmEnabled() {
   const confirm = el("btnConfirm");
   if (!confirm) return;
-  if (actionIsNewsDemo()) {
-    confirm.disabled = true;
-    return;
-  }
   let enabled = payloadsMatchPreview();
   if (actionNeedsOpenPositions()) {
     enabled = enabled && actionHasPositions === true;
@@ -721,9 +713,6 @@ function updateParamsVisibility() {
     field.classList.toggle("hidden", !visible);
     if (visible && !field.classList.contains("hint")) visibleCount += 1;
   });
-
-  const newsDemo = el("newsDemoHint");
-  if (newsDemo && !newsDemo.classList.contains("hidden")) visibleCount += 1;
 
   el("paramsEmptyHint").classList.toggle("hidden", visibleCount > 0);
 

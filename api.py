@@ -29,7 +29,7 @@
 #   POST /api/accounts          -> thêm account mới
 #   PUT  /api/accounts/<name>   -> sửa cấu hình (không đổi login/password/server/name)
 #   POST /api/reload-accounts   -> nạp lại xml/accounts.xml (ép buộc)
-#   POST /api/action            -> thực thi action (status/open/open-2-side/open-2-side-news-multi-auto/demo-open-2-side-news-multi-auto/pending/cancel-pending/close/close-all/modify-all/modify-all-if)
+#   POST /api/action            -> thực thi action (status/open/open-2-side/open-2-side-news-multi-auto/pending/cancel-pending/close/close-all/modify-all/modify-all-if)
 #                                 hedge tin: max_risk, sl_pips, buffer_pips, max_exec_ms (mặc định 375, 15, 8, 300). Lot bị bỏ qua. Không copy.
 #   GET  /api/modify-if?account=           -> job modify-all-if đang chờ
 #   GET  /api/quote?account=&symbol=&side=  -> bid/ask/entry tick live (điền TP/SL)
@@ -490,7 +490,7 @@ def action_endpoint():
             return jsonify({"error": "modify-all-if cần vùng kích hoạt (zone_low/zone_high hoặc price)"}), 400
 
     news_kwargs = {}
-    if action in (mt5app.NEWS_HEDGE_ACTION, mt5app.NEWS_HEDGE_DEMO_ACTION):
+    if action == mt5app.NEWS_HEDGE_ACTION:
         try:
             max_risk = _to_float(data.get("max_risk"), "max_risk", default=375.0)
             sl_pips = _to_float(data.get("sl_pips"), "sl_pips", default=15.0)
