@@ -66,7 +66,7 @@ Nếu vẫn đứng: kiểm tra `start_server.bat` còn chạy; DevTools Network
 
 ## 12b. Tick CSV
 
-File tháng (~trăm MB, triệu dòng) **không** upload qua `proxy.php` (PHP `upload_max_filesize` thường 8 MB). Copy vào `data/GOLD/tick/`. Query không lấy lock MT5. `copy_www.py tick` xóa folder web, không đụng CSV.
+Nạp/dán trên UI → `localStorage` (`tick-imports`), không ghi đĩa. localStorage ~5 MB nên file tháng **không** nạp qua UI — để `data/GOLD/tick/` và tìm qua API. Query đĩa không lấy lock MT5. `copy_www.py tick` xóa folder web, không đụng CSV trên đĩa / localStorage.
 
 ## 13. Quote / positions cho form ra lệnh
 

@@ -6,9 +6,11 @@ Trang **xem giá mua/bán theo tick CSV** — khác `history/` (CSV lệnh đã 
 |-----|------|------|
 | `/tick/` | `tick/index.html` + `app.js` | Nạp CSV, tìm theo giờ Việt Nam, bảng + đồ thị Bid/Ask |
 
-Lên WAMP: `python copy_www.py tick` (xóa folder đích rồi copy UI). **Không** copy file `.csv`. Dữ liệu nằm `data/GOLD/tick/` trên máy chạy `api.py` (gitignore `data/`).
+Lên WAMP: `python copy_www.py tick` (xóa folder đích rồi copy UI). **Không** copy file `.csv`.
 
-Cần API (`start_server.bat`) + `proxy.php` → `127.0.0.1:5001`. Timeout proxy 180s vì file tháng có hàng triệu dòng.
+Nạp/dán CSV → `localStorage` key `tick-imports` (trình duyệt, tối đa ~4 MB/file). Không ghi server. File tháng (trăm MB) vẫn đọc từ `data/GOLD/tick/` qua API khi bấm Tìm.
+
+Tìm file trình duyệt không cần API. Tìm file tháng trên đĩa cần `start_server.bat` + `proxy.php`. Timeout proxy 180s.
 
 CSS/JS: `ver.php` + `?v=filemtime`. Thêm file JS/CSS mới thì ghi vào list trong `tick/ver.php`. Theme key `mt5-theme`. Favicon: `tick/favicon.ico`. CSP `connect-src 'self'` (chỉ proxy cùng origin).
 
@@ -21,21 +23,20 @@ CSS/JS: `ver.php` + `?v=filemtime`. Thêm file JS/CSS mới thì ghi vào list t
 
 Timestamp trong file là **UTC**. UI/API dùng **giờ Việt Nam UTC+7** (không DST). Bid = giá bán, Ask = giá mua.
 
-Upload qua web tối đa 64 MB; dán tối đa 8 MB. File tháng (trăm MB) copy thẳng vào `data/GOLD/tick/` rồi Tải lại danh sách.
+Nạp/dán tối đa ~4 MB (hạn localStorage). File tháng copy vào `data/GOLD/tick/` (không nạp qua UI).
 
 ## Tìm
 
 Ô ngày giống `history/`: `dd/mm/yyyy` + nút lịch. Thêm giờ `HH:MM:SS`. Bấm **Tìm** (không tự quét cả file khi gõ). Bộ lọc lưu `localStorage` key `tick-filters`.
 
-Kết quả: KPI, canvas Bid/Ask (không thư viện ngoài), bảng phân trang 100 dòng. `GET /api/tick/query` binary-search file đã sort rồi đọc tuần tự trong khoảng.
+Kết quả: KPI, canvas Bid/Ask (không thư viện ngoài), bảng phân trang 100 dòng. File localStorage lọc trên trình duyệt. File đĩa: `GET /api/tick/query` (binary-search).
 
-## API (không lấy lock MT5)
+## API (không lấy lock MT5) — chỉ file trên đĩa
 
 | Method | Path | Việc |
 |--------|------|------|
-| GET | `/api/tick/files` | List CSV + `dir` |
-| POST | `/api/tick/upload` | Multipart `file` hoặc JSON `{filename, csv}` |
-| DELETE | `/api/tick/files/<name>` | Xóa 1 file trong `data/GOLD/tick/` |
-| GET | `/api/tick/query?from=&to=` | `from`/`to` giờ VN `YYYY-MM-DDTHH:MM:SS`; optional `symbol`, `file`, `offset`, `limit` |
+| GET | `/api/tick/files` | List CSV trong `data/GOLD/tick/` |
+| DELETE | `/api/tick/files/<name>` | Xóa 1 file trên đĩa |
+| GET | `/api/tick/query?from=&to=` | Tick giờ VN trên đĩa + chart |
 
-Logic: `tick_data.py`.
+`POST /api/tick/upload` còn đó nhưng UI không dùng (nạp đi localStorage). Logic đĩa: `tick_data.py`.

@@ -17,7 +17,7 @@ Web UI chạy trên WAMP. Đường dẫn www khai báo trong `xml/www.xml` (git
 | `mt5/` | Giao diện ra lệnh / account / path / lịch sử gửi lệnh |
 | `setup/` | Checklist tuần, trang Fibo (đỉnh/đáy), Timer báo giá |
 | `history/` | Phân tích CSV lệnh đã đóng (import trên trình duyệt). Khác `mt5/history/` |
-| `tick/` | Xem CSV tick Bid/Ask theo giờ Việt Nam (cần API). File CSV: `data/GOLD/tick/` |
+| `tick/` | Xem CSV tick Bid/Ask theo giờ Việt Nam. Nạp/dán → localStorage; file tháng: `data/GOLD/tick/` (cần API) |
 | `tick_data.py` | Đọc/ghi/query CSV tick |
 | `day_trade.py` | Chấm điểm setup, đọc/ghi `xml/day_trade_week.xml` |
 | `stock.py` | Phân tích giá (vnstock / Yahoo / TradingView) |
@@ -142,7 +142,7 @@ Sau đó:
 - Phân tích CSV: http://localhost/history/
 - Tick Bid/Ask: http://localhost/tick/
 
-Trang phân tích CSV lệnh (`/history/`) tự tính trên trình duyệt, không cần API. Trang tick (`/tick/`) và các trang mt5/setup gọi `proxy.php` → `127.0.0.1:5001` (cần API đang chạy). CSS/JS gắn `?v=` từ `ver.php` (mtime) để cache đúng.
+Trang phân tích CSV lệnh (`/history/`) tự tính trên trình duyệt, không cần API. Trang tick nạp CSV vào localStorage; tìm file tháng trên đĩa vẫn cần API. Các trang mt5/setup gọi `proxy.php` → `127.0.0.1:5001`. CSS/JS gắn `?v=` từ `ver.php` (mtime) để cache đúng.
 
 Trang ra lệnh: **Xem trước** không gửi lệnh; **Xác nhận gửi lệnh thật** = `--no-ask`.
 

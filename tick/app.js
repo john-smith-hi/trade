@@ -2,13 +2,14 @@
   "use strict";
 
   const FILTER_KEY = "tick-filters";
+  const STORE_KEY = "tick-imports";
   const PAGE_SIZE = 100;
   const PROXY = "proxy.php";
-  const MAX_UPLOAD = 64 * 1024 * 1024;
-  const MAX_PASTE = 8 * 1024 * 1024;
+  const MAX_LOCAL = 4 * 1024 * 1024;
 
   const state = {
     files: [],
+    apiOk: false,
     dir: "data/GOLD/tick",
     symbol: "",
     file: "",
@@ -65,6 +66,268 @@
 
   function fmtCount(n) {
     return Number(n || 0).toLocaleString("en-US");
+  }
+
+  function safeFileName(name) {
+    const base = String(name || "").split(/[/\\]/).pop();
+    const clean = base.replace(/[\u0000-\u001F\u007F<>:"|?*]/g, "_").trim().slice(0, 180);
+    if (!clean) return "pasted.csv";
+    return /\.csv$/i.test(clean) ? clean : clean + ".csv";
+  }
+
+  function splitCsvLine(line) {
+    const out = [];
+    let cur = "";
+    let inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line.charAt(i);
+      if (c === '"') {
+        inQ = !inQ;
+        continue;
+      }
+      if (c === "," && !inQ) {
+        out.push(cur);
+        cur = "";
+        continue;
+      }
+      cur += c;
+    }
+    out.push(cur);
+    return out;
+  }
+
+  function parseUtcMs(raw) {
+    let s = String(raw || "").trim().replace(/^"|"$/g, "");
+    if (!s) return null;
+    if (/^\d{4}-\d{2}-\d{2} /.test(s)) s = s.replace(" ", "T");
+    const ms = Date.parse(s);
+    return Number.isFinite(ms) ? ms : null;
+  }
+
+  function fmtVnMs(ms) {
+    if (ms == null || !Number.isFinite(ms)) return "";
+    const d = new Date(ms + 7 * 3600 * 1000);
+    const base = pad(d.getUTCDate()) + "/" + pad(d.getUTCMonth() + 1) + "/" + d.getUTCFullYear()
+      + " " + pad(d.getUTCHours()) + ":" + pad(d.getUTCMinutes()) + ":" + pad(d.getUTCSeconds());
+    const frac = Math.floor(ms % 1000);
+    if (!frac) return base;
+    return base + "." + String(frac);
+  }
+
+  function headerCols(headerLine) {
+    const row = splitCsvLine(headerLine).map(function (c) {
+      return c.trim().replace(/^"|"$/g, "").replace(/^\ufeff/, "").toLowerCase();
+    });
+    function find() {
+      for (let i = 0; i < arguments.length; i++) {
+        const idx = row.indexOf(arguments[i]);
+        if (idx >= 0) return idx;
+      }
+      return -1;
+    }
+    const ts = find("timestamp", "time", "datetime");
+    const bid = find("bid");
+    const ask = find("ask");
+    const symbol = find("symbol");
+    if (ts < 0 || bid < 0 || ask < 0) return null;
+    return { ts: ts, bid: bid, ask: ask, symbol: symbol };
+  }
+
+  function parseTickCsv(text, fileName) {
+    const lines = String(text || "").split(/\r?\n/);
+    if (!lines.length) return { ok: false, error: "CSV trống.", ticks: [] };
+    const cols = headerCols(lines[0]);
+    if (!cols) return { ok: false, error: "CSV cần cột Timestamp, Bid, Ask.", ticks: [] };
+    const ticks = [];
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      const row = splitCsvLine(line);
+      const need = Math.max(cols.ts, cols.bid, cols.ask);
+      if (row.length <= need) continue;
+      const t = parseUtcMs(row[cols.ts]);
+      const bid = Number(row[cols.bid]);
+      const ask = Number(row[cols.ask]);
+      if (t == null || !Number.isFinite(bid) || !Number.isFinite(ask)) continue;
+      const symbol = cols.symbol >= 0 && row[cols.symbol] ? String(row[cols.symbol]).trim().replace(/^"|"$/g, "") : "";
+      ticks.push({
+        t: t,
+        ts_vn: fmtVnMs(t),
+        symbol: symbol,
+        bid: bid,
+        ask: ask,
+        spread: Math.round((ask - bid) * 1e6) / 1e6,
+        file: fileName,
+      });
+    }
+    if (!ticks.length) return { ok: false, error: "Không đọc được dòng tick nào.", ticks: [] };
+    ticks.sort(function (a, b) { return a.t - b.t; });
+    return {
+      ok: true,
+      error: "",
+      ticks: ticks,
+      symbol: ticks[0].symbol,
+      first_vn: ticks[0].ts_vn,
+      last_vn: ticks[ticks.length - 1].ts_vn,
+    };
+  }
+
+  function readStore() {
+    try {
+      const raw = localStorage.getItem(STORE_KEY);
+      if (!raw) return [];
+      const arr = JSON.parse(raw);
+      if (!Array.isArray(arr)) return [];
+      return arr.filter(function (x) {
+        return x && typeof x.name === "string" && typeof x.text === "string";
+      });
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function writeStore(records) {
+    const payload = JSON.stringify(records.map(function (r) {
+      return { name: r.name, text: r.text, importedAt: r.importedAt || Date.now() };
+    }));
+    if (payload.length > MAX_LOCAL + 512 * 1024) {
+      throw new Error("Hết chỗ localStorage (~4 MB). Xóa bớt file đã nạp.");
+    }
+    try {
+      localStorage.setItem(STORE_KEY, payload);
+    } catch (e) {
+      throw new Error("Không ghi được localStorage (hết dung lượng hoặc trình duyệt chặn).");
+    }
+  }
+
+  function fileKey(f) {
+    return (f.source || "disk") + ":" + f.name;
+  }
+
+  function emptyResult(spec) {
+    return {
+      rows: [],
+      total: 0,
+      offset: spec ? spec.offset : 0,
+      limit: PAGE_SIZE,
+      stats: { count: 0 },
+      chart: [],
+      files: [],
+      from_vn: spec ? spec.fromVn : "",
+      to_vn: spec ? spec.toVn : "",
+    };
+  }
+
+  function resultFromTicks(ticks, spec) {
+    const out = emptyResult(spec);
+    if (!ticks.length) return out;
+    let bidMin = ticks[0].bid, bidMax = ticks[0].bid;
+    let askMin = ticks[0].ask, askMax = ticks[0].ask;
+    let spreadMin = ticks[0].spread, spreadMax = ticks[0].spread, spreadSum = 0;
+    const files = {};
+    const nBucket = 800;
+    const span = Math.max(1, spec.toMs - spec.fromMs);
+    const buckets = {};
+    ticks.forEach(function (tick) {
+      if (tick.bid < bidMin) bidMin = tick.bid;
+      if (tick.bid > bidMax) bidMax = tick.bid;
+      if (tick.ask < askMin) askMin = tick.ask;
+      if (tick.ask > askMax) askMax = tick.ask;
+      if (tick.spread < spreadMin) spreadMin = tick.spread;
+      if (tick.spread > spreadMax) spreadMax = tick.spread;
+      spreadSum += tick.spread;
+      files[tick.file] = 1;
+      const idx = Math.min(nBucket - 1, Math.floor(((tick.t - spec.fromMs) / span) * nBucket));
+      buckets[idx] = { t: tick.t, bid: tick.bid, ask: tick.ask, bid_min: tick.bid, bid_max: tick.bid, ask_min: tick.ask, ask_max: tick.ask };
+    });
+    const first = ticks[0];
+    const last = ticks[ticks.length - 1];
+    out.total = ticks.length;
+    out.rows = ticks.slice(spec.offset, spec.offset + PAGE_SIZE);
+    out.files = Object.keys(files);
+    out.chart = Object.keys(buckets).sort(function (a, b) { return Number(a) - Number(b); }).map(function (k) { return buckets[k]; });
+    out.stats = {
+      count: ticks.length,
+      first_vn: first.ts_vn,
+      last_vn: last.ts_vn,
+      symbol: first.symbol || spec.symbol || "",
+      bid_min: bidMin,
+      bid_max: bidMax,
+      bid_open: first.bid,
+      bid_close: last.bid,
+      ask_min: askMin,
+      ask_max: askMax,
+      ask_open: first.ask,
+      ask_close: last.ask,
+      spread_min: spreadMin,
+      spread_max: spreadMax,
+      spread_avg: Math.round((spreadSum / ticks.length) * 1e6) / 1e6,
+    };
+    return out;
+  }
+
+  function queryLocal(spec, localName) {
+    const ticks = [];
+    state.files.forEach(function (f) {
+      if (f.source !== "local" || !f.ticks) return;
+      if (localName && f.name !== localName) return;
+      f.ticks.forEach(function (tick) {
+        if (tick.t < spec.fromMs || tick.t > spec.toMs) return;
+        if (spec.symbol && tick.symbol !== spec.symbol) return;
+        ticks.push(tick);
+      });
+    });
+    ticks.sort(function (a, b) { return a.t - b.t; });
+    return resultFromTicks(ticks, spec);
+  }
+
+  function mergeResults(localRes, apiRes, spec) {
+    if (!localRes.total) return apiRes.total ? apiRes : localRes;
+    if (!apiRes.total) return localRes;
+    const files = {};
+    (localRes.files || []).concat(apiRes.files || []).forEach(function (n) { files[n] = 1; });
+    const ls = localRes.stats || {};
+    const as = apiRes.stats || {};
+    function pickMin(a, b) {
+      if (a == null) return b;
+      if (b == null) return a;
+      return a < b ? a : b;
+    }
+    function pickMax(a, b) {
+      if (a == null) return b;
+      if (b == null) return a;
+      return a > b ? a : b;
+    }
+    const chart = (localRes.chart || []).concat(apiRes.chart || []).sort(function (a, b) { return a.t - b.t; });
+    const rows = (localRes.rows || []).concat(apiRes.rows || []).sort(function (a, b) { return a.t - b.t; });
+    const count = (ls.count || 0) + (as.count || 0);
+    return {
+      rows: spec.offset === 0 ? rows.slice(0, PAGE_SIZE) : (apiRes.rows || []),
+      total: count,
+      offset: spec.offset,
+      limit: PAGE_SIZE,
+      chart: chart,
+      files: Object.keys(files),
+      from_vn: spec.fromVn,
+      to_vn: spec.toVn,
+      stats: {
+        count: count,
+        first_vn: ls.first_vn && (!as.first_vn || ls.first_vn < as.first_vn) ? ls.first_vn : (as.first_vn || ls.first_vn || ""),
+        last_vn: ls.last_vn && (!as.last_vn || ls.last_vn > as.last_vn) ? ls.last_vn : (as.last_vn || ls.last_vn || ""),
+        symbol: as.symbol || ls.symbol || spec.symbol || "",
+        bid_min: pickMin(ls.bid_min, as.bid_min),
+        bid_max: pickMax(ls.bid_max, as.bid_max),
+        bid_open: ls.bid_open != null ? ls.bid_open : as.bid_open,
+        bid_close: as.bid_close != null ? as.bid_close : ls.bid_close,
+        ask_min: pickMin(ls.ask_min, as.ask_min),
+        ask_max: pickMax(ls.ask_max, as.ask_max),
+        ask_open: ls.ask_open != null ? ls.ask_open : as.ask_open,
+        ask_close: as.ask_close != null ? as.ask_close : ls.ask_close,
+        spread_min: pickMin(ls.spread_min, as.spread_min),
+        spread_max: pickMax(ls.spread_max, as.spread_max),
+        spread_avg: count ? Math.round((((ls.spread_avg || 0) * (ls.count || 0) + (as.spread_avg || 0) * (as.count || 0)) / count) * 1e6) / 1e6 : null,
+      },
+    };
   }
 
   function parseTime(raw) {
@@ -344,7 +607,10 @@
       uniqueSymbols().map(function (s) { return { value: s, label: s }; })
     ), state.symbol);
     fillSelect("filterFile", [{ value: "", label: "Tất cả" }].concat(
-      state.files.map(function (f) { return { value: f.name, label: f.name }; })
+      state.files.map(function (f) {
+        const tag = f.source === "local" ? " (trình duyệt)" : " (đĩa)";
+        return { value: fileKey(f), label: f.name + tag };
+      })
     ), state.file);
   }
 
@@ -402,28 +668,83 @@
   function renderFileList() {
     const el = $("fileList");
     if (!state.files.length) {
-      el.innerHTML = '<p class="hint">Chưa có file trong <code>' + esc(state.dir) + "</code>.</p>";
+      el.innerHTML = '<p class="hint">Chưa có file đã nạp trên trình duyệt. File tháng trên đĩa: copy vào <code>' + esc(state.dir) + "</code>.</p>";
       return;
     }
     el.innerHTML = state.files.map(function (f) {
       const range = f.first_vn && f.last_vn
         ? f.first_vn + " → " + f.last_vn
         : (f.error || "Chưa đọc được khoảng thời gian");
+      const where = f.source === "local" ? "localStorage" : state.dir;
+      const nTick = f.ticks ? " · " + fmtCount(f.ticks.length) + " tick" : "";
       const sym = f.symbol ? f.symbol + " · " : "";
       return '<div class="file-row"><div><span class="file-name">' + esc(f.name)
-        + '</span><span class="file-meta">' + esc(sym) + fmtSize(f.size) + " · " + esc(range)
+        + '</span><span class="file-meta">' + esc(sym) + fmtSize(f.size) + nTick + " · " + esc(range)
+        + " · " + esc(where)
         + '</span></div><button type="button" class="btn btn-ghost" data-del="' + esc(f.name)
-        + '">Xóa</button></div>';
+        + '" data-source="' + esc(f.source || "disk") + '">Xóa</button></div>';
     }).join("");
   }
 
+  function loadLocalFiles() {
+    return readStore().map(function (rec) {
+      const name = safeFileName(rec.name);
+      const parsed = parseTickCsv(rec.text, name);
+      return {
+        source: "local",
+        name: name,
+        text: rec.text,
+        size: rec.text.length,
+        importedAt: rec.importedAt || 0,
+        ticks: parsed.ticks || [],
+        symbol: parsed.symbol || "",
+        first_vn: parsed.first_vn || "",
+        last_vn: parsed.last_vn || "",
+        error: parsed.ok ? "" : (parsed.error || "Lỗi CSV"),
+      };
+    });
+  }
+
+  function saveLocalRecord(name, text) {
+    if (text.length > MAX_LOCAL) {
+      throw new Error("Nội dung quá lớn cho localStorage (tối đa 4 MB). File tháng để trong " + state.dir + "/.");
+    }
+    const parsed = parseTickCsv(text, name);
+    if (!parsed.ok) throw new Error(parsed.error || "CSV không hợp lệ.");
+    const records = readStore().filter(function (r) { return safeFileName(r.name) !== name; });
+    records.push({ name: name, text: text, importedAt: Date.now() });
+    writeStore(records);
+    return parsed;
+  }
+
+  let loadGen = 0;
+
   async function loadFiles() {
-    const data = await api("GET", "/api/tick/files");
-    state.files = data.files || [];
-    state.dir = data.dir || state.dir;
+    const gen = ++loadGen;
+    let disk = [];
+    let apiOk = false;
+    let apiErr = "";
+    try {
+      const data = await api("GET", "/api/tick/files", undefined, { timeoutMs: 5000 });
+      disk = (data.files || []).map(function (f) {
+        return Object.assign({ source: "disk" }, f);
+      });
+      state.dir = data.dir || state.dir;
+      apiOk = true;
+    } catch (err) {
+      apiErr = err.message || String(err);
+    }
+    if (gen !== loadGen) return;
+    state.apiOk = apiOk;
+    const local = loadLocalFiles();
+    state.files = local.concat(disk);
     renderFileList();
     paintFilters();
-    setStatus("API sẵn sàng · " + state.files.length + " file trong " + state.dir, "ok");
+    if (apiOk) {
+      setStatus("API sẵn sàng · " + disk.length + " file đĩa · " + local.length + " file trình duyệt", "ok");
+    } else {
+      setStatus("Không có API — chỉ file localStorage (" + local.length + "). " + apiErr, "error");
+    }
   }
 
   async function ingestFileList(fileList) {
@@ -432,25 +753,25 @@
     let ok = 0;
     for (let i = 0; i < incoming.length; i++) {
       const file = incoming[i];
-      if (!/\.csv$/i.test(file.name || "")) {
+      const name = safeFileName(file.name);
+      if (!/\.csv$/i.test(name)) {
         errors.push((file.name || "file") + ": chỉ nhận .csv");
         continue;
       }
-      if (file.size > MAX_UPLOAD) {
-        errors.push(file.name + ": quá 64 MB — copy thẳng vào " + state.dir + "/");
+      if (file.size > MAX_LOCAL) {
+        errors.push(name + ": quá 4 MB cho localStorage — để file tháng trong " + state.dir + "/");
         continue;
       }
-      const fd = new FormData();
-      fd.append("file", file, file.name);
       try {
-        await api("POST", "/api/tick/upload", fd, { timeoutMs: 180000 });
+        const text = await file.text();
+        saveLocalRecord(name, text);
         ok += 1;
       } catch (err) {
-        errors.push(file.name + ": " + (err.message || err));
+        errors.push(name + ": " + (err.message || err));
       }
     }
     setMsg("importError", errors.join(" · "));
-    setMsg("importOk", ok ? "Đã lưu " + ok + " file vào " + state.dir + "." : "");
+    setMsg("importOk", ok ? "Đã nạp " + ok + " file vào localStorage." : "");
     if (ok) await loadFiles();
   }
 
@@ -461,16 +782,12 @@
       setMsg("importOk", "");
       return;
     }
-    if (String(text).length > MAX_PASTE) {
-      setMsg("importError", "Nội dung quá lớn (tối đa 8 MB).");
-      return;
-    }
-    const filename = $("pasteName").value.trim() || "pasted.csv";
+    const filename = safeFileName($("pasteName").value.trim() || "pasted.csv");
     try {
-      await api("POST", "/api/tick/upload", { csv: text, filename: filename }, { timeoutMs: 60000 });
+      saveLocalRecord(filename, text);
       $("csvPaste").value = "";
       setMsg("importError", "");
-      setMsg("importOk", "Đã lưu " + filename + " vào " + state.dir + ".");
+      setMsg("importOk", "Đã nạp " + filename + " vào localStorage.");
       await loadFiles();
     } catch (err) {
       setMsg("importOk", "");
@@ -490,7 +807,7 @@
     markDateFields();
   }
 
-  function buildQueryPath() {
+  function buildSearchSpec() {
     readFilterInputs();
     if (state.dateError) throw new Error(state.dateError);
     if ($("filterFromTime").classList.contains("date-bad") || $("filterToTime").classList.contains("date-bad")) {
@@ -501,21 +818,27 @@
     const from = state.from + "T" + state.fromTime;
     const to = state.to + "T" + state.toTime;
     if (from > to) throw new Error("Thời gian bắt đầu đang sau thời gian kết thúc.");
-    const qs = new URLSearchParams();
-    qs.set("from", from);
-    qs.set("to", to);
-    if (state.symbol) qs.set("symbol", state.symbol);
-    if (state.file) qs.set("file", state.file);
-    qs.set("limit", String(PAGE_SIZE));
-    qs.set("offset", String(state.page * PAGE_SIZE));
-    return "/api/tick/query?" + qs.toString();
+    const fromMs = Date.parse(from + "+07:00");
+    const toMs = Date.parse(to + "+07:00");
+    if (!Number.isFinite(fromMs) || !Number.isFinite(toMs)) throw new Error("Thời gian không hợp lệ.");
+    return {
+      from: from,
+      to: to,
+      fromMs: fromMs,
+      toMs: toMs + 999,
+      fromVn: fmtVnMs(fromMs),
+      toVn: fmtVnMs(toMs),
+      symbol: state.symbol,
+      file: state.file,
+      offset: state.page * PAGE_SIZE,
+    };
   }
 
   async function runSearch() {
     if (state.busy) return;
-    let path;
+    let spec;
     try {
-      path = buildQueryPath();
+      spec = buildSearchSpec();
     } catch (err) {
       $("filterMeta").textContent = err.message || String(err);
       return;
@@ -524,9 +847,27 @@
     state.busy = true;
     $("btnSearch").disabled = true;
     $("filterMeta").textContent = "Đang tìm…";
+    const key = spec.file || "";
+    const localOnly = key.indexOf("local:") === 0;
+    const diskOnly = key.indexOf("disk:") === 0;
     try {
-      const data = await api("GET", path, undefined, { timeoutMs: 180000 });
-      state.result = data;
+      const localRes = diskOnly ? emptyResult(spec) : queryLocal(spec, localOnly ? key.slice(6) : "");
+      let apiRes = emptyResult(spec);
+      if (!localOnly && (state.apiOk || diskOnly)) {
+        const qs = new URLSearchParams();
+        qs.set("from", spec.from);
+        qs.set("to", spec.to);
+        if (spec.symbol) qs.set("symbol", spec.symbol);
+        if (diskOnly) qs.set("file", key.slice(5));
+        qs.set("limit", String(PAGE_SIZE));
+        qs.set("offset", String(spec.offset));
+        try {
+          apiRes = await api("GET", "/api/tick/query?" + qs.toString(), undefined, { timeoutMs: 180000 });
+        } catch (err) {
+          if (!localRes.total) throw err;
+        }
+      }
+      state.result = mergeResults(localRes, apiRes, spec);
       renderResults();
     } catch (err) {
       state.result = null;
@@ -752,14 +1093,25 @@
       const btn = ev.target.closest("[data-del]");
       if (!btn) return;
       const name = btn.getAttribute("data-del");
+      const source = btn.getAttribute("data-source") || "disk";
       if (!name) return;
+      if (source === "local") {
+        if (!window.confirm("Xóa " + name + " khỏi localStorage?")) return;
+        try {
+          writeStore(readStore().filter(function (r) { return safeFileName(r.name) !== name; }));
+          setMsg("importOk", "Đã xóa " + name + " khỏi localStorage.");
+          setMsg("importError", "");
+          loadFiles();
+        } catch (err) {
+          setMsg("importError", err.message || String(err));
+        }
+        return;
+      }
       if (!window.confirm("Xóa file " + name + " khỏi " + state.dir + "?")) return;
-      api("DELETE", "/api/tick/files/" + encodeURIComponent(name)).then(function (data) {
-        state.files = data.files || [];
-        renderFileList();
-        paintFilters();
+      api("DELETE", "/api/tick/files/" + encodeURIComponent(name)).then(function () {
         setMsg("importOk", "Đã xóa " + name + ".");
         setMsg("importError", "");
+        return loadFiles();
       }).catch(function (err) {
         setMsg("importError", err.message || String(err));
       });
