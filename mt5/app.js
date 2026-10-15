@@ -249,10 +249,6 @@ function actionIsTwoSide(action = el("action").value) {
   return action === "open-2-side";
 }
 
-function actionIsNewsHedge(action = el("action").value) {
-  return action === "open-2-side-news-multi-auto";
-}
-
 function actionIsModifyIf(action = el("action").value) {
   return action === "modify-all-if";
 }
@@ -758,10 +754,6 @@ function buildPayload(noAsk) {
     zone_high: isVisible("zoneHigh") ? el("zoneHigh").value : undefined,
     tp_price: isVisible("tpPrice") ? el("tpPrice").value : "",
     sl_price: isVisible("slPrice") ? el("slPrice").value : "",
-    max_risk: isVisible("maxRisk") ? el("maxRisk").value : undefined,
-    sl_pips: isVisible("slPips") ? el("slPips").value : undefined,
-    buffer_pips: isVisible("bufferPips") ? el("bufferPips").value : undefined,
-    max_exec_ms: isVisible("maxExecMs") ? el("maxExecMs").value : undefined,
     comment: isVisible("comment") ? el("comment").value : undefined,
     copy: isVisible("copy") && el("copy").value ? el("copy").value : undefined,
     no_ask: noAsk,
@@ -810,23 +802,6 @@ async function submitAction(noAsk, triggerBtn) {
         : "Stop loss là bắt buộc — hãy nhập mức giá SL hợp lệ (> 0).");
       el("slPrice").focus();
       return;
-    }
-  }
-  if (actionIsNewsHedge(action)) {
-    const checks = [
-      ["maxRisk", "MAX_RISK"],
-      ["slPips", "SL"],
-      ["bufferPips", "BUFFER"],
-      ["maxExecMs", "Thời gian bắn"],
-    ];
-    for (const [id, label] of checks) {
-      const raw = el(id).value.trim();
-      const value = Number(raw);
-      if (!raw || !Number.isFinite(value) || value <= 0) {
-        alert(`${label} phải là số > 0.`);
-        el(id).focus();
-        return;
-      }
     }
   }
   if (action === "open-2-side") {
@@ -913,7 +888,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     invalidatePreview();
     if (el("action").value === "pending") autofillTpSl();
   });
-  ["price", "lot", "tpPrice", "slPrice", "comment", "copy", "zoneLow", "zoneHigh", "maxRisk", "slPips", "bufferPips", "maxExecMs"].forEach((id) => {
+  ["price", "lot", "tpPrice", "slPrice", "comment", "copy", "zoneLow", "zoneHigh"].forEach((id) => {
     const node = el(id);
     if (!node) return;
     node.addEventListener("input", () => {
